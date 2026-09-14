@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidPractice(data) {
+      return data.keys().hasAll(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt', 'duration', 'isPartial']) &&
+             (!('duration' in data) || data.duration is number) &&
+             (!('isPartial' in data) || data.isPartial is bool) &&
+             data.userId == request.auth.uid &&
+             data.songTitle is string && data.songTitle.size() > 0 && data.songTitle.size() <= 200 &&
+             data.difficulty is number && data.difficulty >= 1 && data.difficulty <= 12 &&
+             data.correctNotes is number &&
+             data.totalNotes is number &&
+             data.accuracy is number &&
+             data.speed is number &&
+             data.date is string &&
+             data.createdAt is number;
+    }
+
+    match /practices/{practiceId} {
+      allow get: if isSignedIn() && isValidId(practiceId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                    isValidId(practiceId) && 
+                    isValidPractice(incoming());
+                    
+      allow update: if isSignedIn() && 
+                    isValidId(practiceId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidPractice(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt;
+                    
+      allow delete: if isSignedIn() && isValidId(practiceId) && existing().userId == request.auth.uid;
+    }
+
+    function isValidGoal(data) {
+      return data.keys().hasAll(['userId', 'title', 'targetDate', 'achieved', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'title', 'targetDate', 'achieved', 'createdAt', 'songTitle']) &&
+             (!('songTitle' in data) || data.songTitle is string) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.targetDate is string &&
+             data.achieved is bool &&
+             data.createdAt is number;
+    }
+
+    match /goals/{goalId} {
+      allow get: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                    isValidId(goalId) && 
+                    isValidGoal(incoming());
+                    
+      allow update: if isSignedIn() && 
+                    isValidId(goalId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidGoal(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt;
+                    
+      allow delete: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
+    }
+
+    function isValidSong(data) {
+      return data.keys().hasAll(['userId', 'title', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'title', 'createdAt', 'retired']) &&
+             (!('retired' in data) || data.retired is bool) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.createdAt is number;
+    }
+
+    match /songs/{songId} {
+      allow get: if isSignedIn() && isValidId(songId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                    isValidId(songId) && 
+                    isValidSong(incoming());
+                    
+      allow update: if isSignedIn() && 
+                    isValidId(songId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidSong(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt;
+                    
+      allow delete: if isSignedIn() && isValidId(songId) && existing().userId == request.auth.uid;
+    }
+  }
+}

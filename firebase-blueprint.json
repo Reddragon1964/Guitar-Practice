@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "Practice": {
+      "title": "Practice",
+      "description": "A guitar practice session record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "songTitle": { "type": "string", "maxLength": 200 },
+        "difficulty": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced", "Expert"] },
+        "correctNotes": { "type": "number" },
+        "totalNotes": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "speed": { "type": "number" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "songTitle", "difficulty", "correctNotes", "totalNotes", "accuracy", "speed", "date", "createdAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A personal milestone or goal.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "targetDate": { "type": "string" },
+        "achieved": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "title", "targetDate", "achieved", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/practices/{practiceId}": {
+      "schema": { "$ref": "#/entities/Practice" },
+      "description": "Stores all practice sessions."
+    },
+    "/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/Goal" },
+      "description": "Stores user goals."
+    }
+  }
+}
