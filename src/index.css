@@ -1,1 +1,53 @@
 @import "tailwindcss";
+
+/* Weekly Progress Bar Subtle CSS Animations */
+@keyframes progress-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes progress-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.65));
+  }
+}
+
+.animate-progress-shimmer {
+  animation: progress-shimmer 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-progress-glow {
+  animation: progress-glow 2.4s ease-in-out infinite;
+}
+
+/* Custom Scrollbars for Dialogs and Panels */
+.dialog-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 140, 248, 0.5) rgba(15, 23, 42, 0.7);
+}
+
+.dialog-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dialog-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 8px;
+}
+
+.dialog-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.5);
+  border-radius: 8px;
+  border: 2px solid rgba(15, 23, 42, 0.7);
+}
+
+.dialog-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 180, 252, 0.8);
+}

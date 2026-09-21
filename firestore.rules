@@ -23,9 +23,13 @@ service cloud.firestore {
 
     function isValidPractice(data) {
       return data.keys().hasAll(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt']) &&
-             data.keys().hasOnly(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt', 'duration', 'isPartial']) &&
+             data.keys().hasOnly(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt', 'duration', 'isPartial', 'isTestSession', 'score', 'note', 'difficultyRating']) &&
              (!('duration' in data) || data.duration is number) &&
              (!('isPartial' in data) || data.isPartial is bool) &&
+             (!('isTestSession' in data) || data.isTestSession is bool) &&
+             (!('score' in data) || (data.score is number && data.score >= 0)) &&
+             (!('note' in data) || data.note is string) &&
+             (!('difficultyRating' in data) || (data.difficultyRating is number && data.difficultyRating >= 1 && data.difficultyRating <= 5)) &&
              data.userId == request.auth.uid &&
              data.songTitle is string && data.songTitle.size() > 0 && data.songTitle.size() <= 200 &&
              data.difficulty is number && data.difficulty >= 1 && data.difficulty <= 12 &&
@@ -109,6 +113,61 @@ service cloud.firestore {
                     incoming().createdAt == existing().createdAt;
                     
       allow delete: if isSignedIn() && isValidId(songId) && existing().userId == request.auth.uid;
+    }
+
+    function isValidDailyUsage(data) {
+      return data.keys().hasAll(['userId', 'date', 'minutes', 'updatedAt']) &&
+             data.keys().hasOnly(['userId', 'date', 'minutes', 'updatedAt']) &&
+             data.userId == request.auth.uid &&
+             data.date is string &&
+             data.minutes is number &&
+             data.updatedAt is number;
+    }
+
+    match /dailyUsage/{usageId} {
+      allow get: if isSignedIn() && isValidId(usageId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                    isValidId(usageId) && 
+                    isValidDailyUsage(incoming());
+                    
+      allow update: if isSignedIn() && 
+                    isValidId(usageId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidDailyUsage(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().date == existing().date;
+                    
+      allow delete: if isSignedIn() && isValidId(usageId) && existing().userId == request.auth.uid;
+    }
+
+    function isValidWeeklyGoal(data) {
+      return data.keys().hasAll(['userId', 'title', 'targetMinutes', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'title', 'targetMinutes', 'createdAt', 'songTitle']) &&
+             (!('songTitle' in data) || (data.songTitle is string && data.songTitle.size() <= 200)) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.targetMinutes is number && data.targetMinutes >= 1 && data.targetMinutes <= 10080 &&
+             data.createdAt is number;
+    }
+
+    match /weeklyGoals/{goalId} {
+      allow get: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                    isValidId(goalId) && 
+                    isValidWeeklyGoal(incoming());
+                    
+      allow update: if isSignedIn() && 
+                    isValidId(goalId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidWeeklyGoal(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt;
+                    
+      allow delete: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
     }
   }
 }
