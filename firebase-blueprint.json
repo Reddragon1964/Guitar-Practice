@@ -2,25 +2,38 @@
   "entities": {
     "Practice": {
       "title": "Practice",
-      "description": "A guitar practice session record.",
+      "description": "A guitar practice session record including date, duration, song title, difficulty level, accuracy score (correct notes / total notes), and practice speed.",
       "type": "object",
       "properties": {
         "userId": { "type": "string", "maxLength": 128 },
         "songTitle": { "type": "string", "maxLength": 200 },
-        "difficulty": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced", "Expert"] },
+        "difficulty": { "type": "number" },
         "correctNotes": { "type": "number" },
         "totalNotes": { "type": "number" },
         "accuracy": { "type": "number" },
         "speed": { "type": "number" },
+        "duration": { "type": "number" },
         "isPartial": { "type": "boolean" },
         "isTestSession": { "type": "boolean" },
         "score": { "type": "number" },
         "date": { "type": "string" },
         "createdAt": { "type": "number" },
-        "difficultyRating": { "type": "number", "minimum": 1, "maximum": 5 },
+        "difficultyRating": { "type": "number" },
         "note": { "type": "string" }
       },
       "required": ["userId", "songTitle", "difficulty", "correctNotes", "totalNotes", "accuracy", "speed", "date", "createdAt"]
+    },
+    "Song": {
+      "title": "Song",
+      "description": "A song or exercise in the user's guitar library.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "retired": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "title", "createdAt"]
     },
     "Goal": {
       "title": "Goal",
@@ -29,6 +42,7 @@
       "properties": {
         "userId": { "type": "string", "maxLength": 128 },
         "title": { "type": "string", "maxLength": 200 },
+        "songTitle": { "type": "string", "maxLength": 200 },
         "targetDate": { "type": "string" },
         "achieved": { "type": "boolean" },
         "createdAt": { "type": "number" }
@@ -47,12 +61,30 @@
         "createdAt": { "type": "number" }
       },
       "required": ["userId", "title", "targetMinutes", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message in the user's multi-turn Gemini chatbot conversation thread.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "text": { "type": "string", "maxLength": 10000 },
+        "personaId": { "type": "string", "maxLength": 100 },
+        "model": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "role", "text", "personaId", "model", "createdAt"]
     }
   },
   "firestore": {
     "/practices/{practiceId}": {
       "schema": { "$ref": "#/entities/Practice" },
-      "description": "Stores all practice sessions."
+      "description": "Stores all guitar practice sessions."
+    },
+    "/songs/{songId}": {
+      "schema": { "$ref": "#/entities/Song" },
+      "description": "Stores user song library."
     },
     "/goals/{goalId}": {
       "schema": { "$ref": "#/entities/Goal" },
@@ -61,6 +93,10 @@
     "/weeklyGoals/{goalId}": {
       "schema": { "$ref": "#/entities/WeeklyGoal" },
       "description": "Stores user weekly practice time targets."
+    },
+    "/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores multi-turn Gemini chatbot messages per user."
     }
   }
 }

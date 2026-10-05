@@ -1,12 +1,25 @@
 import React from "react";
-import { Printer } from "lucide-react";
-import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
+import { Printer, ArrowLeft } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { PrintMode } from "../../types";
+import { Practice, Song, PrintMode } from "../../types";
+import { PracticeTrendsSection } from "./PracticeTrendsSection";
 
 interface TrendsModalProps {
   data: { label: string; accuracy: number | null; speed: number | null }[];
+  practices: Practice[];
+  activeSongs: Song[];
+  usageLogs?: { date: string; minutes: number }[];
   printMode: PrintMode;
   onPrint: (mode: "trends") => void;
   onBack: () => void;
@@ -14,6 +27,9 @@ interface TrendsModalProps {
 
 export const TrendsModal: React.FC<TrendsModalProps> = ({
   data,
+  practices,
+  activeSongs,
+  usageLogs = [],
   printMode,
   onPrint,
   onBack,
@@ -21,9 +37,16 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
   const isPrintHidden = printMode && printMode !== "trends" && printMode !== "all";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight text-indigo-50">30-Day Trends</h2>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-indigo-50">
+            Practice Trends & Analytics
+          </h2>
+          <p className="text-xs text-indigo-300/80 mt-0.5">
+            Weekly accuracy improvements, total practice hours over time, and 30-day session trends
+          </p>
+        </div>
         <div className="flex gap-2 print:hidden">
           <Button
             variant="outline"
@@ -35,20 +58,32 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
           <Button
             variant="ghost"
             onClick={onBack}
-            className="text-indigo-300 hover:text-indigo-100"
+            className="text-indigo-300 hover:text-indigo-100 gap-1.5"
           >
-            Back to Dashboard
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Button>
         </div>
       </div>
 
+      {/* Weekly Accuracy Improvements & Total Practice Hours Over Time */}
+      <PracticeTrendsSection
+        practices={practices}
+        activeSongs={activeSongs}
+        usageLogs={usageLogs}
+        printMode={printMode}
+        onPrint={onPrint}
+      />
+
+      {/* 30-Day Daily Accuracy & Speed Improvements */}
       <Card
         className={`border-indigo-500/30 bg-indigo-900/10 shadow-[0_0_15px_rgba(99,102,241,0.1)] ${
           isPrintHidden ? "print:hidden" : ""
         }`}
       >
         <CardHeader>
-          <CardTitle className="text-indigo-100">Accuracy & Speed Improvements</CardTitle>
+          <CardTitle className="text-indigo-100">
+            30-Day Daily Accuracy & Speed Improvements
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-80 w-full">
@@ -115,11 +150,16 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
                   }}
                   itemStyle={{ color: "#e0e7ff" }}
                 />
+                <Legend
+                  verticalAlign="top"
+                  height={28}
+                  wrapperStyle={{ fontSize: "12px", color: "#c7d2fe" }}
+                />
                 <Line
                   yAxisId="left"
                   type="monotone"
                   dataKey="accuracy"
-                  name="Avg Accuracy"
+                  name="Avg Accuracy (%)"
                   stroke="#10b981"
                   strokeWidth={3}
                   dot={{ r: 4, fill: "#10b981" }}
@@ -130,7 +170,7 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
                   yAxisId="right"
                   type="monotone"
                   dataKey="speed"
-                  name="Avg Speed"
+                  name="Avg Speed (%)"
                   stroke="#f59e0b"
                   strokeWidth={3}
                   dot={{ r: 4, fill: "#f59e0b" }}

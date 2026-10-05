@@ -3,6 +3,7 @@ import { Target, Music, Clock, Sparkles, X } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { NumericKeypadInput } from "../ui/numeric-keypad-input";
 import { Select } from "../ui/select";
 import { Song, WeeklyGoal } from "../../types";
 import { formatTimeMinutes } from "../../utils/goalCalculator";
@@ -208,13 +209,20 @@ export const WeeklyGoalModal: React.FC<WeeklyGoalModalProps> = ({
               <div className="flex items-center gap-3 sm:gap-4 bg-indigo-950/40 p-3.5 sm:p-4 rounded-xl border border-indigo-800/60">
                 <div className="flex-1 min-w-0">
                   <label className="text-[11px] text-indigo-400 mb-1 block">Hours</label>
-                  <Input
-                    type="number"
+                  <NumericKeypadInput
+                    label="Weekly Hours"
                     min={0}
                     max={100}
                     value={hours}
-                    onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
+                    onChange={(val) => setHours(Math.max(0, parseInt(val, 10) || 0))}
+                    quickPresets={[
+                      { label: "1h", value: "1" },
+                      { label: "2h", value: "2" },
+                      { label: "3h", value: "3" },
+                      { label: "5h", value: "5" },
+                      { label: "10h", value: "10" },
+                    ]}
+                    inputClassName="w-full bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
                   />
                 </div>
 
@@ -222,16 +230,22 @@ export const WeeklyGoalModal: React.FC<WeeklyGoalModalProps> = ({
 
                 <div className="flex-1 min-w-0">
                   <label className="text-[11px] text-indigo-400 mb-1 block">Minutes</label>
-                  <Input
-                    type="number"
+                  <NumericKeypadInput
+                    label="Weekly Minutes"
                     min={0}
                     max={59}
                     step={5}
                     value={minutes}
-                    onChange={(e) =>
-                      setMinutes(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))
+                    onChange={(val) =>
+                      setMinutes(Math.min(59, Math.max(0, parseInt(val, 10) || 0)))
                     }
-                    className="w-full bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
+                    quickPresets={[
+                      { label: "0m", value: "0" },
+                      { label: "15m", value: "15" },
+                      { label: "30m", value: "30" },
+                      { label: "45m", value: "45" },
+                    ]}
+                    inputClassName="w-full bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
                   />
                 </div>
 

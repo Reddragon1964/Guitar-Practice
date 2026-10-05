@@ -7,7 +7,7 @@ export interface Practice {
   totalNotes: number;
   accuracy: number;
   speed: number;
-  duration?: number; // duration in minutes
+  duration?: number; // duration in seconds (formatted as mm:ss / m:ss)
   isPartial?: boolean;
   isTestSession?: boolean;
   score?: number;
@@ -44,9 +44,28 @@ export interface Song {
   createdAt: number;
 }
 
-export type DashboardView = "dashboard" | "add-practice" | "add-goal" | "manage-songs" | "ai-analysis" | "trends" | "duration-trends";
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  role: "user" | "model";
+  text: string;
+  personaId: string;
+  model: string;
+  createdAt: number;
+}
 
-export type SessionSortField = "date" | "songTitle" | "accuracy";
+export type DashboardView =
+  | "dashboard"
+  | "add-practice"
+  | "add-goal"
+  | "manage-songs"
+  | "ai-analysis"
+  | "chatbot"
+  | "live-voice"
+  | "trends"
+  | "duration-trends";
+
+export type SessionSortField = "date" | "duration" | "songTitle" | "difficulty" | "accuracy" | "speed";
 export type SortDirection = "asc" | "desc";
 
 export type PrintMode = "all" | "weekly" | "historical" | "recent" | "milestones" | "trends" | "durations" | null;

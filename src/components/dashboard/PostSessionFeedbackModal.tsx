@@ -3,6 +3,7 @@ import { Star, MessageSquare, X, Check, Music, Sparkles } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Practice } from "../../types";
+import { formatDurationColon, formatDurationLabel } from "../../utils/durationFormat";
 
 interface PostSessionFeedbackModalProps {
   isOpen: boolean;
@@ -131,7 +132,9 @@ export const PostSessionFeedbackModal: React.FC<PostSessionFeedbackModalProps> =
                     {practice.duration !== undefined && (
                       <>
                         <span>•</span>
-                        <span className="text-emerald-300">{practice.duration} mins</span>
+                        <span className="text-emerald-300 font-mono font-medium">
+                          {formatDurationColon(practice.duration)} ({formatDurationLabel(practice.duration)})
+                        </span>
                       </>
                     )}
                     {practice.accuracy > 0 && (

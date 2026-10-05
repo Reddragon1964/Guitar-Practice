@@ -1,7 +1,9 @@
 {
   "name": "Guitar Practice Tracker",
   "description": "Track your guitar practice sessions, monitor accuracy, and set goals.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

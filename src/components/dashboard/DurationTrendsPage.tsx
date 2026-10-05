@@ -33,6 +33,7 @@ import { Button } from "../ui/button";
 import { Select } from "../ui/select";
 import { Practice, Song, PrintMode } from "../../types";
 import { cn } from "../../lib/utils";
+import { formatDurationColon, formatDurationLabel } from "../../utils/durationFormat";
 
 interface DurationTrendsPageProps {
   practices: Practice[];
@@ -53,14 +54,15 @@ type ChartTypeOption = "area" | "bar";
 // Helper to estimate session duration if not explicitly logged
 export function getSessionDurationMinutes(p: Practice): { minutes: number; isEstimated: boolean } {
   if (typeof p.duration === "number" && p.duration > 0) {
-    return { minutes: p.duration, isEstimated: false };
+    const minutes = Math.max(1, Math.round(p.duration / 60));
+    return { minutes, isEstimated: false };
   }
   // Fallback estimation based on note count or default 15 minutes
   if (p.totalNotes && p.totalNotes > 0) {
-    const estimated = Math.max(5, Math.min(75, Math.round(p.totalNotes / 22)));
+    const estimated = Math.max(2, Math.min(60, Math.round(p.totalNotes / 22)));
     return { minutes: estimated, isEstimated: true };
   }
-  return { minutes: 15, isEstimated: true };
+  return { minutes: 5, isEstimated: true };
 }
 
 // Format minutes into human-readable duration
@@ -159,6 +161,7 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
           songTitle: p.songTitle,
           difficulty: p.difficulty,
           duration: minutes,
+          exactSeconds: p.duration,
           isEstimated,
           accuracy: p.accuracy,
           speed: p.speed,
@@ -599,10 +602,14 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
 
                             <div className="flex items-baseline gap-2 mb-1.5">
                               <span className="text-xl font-bold text-emerald-400 font-mono">
-                                {data.duration} min
+                                {data.exactSeconds !== undefined
+                                  ? formatDurationColon(data.exactSeconds)
+                                  : formatDurationColon(data.duration * 60)}
                               </span>
                               <span className="text-xs text-indigo-300">
-                                ({formatDuration(data.duration)})
+                                ({data.exactSeconds !== undefined
+                                  ? formatDurationLabel(data.exactSeconds)
+                                  : formatDuration(data.duration)})
                               </span>
                             </div>
 
@@ -688,7 +695,7 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                       }}
                     />
                     <Tooltip
-                      cursor={{ fill: "rgba(99, 102, 241, 0.1)" }}
+                      cursor={{ fill: "rgba(99, 102, 241, 0.15)" }}
                       content={({ active, payload }) => {
                         if (!active || !payload || !payload.length) return null;
                         const data = payload[0].payload;
@@ -707,10 +714,14 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
 
                             <div className="flex items-baseline gap-2 mb-1.5">
                               <span className="text-xl font-bold text-emerald-400 font-mono">
-                                {data.duration} min
+                                {data.exactSeconds !== undefined
+                                  ? formatDurationColon(data.exactSeconds)
+                                  : formatDurationColon(data.duration * 60)}
                               </span>
                               <span className="text-xs text-indigo-300">
-                                ({formatDuration(data.duration)})
+                                ({data.exactSeconds !== undefined
+                                  ? formatDurationLabel(data.exactSeconds)
+                                  : formatDuration(data.duration)})
                               </span>
                             </div>
 
@@ -842,7 +853,12 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                       </td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <span className="font-mono font-bold text-emerald-300">
-                          {minutes} min
+                          {p.duration !== undefined
+                            ? formatDurationColon(p.duration)
+                            : formatDurationColon(minutes * 60)}
+                        </span>
+                        <span className="ml-1 text-[11px] text-indigo-400 font-mono">
+                          ({p.duration !== undefined ? formatDurationLabel(p.duration) : `${minutes}m`})
                         </span>
                         {isEstimated && (
                           <span

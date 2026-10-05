@@ -4,6 +4,7 @@ import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tool
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { NumericKeypadInput } from "../ui/numeric-keypad-input";
 import { Select } from "../ui/select";
 import { Song, PrintMode } from "../../types";
 
@@ -104,22 +105,43 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             ))}
           </Select>
 
-          <Input
-            type="number"
+          <NumericKeypadInput
+            compact
+            label="Filter Speed (%)"
             placeholder="Speed"
-            className="h-8 text-xs w-20"
+            inputClassName="h-8 text-xs"
+            containerClassName="w-24"
             value={speedFilter}
-            onChange={(e) => onSpeedFilterChange(e.target.value)}
+            onChange={(val) => onSpeedFilterChange(val)}
             min={1}
+            max={100}
+            step={5}
+            quickPresets={[
+              { label: "50%", value: "50" },
+              { label: "75%", value: "75" },
+              { label: "90%", value: "90" },
+              { label: "100%", value: "100" },
+            ]}
           />
 
-          <Input
-            type="number"
+          <NumericKeypadInput
+            compact
+            label="Filter Level"
             placeholder="Level"
-            className="h-8 text-xs w-20"
+            inputClassName="h-8 text-xs"
+            containerClassName="w-24"
             value={levelFilter}
-            onChange={(e) => onLevelFilterChange(e.target.value)}
+            onChange={(val) => onLevelFilterChange(val)}
             min={1}
+            max={12}
+            quickPresets={[
+              { label: "1", value: "1" },
+              { label: "3", value: "3" },
+              { label: "5", value: "5" },
+              { label: "8", value: "8" },
+              { label: "10", value: "10" },
+              { label: "12", value: "12" },
+            ]}
           />
 
           <div className="flex items-center gap-1">

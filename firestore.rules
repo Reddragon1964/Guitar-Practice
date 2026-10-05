@@ -169,5 +169,34 @@ service cloud.firestore {
                     
       allow delete: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
     }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['userId', 'role', 'text', 'personaId', 'model', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'role', 'text', 'personaId', 'model', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             (data.role == 'user' || data.role == 'model') &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 10000 &&
+             data.personaId is string && data.personaId.size() <= 100 &&
+             data.model is string && data.model.size() <= 100 &&
+             data.createdAt is number;
+    }
+
+    match /chatMessages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                    isValidId(messageId) &&
+                    isValidChatMessage(incoming());
+
+      allow update: if isSignedIn() &&
+                    isValidId(messageId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidChatMessage(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt;
+
+      allow delete: if isSignedIn() && isValidId(messageId) && existing().userId == request.auth.uid;
+    }
   }
 }

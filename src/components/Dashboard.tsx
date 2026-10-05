@@ -13,7 +13,17 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { format, parseISO } from "date-fns";
-import { Printer, Sparkles, Activity, Guitar, Plus, Clock, Target } from "lucide-react";
+import {
+  Printer,
+  Sparkles,
+  Activity,
+  Guitar,
+  Plus,
+  Clock,
+  Target,
+  MessageSquare,
+  Mic,
+} from "lucide-react";
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import {
   Practice,
@@ -25,24 +35,30 @@ import {
   PrintMode,
   DeleteConfirmState,
   WeeklyGoal,
+  ChatMessage,
 } from "../types";
 import { Button } from "./ui/button";
 
 import { Header } from "./dashboard/Header";
 import { WeeklyPracticeChart } from "./dashboard/WeeklyPracticeChart";
 import { HistoricalAccuracyChart } from "./dashboard/HistoricalAccuracyChart";
-import { RecentSessionsTable } from "./dashboard/RecentSessionsTable";
+import { RecentSessionsTable, QuickRecordPayload } from "./dashboard/RecentSessionsTable";
 import { MilestonesCard } from "./dashboard/MilestonesCard";
 import { PracticeSessionModal } from "./dashboard/PracticeSessionModal";
+import { PostSessionFeedbackModal } from "./dashboard/PostSessionFeedbackModal";
 import { GoalModal } from "./dashboard/GoalModal";
 import { TrendsModal } from "./dashboard/TrendsModal";
+import { PracticeTrendsSection } from "./dashboard/PracticeTrendsSection";
 import { DurationTrendsPage } from "./dashboard/DurationTrendsPage";
 import { AiAnalysisModal } from "./dashboard/AiAnalysisModal";
+import { GeminiChatbotModal } from "./dashboard/GeminiChatbotModal";
+import { LiveVoiceCoachModal } from "./dashboard/LiveVoiceCoachModal";
 import { ManageSongsModal } from "./dashboard/ManageSongsModal";
 import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
 import { StreakCard } from "./dashboard/StreakCard";
 import { WeeklyGoalsSection } from "./dashboard/WeeklyGoalsSection";
+import { formatDurationColon, parseDurationInputToSeconds } from "../utils/durationFormat";
 import { WeeklyGoalModal } from "./dashboard/WeeklyGoalModal";
 import { calculateStreak } from "../utils/streakCalculator";
 import { calculateWeeklyGoalProgress } from "../utils/goalCalculator";
@@ -52,6 +68,7 @@ export function Dashboard() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoal[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [usageLogs, setUsageLogs] = useState<{ date: string; minutes: number }[]>([]);
   const [view, setView] = useState<DashboardView>("dashboard");
   const [isWeeklyGoalModalOpen, setIsWeeklyGoalModalOpen] = useState(false);
@@ -79,6 +96,7 @@ export function Dashboard() {
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [editingPracticeId, setEditingPracticeId] = useState<string | null>(null);
+  const [feedbackPractice, setFeedbackPractice] = useState<Practice | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
 
   // Sorting & Filtering
@@ -102,6 +120,15 @@ export function Dashboard() {
 
   const [printMode, setPrintMode] = useState<PrintMode>(null);
   const [printError, setPrintError] = useState(false);
+
+  // Ensure opening Record Practice Session (or any sub-view) scrolls to the top
+  useEffect(() => {
+    if (view !== "dashboard") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [view]);
 
   const handlePrint = (mode: NonNullable<PrintMode>) => {
     if (window.parent !== window) {
@@ -155,7 +182,7 @@ export function Dashboard() {
         const practiceWithNote = practices.find((p) => p.songTitle === newTitle && p.note);
         setNote(practiceWithNote?.note || "");
         setSpeed(lastPractice.speed.toString());
-        setDuration(lastPractice.duration !== undefined ? lastPractice.duration.toString() : "");
+        setDuration(lastPractice.duration !== undefined ? formatDurationColon(lastPractice.duration) : "");
         setIsPartial(lastPractice.isPartial || false);
         setScore("");
       } else {
@@ -191,7 +218,7 @@ export function Dashboard() {
     setCorrectNotes(p.correctNotes.toString());
     setTotalNotes(p.totalNotes.toString());
     setSpeed(p.speed.toString());
-    setDuration(p.duration !== undefined ? p.duration.toString() : "");
+    setDuration(p.duration !== undefined ? formatDurationColon(p.duration) : "");
     setIsPartial(p.isPartial || false);
     setIsTestSession(p.isTestSession || false);
     setScore(p.score !== undefined ? p.score.toString() : "");
@@ -305,18 +332,81 @@ export function Dashboard() {
       (error) => handleFirestoreError(error, OperationType.GET, "weeklyGoals")
     );
 
+    const qChatMessages = query(collection(db, "chatMessages"), where("userId", "==", uid));
+    const unsubscribeChatMessages = onSnapshot(
+      qChatMessages,
+      (snapshot) => {
+        const msgs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ChatMessage));
+        msgs.sort((a, b) => a.createdAt - b.createdAt);
+        setChatMessages(msgs);
+      },
+      (error) => handleFirestoreError(error, OperationType.GET, "chatMessages")
+    );
+
     return () => {
       unsubscribePractices();
       unsubscribeGoals();
       unsubscribeSongs();
       unsubscribeUsage();
       unsubscribeWeeklyGoals();
+      unsubscribeChatMessages();
     };
   }, []);
+
+  const handleSaveChatMessage = async (
+    msg: Omit<ChatMessage, "id" | "userId" | "createdAt">
+  ) => {
+    if (!auth.currentUser) return;
+    try {
+      await addDoc(collection(db, "chatMessages"), {
+        userId: auth.currentUser.uid,
+        role: msg.role,
+        text: msg.text.slice(0, 10000),
+        personaId: msg.personaId.slice(0, 100),
+        model: msg.model.slice(0, 100),
+        createdAt: Date.now(),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "chatMessages");
+    }
+  };
+
+  const handleClearChatHistory = async (personaId: string) => {
+    if (!auth.currentUser) return;
+    const toDelete = chatMessages.filter((m) => m.personaId === personaId);
+    for (const msg of toDelete) {
+      try {
+        await deleteDoc(doc(db, "chatMessages", msg.id));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, `chatMessages/${msg.id}`);
+      }
+    }
+  };
+
+  const ensureSongInLibrary = async (title: string) => {
+    if (!auth.currentUser) return;
+    const trimmed = title.trim().slice(0, 200);
+    if (!trimmed) return;
+    const exists = songs.some((s) => s.title.toLowerCase() === trimmed.toLowerCase());
+    if (!exists) {
+      try {
+        await addDoc(collection(db, "songs"), {
+          userId: auth.currentUser.uid,
+          title: trimmed,
+          createdAt: Date.now(),
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, "songs");
+      }
+    }
+  };
 
   const handleAddPractice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
+
+    const trimmedTitle = songTitle.trim().slice(0, 200);
+    if (!trimmedTitle) return;
 
     const spd = parseInt(speed);
     if (isNaN(spd)) return;
@@ -324,8 +414,8 @@ export function Dashboard() {
     let total = parseInt(totalNotes);
     if (isNaN(total) || total <= 0) {
       const carried =
-        songTotalsRef.current[songTitle] ||
-        practices.find((p) => p.songTitle === songTitle && p.totalNotes > 0)?.totalNotes;
+        songTotalsRef.current[trimmedTitle] ||
+        practices.find((p) => p.songTitle === trimmedTitle && p.totalNotes > 0)?.totalNotes;
       total = carried || 0;
     }
 
@@ -341,26 +431,26 @@ export function Dashboard() {
       accuracy = Math.round((correct / total) * 100);
     }
 
-    if (songTitle && total > 0) {
-      songTotalsRef.current[songTitle] = total;
+    if (trimmedTitle && total > 0) {
+      songTotalsRef.current[trimmedTitle] = total;
     }
 
     const parsedScore =
       isTestSession && score.trim() !== "" && !isNaN(Number(score)) ? Number(score) : undefined;
 
-    const parsedDuration =
-      duration.trim() !== "" && !isNaN(Number(duration)) && Number(duration) > 0
-        ? Math.round(Number(duration))
-        : undefined;
+    const parsedDuration = parseDurationInputToSeconds(duration);
+    const safeDifficulty = Math.min(12, Math.max(1, difficulty || 1));
 
     try {
+      await ensureSongInLibrary(trimmedTitle);
+
       if (editingPracticeId) {
         const existingPractice = practices.find((p) => p.id === editingPracticeId);
         if (existingPractice) {
           await updateDoc(doc(db, "practices", editingPracticeId), {
             userId: existingPractice.userId,
-            songTitle,
-            difficulty,
+            songTitle: trimmedTitle,
+            difficulty: safeDifficulty,
             correctNotes: correct,
             totalNotes: total,
             accuracy,
@@ -370,6 +460,9 @@ export function Dashboard() {
             isTestSession,
             createdAt: existingPractice.createdAt,
             note,
+            ...(existingPractice.difficultyRating !== undefined
+              ? { difficultyRating: existingPractice.difficultyRating }
+              : {}),
             ...(parsedDuration !== undefined
               ? { duration: parsedDuration }
               : { duration: deleteField() }),
@@ -379,8 +472,8 @@ export function Dashboard() {
       } else {
         const newPractice: any = {
           userId: auth.currentUser.uid,
-          songTitle,
-          difficulty,
+          songTitle: trimmedTitle,
+          difficulty: safeDifficulty,
           correctNotes: correct,
           totalNotes: total,
           accuracy,
@@ -403,6 +496,77 @@ export function Dashboard() {
       resetPracticeForm();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "practices");
+    }
+  };
+
+  const handleQuickRecordSession = async (payload: QuickRecordPayload) => {
+    if (!auth.currentUser) return;
+    const trimmedTitle = payload.songTitle.trim().slice(0, 200);
+    if (!trimmedTitle) return;
+
+    try {
+      await ensureSongInLibrary(trimmedTitle);
+      const newPractice: any = {
+        userId: auth.currentUser.uid,
+        songTitle: trimmedTitle,
+        difficulty: Math.min(12, Math.max(1, payload.difficulty || 1)),
+        correctNotes: payload.correctNotes,
+        totalNotes: payload.totalNotes,
+        accuracy: payload.accuracy,
+        speed: payload.speed,
+        date: payload.date,
+        isPartial: false,
+        isTestSession: false,
+        createdAt: Date.now(),
+        note: payload.note || "",
+      };
+      if (payload.durationSeconds !== undefined) {
+        newPractice.duration = payload.durationSeconds;
+      }
+      await addDoc(collection(db, "practices"), newPractice);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "practices");
+    }
+  };
+
+  const handleSaveSessionFeedback = async (
+    practiceId: string,
+    rating: number,
+    feedbackNote: string
+  ) => {
+    const existingPractice = practices.find((p) => p.id === practiceId);
+    if (!existingPractice) return;
+    try {
+      const updatedPayload: any = {
+        userId: existingPractice.userId,
+        songTitle: existingPractice.songTitle,
+        difficulty: existingPractice.difficulty,
+        correctNotes: existingPractice.correctNotes,
+        totalNotes: existingPractice.totalNotes,
+        accuracy: existingPractice.accuracy,
+        speed: existingPractice.speed,
+        date: existingPractice.date,
+        createdAt: existingPractice.createdAt,
+        note: feedbackNote,
+      };
+      if (existingPractice.duration !== undefined) {
+        updatedPayload.duration = existingPractice.duration;
+      }
+      if (existingPractice.isPartial !== undefined) {
+        updatedPayload.isPartial = existingPractice.isPartial;
+      }
+      if (existingPractice.isTestSession !== undefined) {
+        updatedPayload.isTestSession = existingPractice.isTestSession;
+      }
+      if (existingPractice.score !== undefined) {
+        updatedPayload.score = existingPractice.score;
+      }
+      if (rating >= 1 && rating <= 5) {
+        updatedPayload.difficultyRating = rating;
+      }
+      await updateDoc(doc(db, "practices", practiceId), updatedPayload);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `practices/${practiceId}`);
     }
   };
 
@@ -780,10 +944,19 @@ export function Dashboard() {
         let comparison = 0;
         if (sessionSortField === "date") {
           comparison = a.date.localeCompare(b.date);
+          if (comparison === 0) {
+            comparison = a.createdAt - b.createdAt;
+          }
+        } else if (sessionSortField === "duration") {
+          comparison = (a.duration || 0) - (b.duration || 0);
         } else if (sessionSortField === "songTitle") {
           comparison = a.songTitle.localeCompare(b.songTitle);
+        } else if (sessionSortField === "difficulty") {
+          comparison = a.difficulty - b.difficulty;
         } else if (sessionSortField === "accuracy") {
           comparison = a.accuracy - b.accuracy;
+        } else if (sessionSortField === "speed") {
+          comparison = a.speed - b.speed;
         }
         return sessionSortDirection === "asc" ? comparison : -comparison;
       });
@@ -827,6 +1000,20 @@ export function Dashboard() {
                   className="gap-2 bg-indigo-900/50 hover:bg-indigo-800 border-indigo-700 text-indigo-100"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400" /> AI Coach
+                </Button>
+                <Button
+                  onClick={() => setView("chatbot")}
+                  variant="outline"
+                  className="gap-2 bg-indigo-900/60 hover:bg-indigo-800 border-indigo-600 text-indigo-100"
+                >
+                  <MessageSquare className="w-4 h-4 text-indigo-400" /> Gemini Chat
+                </Button>
+                <Button
+                  onClick={() => setView("live-voice")}
+                  variant="outline"
+                  className="gap-2 bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-600/70 text-emerald-200"
+                >
+                  <Mic className="w-4 h-4 text-emerald-400" /> Live Voice
                 </Button>
                 <Button
                   onClick={() => setView("trends")}
@@ -906,6 +1093,15 @@ export function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:flex print:flex-col">
               {/* Main Content (Charts & Table) */}
               <div className="lg:col-span-2 space-y-8 print:w-full">
+                <PracticeTrendsSection
+                  practices={practices}
+                  activeSongs={activeSongs}
+                  usageLogs={usageLogs}
+                  printMode={printMode}
+                  onPrint={handlePrint}
+                  onOpenFullTrends={() => setView("trends")}
+                />
+
                 <WeeklyPracticeChart
                   data={barChartData}
                   printMode={printMode}
@@ -967,8 +1163,10 @@ export function Dashboard() {
                     resetPracticeForm();
                     setView("add-practice");
                   }}
+                  onQuickRecordSession={handleQuickRecordSession}
                   onEditSession={handleEditPractice}
                   onDeleteSession={deletePractice}
+                  onFeedbackSession={(p) => setFeedbackPractice(p)}
                   printMode={printMode}
                   onPrint={handlePrint}
                 />
@@ -1054,6 +1252,9 @@ export function Dashboard() {
         {view === "trends" && (
           <TrendsModal
             data={trendsData}
+            practices={practices}
+            activeSongs={activeSongs}
+            usageLogs={usageLogs}
             printMode={printMode}
             onPrint={handlePrint}
             onBack={() => setView("dashboard")}
@@ -1073,6 +1274,7 @@ export function Dashboard() {
               setView("add-practice");
             }}
             onEditSession={handleEditPractice}
+            onFeedbackSession={(p) => setFeedbackPractice(p)}
           />
         )}
 
@@ -1081,6 +1283,29 @@ export function Dashboard() {
             isAnalyzing={isAnalyzing}
             aiAnalysis={aiAnalysis}
             onReanalyze={() => handleAnalyze(true)}
+            onBack={() => setView("dashboard")}
+          />
+        )}
+
+        {view === "chatbot" && (
+          <GeminiChatbotModal
+            practices={practices}
+            songs={songs}
+            goals={goals}
+            persistedMessages={chatMessages}
+            onSaveMessage={handleSaveChatMessage}
+            onClearHistory={handleClearChatHistory}
+            onOpenLiveVoice={() => setView("live-voice")}
+            onBack={() => setView("dashboard")}
+          />
+        )}
+
+        {view === "live-voice" && (
+          <LiveVoiceCoachModal
+            practices={practices}
+            songs={songs}
+            goals={goals}
+            onOpenChatbot={() => setView("chatbot")}
             onBack={() => setView("dashboard")}
           />
         )}
@@ -1120,6 +1345,37 @@ export function Dashboard() {
           onCancel={() => setDeleteConfirm(null)}
           onConfirm={executeDelete}
         />
+
+        <PostSessionFeedbackModal
+          isOpen={Boolean(feedbackPractice)}
+          practice={feedbackPractice}
+          onClose={() => setFeedbackPractice(null)}
+          onSaveFeedback={handleSaveSessionFeedback}
+        />
+
+        {/* Floating Quick-Launch Dock for Gemini Chatbot & Live Voice */}
+        {view !== "chatbot" && view !== "live-voice" && (
+          <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2 print:hidden">
+            <button
+              type="button"
+              onClick={() => setView("live-voice")}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xl shadow-emerald-950/80 border border-emerald-400/60 transition-transform hover:scale-105"
+              title="Start a real-time voice conversation with gemini-3.8-live"
+            >
+              <Mic className="w-4 h-4" />
+              <span>Live Voice</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("chatbot")}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-xl shadow-indigo-950/80 border border-indigo-400/60 transition-transform hover:scale-105"
+              title="Open Multi-Turn Gemini Guitar Chatbot"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Gemini Chat</span>
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );
