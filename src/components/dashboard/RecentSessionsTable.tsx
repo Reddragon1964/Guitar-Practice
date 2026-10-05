@@ -687,6 +687,11 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                           Partial
                         </span>
                       )}
+                      {p.isShortVersion && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-teal-900/60 text-teal-300 border border-teal-700">
+                          Short
+                        </span>
+                      )}
                       {p.isTestSession && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-purple-900/60 text-purple-300 border border-purple-700">
                           Test

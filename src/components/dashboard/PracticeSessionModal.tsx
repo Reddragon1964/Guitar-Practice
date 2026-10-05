@@ -25,6 +25,7 @@ import {
   parseDurationInputToSeconds,
   formatDurationLabel,
 } from "../../utils/durationFormat";
+import { PracticeSessionLiveCoach } from "./PracticeSessionLiveCoach";
 
 interface PracticeSessionModalProps {
   editingPracticeId: string | null;
@@ -43,6 +44,8 @@ interface PracticeSessionModalProps {
   onDurationChange: (val: string) => void;
   isPartial: boolean;
   onIsPartialChange: (val: boolean) => void;
+  isShortVersion?: boolean;
+  onIsShortVersionChange?: (val: boolean) => void;
   isTestSession: boolean;
   onIsTestSessionChange: (checked: boolean) => void;
   score: string;
@@ -74,6 +77,8 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   onDurationChange,
   isPartial,
   onIsPartialChange,
+  isShortVersion = false,
+  onIsShortVersionChange,
   isTestSession,
   onIsTestSessionChange,
   score,
@@ -197,7 +202,16 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
           </button>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="p-4 sm:p-6 space-y-5">
+          {/* Real-Time Live Voice Coach while practicing */}
+          <PracticeSessionLiveCoach
+            songTitle={songTitle}
+            difficulty={difficulty}
+            speed={speed}
+            duration={duration}
+            isTimerRunning={isTimerRunning}
+          />
+
           <form onSubmit={onSubmit} className="space-y-5">
             {/* Top Row: Song Title and Date */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -632,6 +646,19 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                   />
                   <span className="text-xs font-medium text-indigo-200">
                     Partial Song Practice
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    id="isShortVersion"
+                    className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                    checked={Boolean(isShortVersion)}
+                    onChange={(e) => onIsShortVersionChange?.(e.target.checked)}
+                  />
+                  <span className="text-xs font-medium text-indigo-200">
+                    Short version
                   </span>
                 </label>
 

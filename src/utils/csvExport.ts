@@ -42,6 +42,7 @@ export function generatePracticesCsv(practices: Practice[]): string {
     const sessionTypes: string[] = [];
     if (p.isTestSession) sessionTypes.push("Test");
     if (p.isPartial) sessionTypes.push("Partial");
+    if (p.isShortVersion) sessionTypes.push("Short");
     const sessionTypeLabel = sessionTypes.length > 0 ? sessionTypes.join(" / ") : "Standard";
 
     return [

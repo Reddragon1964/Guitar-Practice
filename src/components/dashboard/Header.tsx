@@ -1,10 +1,11 @@
 import React from "react";
-import { Guitar, LogOut, Flame } from "lucide-react";
+import { Guitar, LogOut, Flame, HelpCircle } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface HeaderProps {
   userEmail?: string | null;
   onSignOut: () => void;
+  onOpenHelp?: () => void;
   currentStreak?: number;
   hasPracticedToday?: boolean;
 }
@@ -12,6 +13,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   userEmail,
   onSignOut,
+  onOpenHelp,
   currentStreak = 0,
   hasPracticedToday = false,
 }) => {
@@ -44,8 +46,21 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-indigo-400 hidden sm:inline-block">{userEmail}</span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onOpenHelp && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenHelp}
+              className="gap-1.5 border-indigo-700/80 bg-indigo-900/40 text-indigo-200 hover:bg-indigo-800 hover:text-white"
+              title="Open Help Files & User Guide"
+            >
+              <HelpCircle className="w-4 h-4 text-indigo-400" />
+              <span>Help</span>
+            </Button>
+          )}
+
+          <span className="text-sm text-indigo-400 hidden md:inline-block">{userEmail}</span>
           <Button variant="ghost" size="sm" onClick={onSignOut}>
             <LogOut className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline-block">Sign Out</span>

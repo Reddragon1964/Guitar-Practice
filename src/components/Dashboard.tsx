@@ -23,6 +23,7 @@ import {
   Target,
   MessageSquare,
   Mic,
+  HelpCircle,
 } from "lucide-react";
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import {
@@ -53,6 +54,7 @@ import { DurationTrendsPage } from "./dashboard/DurationTrendsPage";
 import { AiAnalysisModal } from "./dashboard/AiAnalysisModal";
 import { GeminiChatbotModal } from "./dashboard/GeminiChatbotModal";
 import { LiveVoiceCoachModal } from "./dashboard/LiveVoiceCoachModal";
+import { HelpModal } from "./dashboard/HelpModal";
 import { ManageSongsModal } from "./dashboard/ManageSongsModal";
 import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
@@ -84,6 +86,7 @@ export function Dashboard() {
   const [speed, setSpeed] = useState("");
   const [duration, setDuration] = useState("");
   const [isPartial, setIsPartial] = useState(false);
+  const [isShortVersion, setIsShortVersion] = useState(false);
   const [isTestSession, setIsTestSession] = useState(false);
   const [score, setScore] = useState("");
   const [note, setNote] = useState("");
@@ -184,6 +187,7 @@ export function Dashboard() {
         setSpeed(lastPractice.speed.toString());
         setDuration(lastPractice.duration !== undefined ? formatDurationColon(lastPractice.duration) : "");
         setIsPartial(lastPractice.isPartial || false);
+        setIsShortVersion(lastPractice.isShortVersion || false);
         setScore("");
       } else {
         setDifficulty(1);
@@ -191,6 +195,7 @@ export function Dashboard() {
         setSpeed("");
         setDuration("");
         setIsPartial(false);
+        setIsShortVersion(false);
         setScore("");
         setNote("");
       }
@@ -206,6 +211,7 @@ export function Dashboard() {
     setSpeed("");
     setDuration("");
     setIsPartial(false);
+    setIsShortVersion(false);
     setIsTestSession(false);
     setScore("");
     setNote("");
@@ -220,6 +226,7 @@ export function Dashboard() {
     setSpeed(p.speed.toString());
     setDuration(p.duration !== undefined ? formatDurationColon(p.duration) : "");
     setIsPartial(p.isPartial || false);
+    setIsShortVersion(p.isShortVersion || false);
     setIsTestSession(p.isTestSession || false);
     setScore(p.score !== undefined ? p.score.toString() : "");
     setNote(p.note || "");
@@ -457,6 +464,7 @@ export function Dashboard() {
             speed: spd,
             date: practiceDate,
             isPartial,
+            isShortVersion,
             isTestSession,
             createdAt: existingPractice.createdAt,
             note,
@@ -480,6 +488,7 @@ export function Dashboard() {
           speed: spd,
           date: practiceDate,
           isPartial,
+          isShortVersion,
           isTestSession,
           createdAt: Date.now(),
           note,
@@ -976,6 +985,7 @@ export function Dashboard() {
       <Header
         userEmail={auth.currentUser?.email}
         onSignOut={() => auth.signOut()}
+        onOpenHelp={() => setView("help")}
         currentStreak={streakInfo.currentStreak}
         hasPracticedToday={streakInfo.hasPracticedToday}
       />
@@ -983,85 +993,141 @@ export function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {view === "dashboard" && (
           <div className="space-y-8">
-            {/* Header Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 className="text-2xl font-bold tracking-tight">Overview</h2>
-              <div className="flex flex-wrap gap-2 print:hidden">
-                <Button
-                  onClick={() => handlePrint("all")}
-                  variant="outline"
-                  className="gap-2 border-indigo-700 text-indigo-100 hover:bg-indigo-800"
-                >
-                  <Printer className="w-4 h-4" /> Print All
-                </Button>
-                <Button
-                  onClick={() => handleAnalyze()}
-                  variant="outline"
-                  className="gap-2 bg-indigo-900/50 hover:bg-indigo-800 border-indigo-700 text-indigo-100"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-400" /> AI Coach
-                </Button>
-                <Button
-                  onClick={() => setView("chatbot")}
-                  variant="outline"
-                  className="gap-2 bg-indigo-900/60 hover:bg-indigo-800 border-indigo-600 text-indigo-100"
-                >
-                  <MessageSquare className="w-4 h-4 text-indigo-400" /> Gemini Chat
-                </Button>
-                <Button
-                  onClick={() => setView("live-voice")}
-                  variant="outline"
-                  className="gap-2 bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-600/70 text-emerald-200"
-                >
-                  <Mic className="w-4 h-4 text-emerald-400" /> Live Voice
-                </Button>
-                <Button
-                  onClick={() => setView("trends")}
-                  variant="outline"
-                  className="gap-2 border-indigo-700 text-indigo-100 hover:bg-indigo-800"
-                >
-                  <Activity className="w-4 h-4" /> Trends
-                </Button>
-                <Button
-                  onClick={() => setView("duration-trends")}
-                  variant="outline"
-                  className="gap-2 border-indigo-700 text-indigo-100 hover:bg-indigo-800"
-                >
-                  <Clock className="w-4 h-4 text-emerald-400" /> Durations
-                </Button>
-                <Button
-                  onClick={() => setView("manage-songs")}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Guitar className="w-4 h-4" /> Songs
-                </Button>
-                <Button
-                  onClick={() => {
-                    setEditingWeeklyGoal(null);
-                    setIsWeeklyGoalModalOpen(true);
-                  }}
-                  variant="outline"
-                  className="gap-2 border-indigo-700 text-indigo-100 hover:bg-indigo-800"
-                >
-                  <Target className="w-4 h-4 text-indigo-400" /> Weekly Target
-                </Button>
-                <Button
-                  onClick={() => setView("add-goal")}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" /> Milestone
-                </Button>
+            {/* Header Actions Bar with Clean Visual Grouping */}
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-indigo-950/40 border border-indigo-800/60 p-4 rounded-2xl shadow-sm print:hidden">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Overview</h2>
+                <p className="text-xs text-indigo-300/80 mt-0.5">
+                  Track your guitar sessions, measure accuracy, and accelerate progress with AI coaching
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Primary Action Button */}
                 <Button
                   onClick={() => {
                     resetPracticeForm();
                     setView("add-practice");
                   }}
-                  className="gap-2"
+                  className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30 h-9 px-4"
                 >
-                  <Plus className="w-4 h-4" /> Session
+                  <Plus className="w-4 h-4" /> Record Session
                 </Button>
+
+                {/* AI Coaching Suite */}
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/70 border border-indigo-800/80">
+                  <Button
+                    onClick={() => setView("live-voice")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-emerald-300 hover:text-white hover:bg-emerald-950/70"
+                    title="Real-time voice conversation with gemini-3.8-live"
+                  >
+                    <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Live Voice</span>
+                  </Button>
+                  <Button
+                    onClick={() => setView("chatbot")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    title="Multi-turn Gemini guitar assistant"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Gemini Chat</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleAnalyze()}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-amber-300 hover:text-white hover:bg-amber-950/50"
+                    title="Instant AI progress assessment"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>AI Coach</span>
+                  </Button>
+                </div>
+
+                {/* Analytics & Library Suite */}
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/70 border border-indigo-800/80">
+                  <Button
+                    onClick={() => setView("trends")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    title="Accuracy and practice hours trends"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Trends</span>
+                  </Button>
+                  <Button
+                    onClick={() => setView("duration-trends")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    title="Duration analysis over time"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Durations</span>
+                  </Button>
+                  <Button
+                    onClick={() => setView("manage-songs")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    title="Manage song library"
+                  >
+                    <Guitar className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Songs</span>
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setEditingWeeklyGoal(null);
+                      setIsWeeklyGoalModalOpen(true);
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    title="Set weekly practice targets"
+                  >
+                    <Target className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Weekly Target</span>
+                  </Button>
+                  <Button
+                    onClick={() => setView("add-goal")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    title="Add milestone goal"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Milestone</span>
+                  </Button>
+                </div>
+
+                {/* Utilities: Help & Print */}
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    onClick={() => setView("help")}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-indigo-700/80 bg-indigo-950/60 hover:bg-indigo-800 text-indigo-200"
+                    title="Open Help Files & User Guide"
+                  >
+                    <HelpCircle className="w-4 h-4 text-indigo-400" />
+                    <span>Help</span>
+                  </Button>
+                  <Button
+                    onClick={() => handlePrint("all")}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-indigo-700/80 bg-indigo-950/60 hover:bg-indigo-800 text-indigo-200"
+                    title="Print reports"
+                  >
+                    <Printer className="w-4 h-4 text-indigo-400" />
+                    <span>Print All</span>
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1214,6 +1280,8 @@ export function Dashboard() {
             onDurationChange={setDuration}
             isPartial={isPartial}
             onIsPartialChange={setIsPartial}
+            isShortVersion={isShortVersion}
+            onIsShortVersionChange={setIsShortVersion}
             isTestSession={isTestSession}
             onIsTestSessionChange={(checked) => {
               setIsTestSession(checked);
@@ -1307,6 +1375,13 @@ export function Dashboard() {
             goals={goals}
             onOpenChatbot={() => setView("chatbot")}
             onBack={() => setView("dashboard")}
+          />
+        )}
+
+        {view === "help" && (
+          <HelpModal
+            onBack={() => setView("dashboard")}
+            onNavigate={(targetView) => setView(targetView)}
           />
         )}
 

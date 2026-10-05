@@ -9,6 +9,7 @@ export interface Practice {
   speed: number;
   duration?: number; // duration in seconds (formatted as mm:ss / m:ss)
   isPartial?: boolean;
+  isShortVersion?: boolean;
   isTestSession?: boolean;
   score?: number;
   date: string; // ISO String
@@ -63,7 +64,8 @@ export type DashboardView =
   | "chatbot"
   | "live-voice"
   | "trends"
-  | "duration-trends";
+  | "duration-trends"
+  | "help";
 
 export type SessionSortField = "date" | "duration" | "songTitle" | "difficulty" | "accuracy" | "speed";
 export type SortDirection = "asc" | "desc";
