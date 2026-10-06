@@ -86,6 +86,8 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   const [isModelSpeaking, setIsModelSpeaking] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceName>("Zephyr");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicId, setSelectedMicId] = useState<string>("");
   const [micLevel, setMicLevel] = useState<number>(0);
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
   const [quickTextPrompt, setQuickTextPrompt] = useState<string>("");
@@ -103,6 +105,36 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   useEffect(() => {
     isMicMutedRef.current = isMicMuted;
   }, [isMicMuted]);
+
+  // Enumerate audio input devices (microphones)
+  const loadAudioDevices = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const mics = devices.filter((d) => d.kind === "audioinput");
+      setAudioDevices(mics);
+      if (mics.length > 0) {
+        setSelectedMicId((prev) => {
+          if (prev && mics.some((m) => m.deviceId === prev)) return prev;
+          const defaultMic = mics.find((m) => m.deviceId === "default") || mics[0];
+          return defaultMic.deviceId;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to enumerate audio input devices:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadAudioDevices();
+    const handleDeviceChange = () => {
+      loadAudioDevices();
+    };
+    navigator.mediaDevices?.addEventListener?.("devicechange", handleDeviceChange);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", handleDeviceChange);
+    };
+  }, []);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -122,6 +154,8 @@ Current Session Details:
 - Target Tempo Speed: ${currentSpeed}
 - Elapsed Time: ${currentDur}
 ${isTimerRunning ? "- Practice timer is currently running!" : ""}
+
+CRITICAL LANGUAGE REQUIREMENT: You MUST speak, reply, and generate all output and transcriptions strictly in ENGLISH at all times. Never switch to any other language, even if background acoustic or electric guitar sounds, picking noises, or harmonics are heard.
 
 Keep all your verbal responses natural, brief, conversational, and encouraging. You are listening to the guitarist play and talk. Offer tempo guidance, count-ins (e.g. '1, 2, 3, 4'), relaxation tips for fret-hand tension, and positive reinforcement!`;
   }, [songTitle, difficulty, speed, duration, isTimerRunning]);
@@ -254,16 +288,24 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
     setIsConnecting(true);
 
     try {
+      const audioConstraints: MediaTrackConstraints = {
+        channelCount: 1,
+        sampleRate: 16000,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+      if (selectedMicId) {
+        audioConstraints.deviceId = { exact: selectedMicId };
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: audioConstraints,
       });
       mediaStreamRef.current = stream;
+
+      // Refresh devices with actual human labels now that permission is granted
+      loadAudioDevices();
 
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const inputCtx = new AudioContextClass({ sampleRate: 16000 });
@@ -350,6 +392,36 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
           "Could not access microphone for live coaching. Please verify microphone permissions."
       );
       cleanupSession();
+    }
+  };
+
+  const handleMicChange = async (newDeviceId: string) => {
+    setSelectedMicId(newDeviceId);
+    if (isConnected && inputAudioCtxRef.current) {
+      try {
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        }
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: newDeviceId ? { exact: newDeviceId } : undefined,
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        mediaStreamRef.current = newStream;
+        if (scriptProcessorRef.current && inputAudioCtxRef.current) {
+          const newSource = inputAudioCtxRef.current.createMediaStreamSource(newStream);
+          newSource.connect(scriptProcessorRef.current);
+        }
+        loadAudioDevices();
+      } catch (err: any) {
+        console.error("Failed to switch microphone:", err);
+        setErrorMessage("Could not switch to selected microphone: " + (err?.message || "error"));
+      }
     }
   };
 
@@ -478,24 +550,51 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
       {/* Expanded controls & live feedback */}
       {isExpanded && (
         <div className="space-y-2.5 pt-1 border-t border-emerald-900/40 animate-in fade-in duration-150">
-          {/* Top row: Voice selector + audio visualizer bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <label className="text-[11px] text-indigo-300 font-medium whitespace-nowrap">
-                Voice Persona:
-              </label>
-              <Select
-                disabled={isConnected || isConnecting}
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value as VoiceName)}
-                className="h-7 text-xs w-48 bg-slate-950/90 border-indigo-700/80 py-0.5"
-              >
-                {VOICE_OPTIONS.map((v) => (
-                  <option key={v.name} value={v.name}>
-                    {v.label}
-                  </option>
-                ))}
-              </Select>
+          {/* Top row: Voice selector + Microphone selector + audio visualizer bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Voice Persona Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] text-indigo-300 font-medium whitespace-nowrap">
+                  Voice:
+                </label>
+                <Select
+                  disabled={isConnected || isConnecting}
+                  value={selectedVoice}
+                  onChange={(e) => setSelectedVoice(e.target.value as VoiceName)}
+                  className="h-7 text-xs w-40 bg-slate-950/90 border-indigo-700/80 py-0.5"
+                >
+                  {VOICE_OPTIONS.map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Microphone Selection Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] text-indigo-300 font-medium whitespace-nowrap flex items-center gap-1">
+                  <Mic className="w-3 h-3 text-emerald-400" />
+                  Microphone:
+                </label>
+                <Select
+                  value={selectedMicId}
+                  onChange={(e) => handleMicChange(e.target.value)}
+                  className="h-7 text-xs w-48 sm:w-56 bg-slate-950/90 border-indigo-700/80 py-0.5 truncate"
+                  title="Select audio input microphone"
+                >
+                  {audioDevices.length === 0 ? (
+                    <option value="">Default Microphone</option>
+                  ) : (
+                    audioDevices.map((dev, idx) => (
+                      <option key={dev.deviceId || idx} value={dev.deviceId}>
+                        {dev.label || `Microphone ${idx + 1}`}
+                      </option>
+                    ))
+                  )}
+                </Select>
+              </div>
             </div>
 
             {isConnected && (

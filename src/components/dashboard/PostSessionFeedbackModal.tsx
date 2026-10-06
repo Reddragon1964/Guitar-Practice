@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Practice } from "../../types";
 import { formatDurationColon, formatDurationLabel } from "../../utils/durationFormat";
+import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 
 interface PostSessionFeedbackModalProps {
   isOpen: boolean;
@@ -82,41 +83,20 @@ export const PostSessionFeedbackModal: React.FC<PostSessionFeedbackModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Backdrop click to dismiss */}
-      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-
-      <Card className="relative z-10 w-full max-w-lg max-h-[90vh] flex flex-col border-indigo-700/80 bg-slate-950/95 shadow-2xl shadow-indigo-950/70 overflow-hidden rounded-2xl">
-        {/* Header */}
-        <CardHeader className="border-b border-indigo-800/50 p-4 sm:p-5 bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-slate-950/80 shrink-0 flex flex-row items-center justify-between space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 shrink-0">
-              <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-            </div>
-            <div>
-              <CardTitle className="text-lg sm:text-xl text-white">
-                Post-Session Feedback
-              </CardTitle>
-              <p className="text-xs text-indigo-300/80 mt-0.5">
-                Reflect on your practice and rate session difficulty.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-indigo-400 hover:text-white p-1.5 rounded-lg hover:bg-indigo-900/50 transition-colors shrink-0"
-            title="Close dialog"
-            aria-label="Close dialog"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </CardHeader>
-
-        {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 dialog-scrollbar overscroll-contain">
+    <MoveableResizableFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Post-Session Feedback"
+      subtitle="Reflect on your practice and rate session difficulty"
+      icon={<Star className="w-5 h-5 fill-amber-400 text-amber-400" />}
+      initialWidth={560}
+      initialHeight={600}
+      minWidth={360}
+      minHeight={320}
+      ariaLabel="Post-Session Feedback"
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col space-y-5">
+        <div className="space-y-5">
             {/* Session Context Banner */}
             <div className="p-3 rounded-xl bg-indigo-950/50 border border-indigo-800/60 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -261,7 +241,7 @@ export const PostSessionFeedbackModal: React.FC<PostSessionFeedbackModalProps> =
           </div>
 
           {/* Action Footer */}
-          <div className="shrink-0 flex items-center justify-between p-4 bg-slate-950/95 border-t border-indigo-800/60">
+          <div className="shrink-0 flex items-center justify-between pt-4 border-t border-indigo-800/60">
             <Button
               type="button"
               variant="ghost"
@@ -286,7 +266,6 @@ export const PostSessionFeedbackModal: React.FC<PostSessionFeedbackModalProps> =
             </Button>
           </div>
         </form>
-      </Card>
-    </div>
+    </MoveableResizableFrame>
   );
 };

@@ -14,6 +14,7 @@
         "speed": { "type": "number" },
         "duration": { "type": "number" },
         "isPartial": { "type": "boolean" },
+        "isShortVersion": { "type": "boolean" },
         "isTestSession": { "type": "boolean" },
         "score": { "type": "number" },
         "date": { "type": "string" },

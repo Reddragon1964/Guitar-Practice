@@ -88,6 +88,8 @@ export const LiveVoiceCoachModal: React.FC<LiveVoiceCoachModalProps> = ({
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceName>("Zephyr");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicId, setSelectedMicId] = useState<string>("");
   const [micLevel, setMicLevel] = useState<number>(0);
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
   const [quickTextPrompt, setQuickTextPrompt] = useState("");
@@ -106,6 +108,35 @@ export const LiveVoiceCoachModal: React.FC<LiveVoiceCoachModalProps> = ({
   useEffect(() => {
     isMicMutedRef.current = isMicMuted;
   }, [isMicMuted]);
+
+  const loadAudioDevices = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const mics = devices.filter((d) => d.kind === "audioinput");
+      setAudioDevices(mics);
+      if (mics.length > 0) {
+        setSelectedMicId((prev) => {
+          if (prev && mics.some((m) => m.deviceId === prev)) return prev;
+          const defaultMic = mics.find((m) => m.deviceId === "default") || mics[0];
+          return defaultMic.deviceId;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to enumerate audio input devices:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadAudioDevices();
+    const handleDeviceChange = () => {
+      loadAudioDevices();
+    };
+    navigator.mediaDevices?.addEventListener?.("devicechange", handleDeviceChange);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", handleDeviceChange);
+    };
+  }, []);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,6 +160,8 @@ export const LiveVoiceCoachModal: React.FC<LiveVoiceCoachModalProps> = ({
       .map((g) => g.title);
 
     return `You are a real-time interactive Guitar Practice Voice Coach powered by gemini-3.8-live. Speak naturally, concisely, and encouragingly.
+CRITICAL LANGUAGE REQUIREMENT: You MUST speak, respond, and transcribe exclusively in English at all times. Never switch to any other language, even if background guitar playing or acoustic noises are detected.
+
 Player's active songs: ${activeSongTitles.join(", ") || "None yet"}.
 Recent sessions: ${JSON.stringify(recentSummary)}.
 Goals: ${activeGoals.join(", ") || "General improvement"}.
@@ -265,16 +298,24 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
 
     try {
       // 1. Request microphone access
+      const audioConstraints: MediaTrackConstraints = {
+        channelCount: 1,
+        sampleRate: 16000,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+      if (selectedMicId) {
+        audioConstraints.deviceId = { exact: selectedMicId };
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: audioConstraints,
       });
       mediaStreamRef.current = stream;
+
+      // Refresh device labels now that permission has been granted
+      loadAudioDevices();
 
       // 2. Initialize 16kHz input AudioContext and 24kHz output AudioContext
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -367,6 +408,36 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
     }
   };
 
+  const handleMicChange = async (newDeviceId: string) => {
+    setSelectedMicId(newDeviceId);
+    if (isConnected && inputAudioCtxRef.current) {
+      try {
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        }
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: newDeviceId ? { exact: newDeviceId } : undefined,
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        mediaStreamRef.current = newStream;
+        if (scriptProcessorRef.current && inputAudioCtxRef.current) {
+          const newSource = inputAudioCtxRef.current.createMediaStreamSource(newStream);
+          newSource.connect(scriptProcessorRef.current);
+        }
+        loadAudioDevices();
+      } catch (err: any) {
+        console.error("Failed to switch microphone:", err);
+        setErrorMessage("Could not switch to selected microphone: " + (err?.message || "error"));
+      }
+    }
+  };
+
   const handleSendTextToLive = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = quickTextPrompt.trim();
@@ -444,23 +515,50 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
             </CardTitle>
           </div>
 
-          {/* Voice Selector */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-indigo-300 font-medium whitespace-nowrap">
-              Coach Voice:
-            </label>
-            <Select
-              disabled={isConnected || isConnecting}
-              value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value as VoiceName)}
-              className="h-9 text-xs w-48 bg-slate-950 border-indigo-700"
-            >
-              {VOICE_OPTIONS.map((v) => (
-                <option key={v.name} value={v.name}>
-                  {v.name} — {v.description}
-                </option>
-              ))}
-            </Select>
+          {/* Voice & Microphone Selectors */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Microphone Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-indigo-300 font-medium whitespace-nowrap flex items-center gap-1">
+                <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                Microphone:
+              </label>
+              <Select
+                value={selectedMicId}
+                onChange={(e) => handleMicChange(e.target.value)}
+                className="h-9 text-xs w-48 sm:w-56 bg-slate-950 border-indigo-700 truncate"
+                title="Select audio input microphone"
+              >
+                {audioDevices.length === 0 ? (
+                  <option value="">Default Microphone</option>
+                ) : (
+                  audioDevices.map((dev, idx) => (
+                    <option key={dev.deviceId || idx} value={dev.deviceId}>
+                      {dev.label || `Microphone ${idx + 1}`}
+                    </option>
+                  ))
+                )}
+              </Select>
+            </div>
+
+            {/* Voice Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-indigo-300 font-medium whitespace-nowrap">
+                Coach Voice:
+              </label>
+              <Select
+                disabled={isConnected || isConnecting}
+                value={selectedVoice}
+                onChange={(e) => setSelectedVoice(e.target.value as VoiceName)}
+                className="h-9 text-xs w-44 bg-slate-950 border-indigo-700"
+              >
+                {VOICE_OPTIONS.map((v) => (
+                  <option key={v.name} value={v.name}>
+                    {v.name} — {v.description}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
         </CardHeader>
 

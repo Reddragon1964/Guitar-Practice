@@ -37,6 +37,7 @@ async function startServer() {
 
       const prompt = `You are an expert guitar coach and data analyst.
 Analyze the user's practice data and provide a concise, encouraging, and actionable assessment.
+CRITICAL: You must write the entire response strictly in English.
 
 Here is the user's data:
 Songs: ${JSON.stringify(songs.map((s: any) => s.title))}
@@ -49,7 +50,7 @@ Provide:
 3. Are they on track to hit their goals?
 4. A specific recommendation for their next practice session.
 
-Keep it structured with bullet points. Don't be too verbose. Limit to about 200-300 words.`;
+Keep it structured with bullet points. Don't be too verbose. Limit to about 200-300 words. Everything must be written in English.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.8-flash",
@@ -112,8 +113,7 @@ Keep it structured with bullet points. Don't be too verbose. Limit to about 200-
           history: formattedHistory,
           config: {
             systemInstruction:
-              systemInstruction ||
-              "You are an expert guitar coach, music theory mentor, and practice strategist. Help the user improve their guitar playing, accuracy, speed, and musicality.",
+              `${systemInstruction || "You are an expert guitar coach, music theory mentor, and practice strategist. Help the user improve their guitar playing, accuracy, speed, and musicality."}\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST speak, reply, and generate all content strictly in English. Never use any other language.`,
           },
         });
         return await chat.sendMessage({ message });
@@ -177,9 +177,10 @@ Keep it structured with bullet points. Don't be too verbose. Limit to about 200-
     const voiceParam = url.searchParams.get("voice") || "Zephyr";
     const validVoices = ["Puck", "Charon", "Kore", "Fenrir", "Zephyr"];
     const voiceName = validVoices.includes(voiceParam) ? voiceParam : "Zephyr";
-    const customInstruction =
+    const rawInstruction =
       url.searchParams.get("instruction") ||
       "You are a warm, encouraging real-time guitar practice voice coach. Keep your spoken responses natural, concise, and conversational. Help the guitarist with tempo, rhythm, fretboard technique, chord transitions, and practice motivation.";
+    const customInstruction = `${rawInstruction}\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST speak, respond, and transcribe ONLY in English at all times. Never switch to any other language, even if background guitar audio, string buzz, or musical sounds resemble foreign speech.`;
 
     const ai = createGenAIClient(apiKey);
 

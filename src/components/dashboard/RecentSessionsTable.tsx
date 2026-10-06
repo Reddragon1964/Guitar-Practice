@@ -68,6 +68,7 @@ interface RecentSessionsTableProps {
   onFeedbackSession?: (p: Practice) => void;
   printMode: PrintMode;
   onPrint: (mode: "recent") => void;
+  isHighlighted?: boolean;
 }
 
 export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
@@ -95,6 +96,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   onFeedbackSession,
   printMode,
   onPrint,
+  isHighlighted = false,
 }) => {
   const isHiddenForPrint = printMode && printMode !== "recent" && printMode !== "all";
 
@@ -207,10 +209,24 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   ].filter(Boolean);
 
   return (
-    <Card className={isHiddenForPrint ? "print:hidden" : ""}>
+    <Card
+      id="practice-sessions-log"
+      tabIndex={-1}
+      className={cn(
+        "outline-none transition-all duration-700",
+        isHiddenForPrint && "print:hidden",
+        isHighlighted &&
+          "ring-4 ring-indigo-400 ring-offset-4 ring-offset-slate-950 shadow-[0_0_35px_rgba(99,102,241,0.45)] border-indigo-400"
+      )}
+    >
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <CardTitle>Practice Sessions Log</CardTitle>
+          {isHighlighted && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/60 animate-pulse">
+              Focused
+            </span>
+          )}
           <span
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-900/60 text-indigo-300 border border-indigo-700/80 shadow-sm"
             title={`${practices.length} visible session${practices.length === 1 ? "" : "s"}${
@@ -507,6 +523,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm">
             <Search className="w-4 h-4 text-indigo-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <Input
+              id="practice-sessions-search"
               type="text"
               placeholder="Search songs or notes..."
               value={searchQuery}

@@ -23,9 +23,10 @@ service cloud.firestore {
 
     function isValidPractice(data) {
       return data.keys().hasAll(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt']) &&
-             data.keys().hasOnly(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt', 'duration', 'isPartial', 'isTestSession', 'score', 'note', 'difficultyRating']) &&
+             data.keys().hasOnly(['userId', 'songTitle', 'difficulty', 'correctNotes', 'totalNotes', 'accuracy', 'speed', 'date', 'createdAt', 'duration', 'isPartial', 'isShortVersion', 'isTestSession', 'score', 'note', 'difficultyRating']) &&
              (!('duration' in data) || data.duration is number) &&
              (!('isPartial' in data) || data.isPartial is bool) &&
+             (!('isShortVersion' in data) || data.isShortVersion is bool) &&
              (!('isTestSession' in data) || data.isTestSession is bool) &&
              (!('score' in data) || (data.score is number && data.score >= 0)) &&
              (!('note' in data) || data.note is string) &&

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   collection,
   addDoc,
@@ -24,6 +24,8 @@ import {
   MessageSquare,
   Mic,
   HelpCircle,
+  Flame,
+  RotateCcw,
 } from "lucide-react";
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import {
@@ -58,6 +60,8 @@ import { HelpModal } from "./dashboard/HelpModal";
 import { ManageSongsModal } from "./dashboard/ManageSongsModal";
 import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
+import { MoveableResizableFrame } from "./ui/MoveableResizableFrame";
+import { DashboardFrame, FrameWidth } from "./dashboard/DashboardFrame";
 import { StreakCard } from "./dashboard/StreakCard";
 import { WeeklyGoalsSection } from "./dashboard/WeeklyGoalsSection";
 import { formatDurationColon, parseDurationInputToSeconds } from "../utils/durationFormat";
@@ -82,8 +86,8 @@ export function Dashboard() {
   const [newSongInput, setNewSongInput] = useState("");
   const [difficulty, setDifficulty] = useState<number>(1);
   const [correctNotes, setCorrectNotes] = useState("");
-  const [totalNotes, setTotalNotes] = useState("");
-  const [speed, setSpeed] = useState("");
+  const [totalNotes, setTotalNotes] = useState("100");
+  const [speed, setSpeed] = useState("100");
   const [duration, setDuration] = useState("");
   const [isPartial, setIsPartial] = useState(false);
   const [isShortVersion, setIsShortVersion] = useState(false);
@@ -91,6 +95,8 @@ export function Dashboard() {
   const [score, setScore] = useState("");
   const [note, setNote] = useState("");
   const [practiceDate, setPracticeDate] = useState(new Date().toISOString().split("T")[0]);
+  const [isSavingPractice, setIsSavingPractice] = useState(false);
+  const [practiceSaveError, setPracticeSaveError] = useState<string | null>(null);
   const songTotalsRef = useRef<Record<string, number>>({});
 
   const [goalTitle, setGoalTitle] = useState("");
@@ -123,6 +129,108 @@ export function Dashboard() {
 
   const [printMode, setPrintMode] = useState<PrintMode>(null);
   const [printError, setPrintError] = useState(false);
+
+  // Movable and Resizable Dashboard Frames Layout Configuration
+  const [frameLayout, setFrameLayout] = useState<
+    { id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"; width: FrameWidth; isMinimized: boolean }[]
+  >(() => {
+    const defaultLayout = [
+      { id: "streak" as const, width: "full" as FrameWidth, isMinimized: false },
+      { id: "goals" as const, width: "full" as FrameWidth, isMinimized: false },
+      { id: "trends" as const, width: "two-thirds" as FrameWidth, isMinimized: false },
+      { id: "milestones" as const, width: "one-third" as FrameWidth, isMinimized: false },
+      { id: "weeklyChart" as const, width: "half" as FrameWidth, isMinimized: false },
+      { id: "accuracyChart" as const, width: "half" as FrameWidth, isMinimized: false },
+      { id: "sessions" as const, width: "full" as FrameWidth, isMinimized: false },
+    ];
+    try {
+      const saved = localStorage.getItem("guitar_dashboard_frames_layout");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === defaultLayout.length) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return defaultLayout;
+  });
+
+  const saveFrameLayout = (
+    newLayout: { id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"; width: FrameWidth; isMinimized: boolean }[]
+  ) => {
+    setFrameLayout(newLayout);
+    try {
+      localStorage.setItem("guitar_dashboard_frames_layout", JSON.stringify(newLayout));
+    } catch {}
+  };
+
+  const moveFrame = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= frameLayout.length) return;
+    const updated = [...frameLayout];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(targetIndex, 0, moved);
+    saveFrameLayout(updated);
+  };
+
+  const updateFrameWidth = (
+    id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions",
+    width: FrameWidth
+  ) => {
+    const updated = frameLayout.map((f) => (f.id === id ? { ...f, width } : f));
+    saveFrameLayout(updated);
+  };
+
+  const toggleFrameMinimize = (
+    id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"
+  ) => {
+    const updated = frameLayout.map((f) =>
+      f.id === id ? { ...f, isMinimized: !f.isMinimized } : f
+    );
+    saveFrameLayout(updated);
+  };
+
+  const resetFrameLayout = () => {
+    const defaultLayout = [
+      { id: "streak" as const, width: "full" as FrameWidth, isMinimized: false },
+      { id: "goals" as const, width: "full" as FrameWidth, isMinimized: false },
+      { id: "trends" as const, width: "two-thirds" as FrameWidth, isMinimized: false },
+      { id: "milestones" as const, width: "one-third" as FrameWidth, isMinimized: false },
+      { id: "weeklyChart" as const, width: "half" as FrameWidth, isMinimized: false },
+      { id: "accuracyChart" as const, width: "half" as FrameWidth, isMinimized: false },
+      { id: "sessions" as const, width: "full" as FrameWidth, isMinimized: false },
+    ];
+    saveFrameLayout(defaultLayout);
+  };
+
+  // Focus and highlight Practice Sessions Log when session saves and closes
+  const [highlightSessionsLog, setHighlightSessionsLog] = useState(false);
+
+  const focusPracticeSessionsLog = useCallback(() => {
+    // 1. If the Practice Sessions frame is minimized, expand it so the table is fully visible
+    setFrameLayout((prev) =>
+      prev.map((f) => (f.id === "sessions" ? { ...f, isMinimized: false } : f))
+    );
+
+    // 2. Allow modal unmount to finish, then smoothly center and focus the Practice Sessions Log
+    setTimeout(() => {
+      const container = document.getElementById("practice-sessions-log");
+      if (container) {
+        container.scrollIntoView({ behavior: "smooth", block: "center" });
+        container.focus({ preventScroll: true });
+      }
+
+      const searchInput = document.getElementById("practice-sessions-search");
+      if (searchInput) {
+        searchInput.focus({ preventScroll: true });
+      }
+
+      setHighlightSessionsLog(true);
+      setTimeout(() => {
+        setHighlightSessionsLog(false);
+      }, 2500);
+    }, 120);
+  }, []);
 
   // Ensure opening Record Practice Session (or any sub-view) scrolls to the top
   useEffect(() => {
@@ -189,10 +297,14 @@ export function Dashboard() {
         setIsPartial(lastPractice.isPartial || false);
         setIsShortVersion(lastPractice.isShortVersion || false);
         setScore("");
+        // Do not inherit correct notes for a new practice session - must remain blank
+        setCorrectNotes("");
       } else {
         setDifficulty(1);
-        setTotalNotes(carriedTotal ? carriedTotal.toString() : "");
-        setSpeed("");
+        setTotalNotes(carriedTotal ? carriedTotal.toString() : "100");
+        // Always blank for new session
+        setCorrectNotes("");
+        setSpeed("100");
         setDuration("");
         setIsPartial(false);
         setIsShortVersion(false);
@@ -206,9 +318,10 @@ export function Dashboard() {
     setSongTitle("");
     setNewSongInput("");
     setDifficulty(1);
+    // Correct notes must be blank when a new session is started
     setCorrectNotes("");
-    setTotalNotes("");
-    setSpeed("");
+    setTotalNotes("100");
+    setSpeed("100");
     setDuration("");
     setIsPartial(false);
     setIsShortVersion(false);
@@ -216,6 +329,8 @@ export function Dashboard() {
     setScore("");
     setNote("");
     setEditingPracticeId(null);
+    setPracticeSaveError(null);
+    setIsSavingPractice(false);
   };
 
   const handleEditPractice = (p: Practice) => {
@@ -410,20 +525,26 @@ export function Dashboard() {
 
   const handleAddPractice = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      setPracticeSaveError("Please sign in to save practice sessions.");
+      return;
+    }
 
     const trimmedTitle = songTitle.trim().slice(0, 200);
-    if (!trimmedTitle) return;
+    if (!trimmedTitle) {
+      setPracticeSaveError("Please enter or select a song title.");
+      return;
+    }
 
-    const spd = parseInt(speed);
-    if (isNaN(spd)) return;
+    const rawSpeed = parseInt(speed, 10);
+    const spd = isNaN(rawSpeed) || rawSpeed <= 0 ? 100 : Math.min(200, rawSpeed);
 
-    let total = parseInt(totalNotes);
+    let total = parseInt(totalNotes, 10);
     if (isNaN(total) || total <= 0) {
       const carried =
         songTotalsRef.current[trimmedTitle] ||
         practices.find((p) => p.songTitle === trimmedTitle && p.totalNotes > 0)?.totalNotes;
-      total = carried || 0;
+      total = carried || 100;
     }
 
     let correct = 0;
@@ -431,11 +552,19 @@ export function Dashboard() {
 
     if (isTestSession) {
       correct = 0;
-      accuracy = total > 0 && correct > 0 ? Math.round((correct / total) * 100) : 0;
+      accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
     } else {
-      correct = parseInt(correctNotes);
-      if (isNaN(correct) || isNaN(total) || total === 0) return;
-      accuracy = Math.round((correct / total) * 100);
+      if (correctNotes.trim() === "") {
+        setPracticeSaveError("Please enter your correct notes count (or 0).");
+        return;
+      }
+      const parsedCorrect = parseInt(correctNotes, 10);
+      if (isNaN(parsedCorrect)) {
+        setPracticeSaveError("Please enter a valid number of correct notes.");
+        return;
+      }
+      correct = Math.max(0, parsedCorrect);
+      accuracy = total > 0 ? Math.min(100, Math.max(0, Math.round((correct / total) * 100))) : 100;
     }
 
     if (trimmedTitle && total > 0) {
@@ -447,6 +576,9 @@ export function Dashboard() {
 
     const parsedDuration = parseDurationInputToSeconds(duration);
     const safeDifficulty = Math.min(12, Math.max(1, difficulty || 1));
+
+    setIsSavingPractice(true);
+    setPracticeSaveError(null);
 
     try {
       await ensureSongInLibrary(trimmedTitle);
@@ -463,11 +595,11 @@ export function Dashboard() {
             accuracy,
             speed: spd,
             date: practiceDate,
-            isPartial,
-            isShortVersion,
-            isTestSession,
+            isPartial: Boolean(isPartial),
+            isShortVersion: Boolean(isShortVersion),
+            isTestSession: Boolean(isTestSession),
             createdAt: existingPractice.createdAt,
-            note,
+            note: note || "",
             ...(existingPractice.difficultyRating !== undefined
               ? { difficultyRating: existingPractice.difficultyRating }
               : {}),
@@ -487,11 +619,11 @@ export function Dashboard() {
           accuracy,
           speed: spd,
           date: practiceDate,
-          isPartial,
-          isShortVersion,
-          isTestSession,
+          isPartial: Boolean(isPartial),
+          isShortVersion: Boolean(isShortVersion),
+          isTestSession: Boolean(isTestSession),
           createdAt: Date.now(),
-          note,
+          note: note || "",
         };
         if (parsedDuration !== undefined) {
           newPractice.duration = parsedDuration;
@@ -503,8 +635,13 @@ export function Dashboard() {
       }
       setView("dashboard");
       resetPracticeForm();
-    } catch (error) {
+      focusPracticeSessionsLog();
+    } catch (error: any) {
+      console.error("Save practice error:", error);
+      setPracticeSaveError(error?.message || "Failed to save practice session. Please try again.");
       handleFirestoreError(error, OperationType.CREATE, "practices");
+    } finally {
+      setIsSavingPractice(false);
     }
   };
 
@@ -533,6 +670,7 @@ export function Dashboard() {
         newPractice.duration = payload.durationSeconds;
       }
       await addDoc(collection(db, "practices"), newPractice);
+      focusPracticeSessionsLog();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "practices");
     }
@@ -991,9 +1129,8 @@ export function Dashboard() {
       />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {view === "dashboard" && (
-          <div className="space-y-8">
-            {/* Header Actions Bar with Clean Visual Grouping */}
+        <div className="space-y-8">
+          {/* Header Actions Bar with Clean Visual Grouping */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-indigo-950/40 border border-indigo-800/60 p-4 rounded-2xl shadow-sm print:hidden">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-white">Overview</h2>
@@ -1127,141 +1264,291 @@ export function Dashboard() {
                     <Printer className="w-4 h-4 text-indigo-400" />
                     <span>Print All</span>
                   </Button>
+                  <Button
+                    onClick={resetFrameLayout}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-indigo-700/80 bg-indigo-950/60 hover:bg-indigo-800 text-indigo-200"
+                    title="Reset dashboard frames to default positions and sizes"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="hidden sm:inline">Reset Layout</span>
+                  </Button>
                 </div>
               </div>
             </div>
 
-            {/* Daily Practice Streak Card */}
-            <StreakCard
-              streakInfo={streakInfo}
-              onLogSession={() => {
-                resetPracticeForm();
-                setView("add-practice");
-              }}
-              printMode={printMode}
-            />
+            {/* Movable & Resizable Dashboard Frames Grid */}
+            <div className="grid grid-cols-12 gap-6 items-start print:flex print:flex-col">
+              {frameLayout.map((frame, index) => {
+                if (frame.id === "streak") {
+                  return (
+                    <DashboardFrame
+                      key="streak"
+                      id="streak"
+                      title="Daily Practice Streak & Consistency"
+                      subtitle="Track consecutive days practiced, milestones, and record sessions"
+                      icon={<Flame className="w-4 h-4 text-amber-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("streak", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("streak")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <StreakCard
+                        streakInfo={streakInfo}
+                        onLogSession={() => {
+                          resetPracticeForm();
+                          setView("add-practice");
+                        }}
+                        printMode={printMode}
+                      />
+                    </DashboardFrame>
+                  );
+                }
 
-            {/* Weekly Practice Goals Section */}
-            <WeeklyGoalsSection
-              overallProgress={weeklyGoalProgress.overallProgress}
-              songProgresses={weeklyGoalProgress.songProgresses}
-              weekRangeLabel={weeklyGoalProgress.weekRangeLabel}
-              daysRemainingInWeek={weeklyGoalProgress.daysRemainingInWeek}
-              onOpenAddGoalModal={(goal) => {
-                setEditingWeeklyGoal(goal && goal.id !== "default-overall" ? goal : null);
-                setIsWeeklyGoalModalOpen(true);
-              }}
-              onDeleteGoal={handleDeleteWeeklyGoal}
-              onQuickAdjust={handleQuickAdjustWeeklyGoal}
-              printMode={printMode}
-            />
+                if (frame.id === "goals") {
+                  return (
+                    <DashboardFrame
+                      key="goals"
+                      id="goals"
+                      title="Weekly Practice Goals & Targets"
+                      subtitle="Target minutes, daily paces, and song-specific progress bars"
+                      icon={<Target className="w-4 h-4 text-indigo-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("goals", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("goals")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <WeeklyGoalsSection
+                        overallProgress={weeklyGoalProgress.overallProgress}
+                        songProgresses={weeklyGoalProgress.songProgresses}
+                        weekRangeLabel={weeklyGoalProgress.weekRangeLabel}
+                        daysRemainingInWeek={weeklyGoalProgress.daysRemainingInWeek}
+                        onOpenAddGoalModal={(goal) => {
+                          setEditingWeeklyGoal(goal && goal.id !== "default-overall" ? goal : null);
+                          setIsWeeklyGoalModalOpen(true);
+                        }}
+                        onDeleteGoal={handleDeleteWeeklyGoal}
+                        onQuickAdjust={handleQuickAdjustWeeklyGoal}
+                        printMode={printMode}
+                      />
+                    </DashboardFrame>
+                  );
+                }
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:flex print:flex-col">
-              {/* Main Content (Charts & Table) */}
-              <div className="lg:col-span-2 space-y-8 print:w-full">
-                <PracticeTrendsSection
-                  practices={practices}
-                  activeSongs={activeSongs}
-                  usageLogs={usageLogs}
-                  printMode={printMode}
-                  onPrint={handlePrint}
-                  onOpenFullTrends={() => setView("trends")}
-                />
+                if (frame.id === "trends") {
+                  return (
+                    <DashboardFrame
+                      key="trends"
+                      id="trends"
+                      title="30-Day Practice Trends & Progression"
+                      subtitle="Interactive weekly accuracy trends, time metrics, and performance trajectory"
+                      icon={<Activity className="w-4 h-4 text-emerald-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("trends", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("trends")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <PracticeTrendsSection
+                        practices={practices}
+                        activeSongs={activeSongs}
+                        usageLogs={usageLogs}
+                        printMode={printMode}
+                        onPrint={handlePrint}
+                        onOpenFullTrends={() => setView("trends")}
+                      />
+                    </DashboardFrame>
+                  );
+                }
 
-                <WeeklyPracticeChart
-                  data={barChartData}
-                  printMode={printMode}
-                  onPrint={handlePrint}
-                />
+                if (frame.id === "milestones") {
+                  return (
+                    <DashboardFrame
+                      key="milestones"
+                      id="milestones"
+                      title="Milestones & Repertoire Goals"
+                      subtitle="Track completed vs active song milestones and target dates"
+                      icon={<Sparkles className="w-4 h-4 text-purple-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("milestones", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("milestones")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <MilestonesCard
+                        goals={goals}
+                        activeSongs={activeSongs}
+                        songFilter={milestoneFilterSong}
+                        onSongFilterChange={setMilestoneFilterSong}
+                        startDateFilter={milestoneFilterStartDate}
+                        onStartDateFilterChange={setMilestoneFilterStartDate}
+                        endDateFilter={milestoneFilterEndDate}
+                        onEndDateFilterChange={setMilestoneFilterEndDate}
+                        onClearFilters={() => {
+                          setMilestoneFilterSong("");
+                          setMilestoneFilterStartDate("");
+                          setMilestoneFilterEndDate("");
+                        }}
+                        onToggleGoal={toggleGoal}
+                        onDeleteGoal={deleteGoal}
+                        printMode={printMode}
+                        onPrint={handlePrint}
+                      />
+                    </DashboardFrame>
+                  );
+                }
 
-                <HistoricalAccuracyChart
-                  chartData={chartData}
-                  songKeys={songKeys}
-                  activeSongs={activeSongs}
-                  songFilter={chartFilterSongName}
-                  onSongFilterChange={setChartFilterSongName}
-                  speedFilter={chartFilterSpeed}
-                  onSpeedFilterChange={setChartFilterSpeed}
-                  levelFilter={chartFilterLevel}
-                  onLevelFilterChange={setChartFilterLevel}
-                  startDateFilter={chartFilterStartDate}
-                  onStartDateFilterChange={setChartFilterStartDate}
-                  endDateFilter={chartFilterEndDate}
-                  onEndDateFilterChange={setChartFilterEndDate}
-                  onClearFilters={() => {
-                    setChartFilterStartDate("");
-                    setChartFilterEndDate("");
-                    setChartFilterSongName("");
-                    setChartFilterSpeed("");
-                    setChartFilterLevel("");
-                  }}
-                  printMode={printMode}
-                  onPrint={handlePrint}
-                />
+                if (frame.id === "weeklyChart") {
+                  return (
+                    <DashboardFrame
+                      key="weeklyChart"
+                      id="weeklyChart"
+                      title="Weekly Practice Hours Distribution"
+                      subtitle="Day-by-day practice duration across Monday through Sunday"
+                      icon={<Clock className="w-4 h-4 text-indigo-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("weeklyChart", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("weeklyChart")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <WeeklyPracticeChart
+                        data={barChartData}
+                        printMode={printMode}
+                        onPrint={handlePrint}
+                      />
+                    </DashboardFrame>
+                  );
+                }
 
-                <RecentSessionsTable
-                  practices={filteredPractices}
-                  totalCount={practices.length}
-                  activeSongs={activeSongs}
-                  searchQuery={sessionSearchQuery}
-                  onSearchQueryChange={setSessionSearchQuery}
-                  sortField={sessionSortField}
-                  sortDirection={sessionSortDirection}
-                  onSort={handleSort}
-                  filterName={sessionFilterName}
-                  onFilterNameChange={setSessionFilterName}
-                  filterDate={sessionFilterDate}
-                  onFilterDateChange={setSessionFilterDate}
-                  filterSpeed={sessionFilterSpeed}
-                  onFilterSpeedChange={setSessionFilterSpeed}
-                  filterLevel={sessionFilterLevel}
-                  onFilterLevelChange={setSessionFilterLevel}
-                  onClearFilters={() => {
-                    setSessionSearchQuery("");
-                    setSessionFilterName("");
-                    setSessionFilterDate("");
-                    setSessionFilterSpeed("");
-                    setSessionFilterLevel("");
-                    setSessionSortField("date");
-                    setSessionSortDirection("desc");
-                  }}
-                  onAddSession={() => {
-                    resetPracticeForm();
-                    setView("add-practice");
-                  }}
-                  onQuickRecordSession={handleQuickRecordSession}
-                  onEditSession={handleEditPractice}
-                  onDeleteSession={deletePractice}
-                  onFeedbackSession={(p) => setFeedbackPractice(p)}
-                  printMode={printMode}
-                  onPrint={handlePrint}
-                />
-              </div>
+                if (frame.id === "accuracyChart") {
+                  return (
+                    <DashboardFrame
+                      key="accuracyChart"
+                      id="accuracyChart"
+                      title="Historical Accuracy Progression"
+                      subtitle="Filterable accuracy trendlines per song, speed, and difficulty level"
+                      icon={<Activity className="w-4 h-4 text-indigo-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("accuracyChart", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("accuracyChart")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <HistoricalAccuracyChart
+                        chartData={chartData}
+                        songKeys={songKeys}
+                        activeSongs={activeSongs}
+                        songFilter={chartFilterSongName}
+                        onSongFilterChange={setChartFilterSongName}
+                        speedFilter={chartFilterSpeed}
+                        onSpeedFilterChange={setChartFilterSpeed}
+                        levelFilter={chartFilterLevel}
+                        onLevelFilterChange={setChartFilterLevel}
+                        startDateFilter={chartFilterStartDate}
+                        onStartDateFilterChange={setChartFilterStartDate}
+                        endDateFilter={chartFilterEndDate}
+                        onEndDateFilterChange={setChartFilterEndDate}
+                        onClearFilters={() => {
+                          setChartFilterStartDate("");
+                          setChartFilterEndDate("");
+                          setChartFilterSongName("");
+                          setChartFilterSpeed("");
+                          setChartFilterLevel("");
+                        }}
+                        printMode={printMode}
+                        onPrint={handlePrint}
+                      />
+                    </DashboardFrame>
+                  );
+                }
 
-              {/* Sidebar (Milestones & Goals) */}
-              <MilestonesCard
-                goals={goals}
-                activeSongs={activeSongs}
-                songFilter={milestoneFilterSong}
-                onSongFilterChange={setMilestoneFilterSong}
-                startDateFilter={milestoneFilterStartDate}
-                onStartDateFilterChange={setMilestoneFilterStartDate}
-                endDateFilter={milestoneFilterEndDate}
-                onEndDateFilterChange={setMilestoneFilterEndDate}
-                onClearFilters={() => {
-                  setMilestoneFilterSong("");
-                  setMilestoneFilterStartDate("");
-                  setMilestoneFilterEndDate("");
-                }}
-                onToggleGoal={toggleGoal}
-                onDeleteGoal={deleteGoal}
-                printMode={printMode}
-                onPrint={handlePrint}
-              />
+                if (frame.id === "sessions") {
+                  return (
+                    <DashboardFrame
+                      key="sessions"
+                      id="sessions"
+                      title="Recent Practice Sessions Log"
+                      subtitle="Searchable and sortable log with quick record, feedback, edit, and print"
+                      icon={<Guitar className="w-4 h-4 text-indigo-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("sessions", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("sessions")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                    >
+                      <RecentSessionsTable
+                        practices={filteredPractices}
+                        totalCount={practices.length}
+                        activeSongs={activeSongs}
+                        searchQuery={sessionSearchQuery}
+                        onSearchQueryChange={setSessionSearchQuery}
+                        sortField={sessionSortField}
+                        sortDirection={sessionSortDirection}
+                        onSort={handleSort}
+                        filterName={sessionFilterName}
+                        onFilterNameChange={setSessionFilterName}
+                        filterDate={sessionFilterDate}
+                        onFilterDateChange={setSessionFilterDate}
+                        filterSpeed={sessionFilterSpeed}
+                        onFilterSpeedChange={setSessionFilterSpeed}
+                        filterLevel={sessionFilterLevel}
+                        onFilterLevelChange={setSessionFilterLevel}
+                        onClearFilters={() => {
+                          setSessionSearchQuery("");
+                          setSessionFilterName("");
+                          setSessionFilterDate("");
+                          setSessionFilterSpeed("");
+                          setSessionFilterLevel("");
+                          setSessionSortField("date");
+                          setSessionSortDirection("desc");
+                        }}
+                        onAddSession={() => {
+                          resetPracticeForm();
+                          setView("add-practice");
+                        }}
+                        onQuickRecordSession={handleQuickRecordSession}
+                        onEditSession={handleEditPractice}
+                        onDeleteSession={deletePractice}
+                        onFeedbackSession={(p) => setFeedbackPractice(p)}
+                        printMode={printMode}
+                        onPrint={handlePrint}
+                        isHighlighted={highlightSessionsLog}
+                      />
+                    </DashboardFrame>
+                  );
+                }
+
+                return null;
+              })}
             </div>
           </div>
-        )}
 
+        {/* Moveable & Resizable Windows */}
         {view === "add-practice" && (
           <PracticeSessionModal
             editingPracticeId={editingPracticeId}
@@ -1295,6 +1582,8 @@ export function Dashboard() {
             onSpeedChange={setSpeed}
             note={note}
             onNoteChange={setNote}
+            isSaving={isSavingPractice}
+            saveError={practiceSaveError}
             onSubmit={handleAddPractice}
             onCancel={() => {
               resetPracticeForm();
@@ -1318,83 +1607,185 @@ export function Dashboard() {
         )}
 
         {view === "trends" && (
-          <TrendsModal
-            data={trendsData}
-            practices={practices}
-            activeSongs={activeSongs}
-            usageLogs={usageLogs}
-            printMode={printMode}
-            onPrint={handlePrint}
-            onBack={() => setView("dashboard")}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="Practice Trends & Analytics"
+            subtitle="Weekly accuracy improvements, total practice hours, and session trends"
+            icon={<Activity className="w-5 h-5 text-indigo-400" />}
+            initialWidth={1040}
+            initialHeight={780}
+            minWidth={460}
+            minHeight={360}
+            ariaLabel="Practice Trends & Analytics"
+            headerActions={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePrint("trends")}
+                className="gap-1.5 border-indigo-700/80 bg-indigo-950/60 hover:bg-indigo-800 text-indigo-200 text-xs h-8"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print</span>
+              </Button>
+            }
+          >
+            <TrendsModal
+              data={trendsData}
+              practices={practices}
+              activeSongs={activeSongs}
+              usageLogs={usageLogs}
+              printMode={printMode}
+              onPrint={handlePrint}
+              onBack={() => setView("dashboard")}
+            />
+          </MoveableResizableFrame>
         )}
 
         {view === "duration-trends" && (
-          <DurationTrendsPage
-            practices={practices}
-            activeSongs={activeSongs}
-            usageLogs={usageLogs}
-            printMode={printMode}
-            onPrint={handlePrint}
-            onBack={() => setView("dashboard")}
-            onAddSession={() => {
-              resetPracticeForm();
-              setView("add-practice");
-            }}
-            onEditSession={handleEditPractice}
-            onFeedbackSession={(p) => setFeedbackPractice(p)}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="Session Duration Trends"
+            subtitle="Analyze your practice session lengths and duration milestones"
+            icon={<Clock className="w-5 h-5 text-emerald-400" />}
+            initialWidth={1060}
+            initialHeight={800}
+            minWidth={460}
+            minHeight={360}
+            ariaLabel="Session Duration Trends"
+          >
+            <DurationTrendsPage
+              practices={practices}
+              activeSongs={activeSongs}
+              usageLogs={usageLogs}
+              printMode={printMode}
+              onPrint={handlePrint}
+              onBack={() => setView("dashboard")}
+              onAddSession={() => {
+                resetPracticeForm();
+                setView("add-practice");
+              }}
+              onEditSession={handleEditPractice}
+              onFeedbackSession={(p) => setFeedbackPractice(p)}
+            />
+          </MoveableResizableFrame>
         )}
 
         {view === "ai-analysis" && (
-          <AiAnalysisModal
-            isAnalyzing={isAnalyzing}
-            aiAnalysis={aiAnalysis}
-            onReanalyze={() => handleAnalyze(true)}
-            onBack={() => setView("dashboard")}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="AI Practice Coach Assessment"
+            subtitle="Personalized insights based on your practice history and speed"
+            icon={<Sparkles className="w-5 h-5 text-amber-400" />}
+            initialWidth={800}
+            initialHeight={680}
+            minWidth={400}
+            minHeight={320}
+            ariaLabel="AI Progress Coach Assessment"
+          >
+            <AiAnalysisModal
+              isAnalyzing={isAnalyzing}
+              aiAnalysis={aiAnalysis}
+              onReanalyze={() => handleAnalyze(true)}
+              onBack={() => setView("dashboard")}
+            />
+          </MoveableResizableFrame>
         )}
 
         {view === "chatbot" && (
-          <GeminiChatbotModal
-            practices={practices}
-            songs={songs}
-            goals={goals}
-            persistedMessages={chatMessages}
-            onSaveMessage={handleSaveChatMessage}
-            onClearHistory={handleClearChatHistory}
-            onOpenLiveVoice={() => setView("live-voice")}
-            onBack={() => setView("dashboard")}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="Gemini AI Guitar Assistant"
+            subtitle="Multi-turn guidance, technique tips, and practice feedback"
+            icon={<MessageSquare className="w-5 h-5 text-indigo-400" />}
+            initialWidth={920}
+            initialHeight={760}
+            minWidth={440}
+            minHeight={400}
+            ariaLabel="Gemini AI Guitar Assistant"
+          >
+            <GeminiChatbotModal
+              practices={practices}
+              songs={songs}
+              goals={goals}
+              persistedMessages={chatMessages}
+              onSaveMessage={handleSaveChatMessage}
+              onClearHistory={handleClearChatHistory}
+              onOpenLiveVoice={() => setView("live-voice")}
+              onBack={() => setView("dashboard")}
+            />
+          </MoveableResizableFrame>
         )}
 
         {view === "live-voice" && (
-          <LiveVoiceCoachModal
-            practices={practices}
-            songs={songs}
-            goals={goals}
-            onOpenChatbot={() => setView("chatbot")}
-            onBack={() => setView("dashboard")}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="Live Voice Coach (gemini-3.8-live)"
+            subtitle="Hands-free, real-time voice conversations while you practice"
+            icon={<Mic className="w-5 h-5 text-emerald-400" />}
+            initialWidth={760}
+            initialHeight={700}
+            minWidth={420}
+            minHeight={380}
+            ariaLabel="Live Voice Coach"
+          >
+            <LiveVoiceCoachModal
+              practices={practices}
+              songs={songs}
+              goals={goals}
+              onOpenChatbot={() => setView("chatbot")}
+              onBack={() => setView("dashboard")}
+            />
+          </MoveableResizableFrame>
         )}
 
         {view === "help" && (
-          <HelpModal
-            onBack={() => setView("dashboard")}
-            onNavigate={(targetView) => setView(targetView)}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="Help Files & User Guide"
+            subtitle="Comprehensive documentation, scoring formulas, and shortcuts"
+            icon={<HelpCircle className="w-5 h-5 text-indigo-400" />}
+            initialWidth={960}
+            initialHeight={780}
+            minWidth={440}
+            minHeight={360}
+            ariaLabel="Help Files & User Guide"
+          >
+            <HelpModal
+              onBack={() => setView("dashboard")}
+              onNavigate={(targetView) => setView(targetView)}
+            />
+          </MoveableResizableFrame>
         )}
 
         {view === "manage-songs" && (
-          <ManageSongsModal
-            songs={songs}
-            newSongInput={newSongInput}
-            onNewSongInputChange={setNewSongInput}
-            onAddSong={handleAddSong}
-            onToggleSongRetired={toggleSongRetired}
-            onDeleteSong={deleteSong}
-            onDone={() => setView("dashboard")}
-          />
+          <MoveableResizableFrame
+            isOpen={true}
+            onClose={() => setView("dashboard")}
+            title="Song & Exercise Library"
+            subtitle="Manage songs, retire inactive exercises, and review repertoire"
+            icon={<Guitar className="w-5 h-5 text-indigo-400" />}
+            initialWidth={720}
+            initialHeight={620}
+            minWidth={400}
+            minHeight={320}
+            ariaLabel="Song & Exercise Library"
+          >
+            <ManageSongsModal
+              songs={songs}
+              newSongInput={newSongInput}
+              onNewSongInputChange={setNewSongInput}
+              onAddSong={handleAddSong}
+              onToggleSongRetired={toggleSongRetired}
+              onDeleteSong={deleteSong}
+              onDone={() => setView("dashboard")}
+            />
+          </MoveableResizableFrame>
         )}
 
         <WeeklyGoalModal
@@ -1424,8 +1815,16 @@ export function Dashboard() {
         <PostSessionFeedbackModal
           isOpen={Boolean(feedbackPractice)}
           practice={feedbackPractice}
-          onClose={() => setFeedbackPractice(null)}
-          onSaveFeedback={handleSaveSessionFeedback}
+          onClose={() => {
+            setFeedbackPractice(null);
+            focusPracticeSessionsLog();
+          }}
+          onSaveFeedback={async (rating, note) => {
+            if (feedbackPractice) {
+              await handleSaveSessionFeedback(feedbackPractice.id, rating, note);
+            }
+            focusPracticeSessionsLog();
+          }}
         />
 
         {/* Floating Quick-Launch Dock for Gemini Chatbot & Live Voice */}

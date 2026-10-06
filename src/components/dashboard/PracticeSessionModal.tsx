@@ -12,6 +12,8 @@ import {
   RotateCcw,
   Plus,
   ListMusic,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -26,6 +28,7 @@ import {
   formatDurationLabel,
 } from "../../utils/durationFormat";
 import { PracticeSessionLiveCoach } from "./PracticeSessionLiveCoach";
+import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 
 interface PracticeSessionModalProps {
   editingPracticeId: string | null;
@@ -54,6 +57,8 @@ interface PracticeSessionModalProps {
   onSpeedChange: (val: string) => void;
   note: string;
   onNoteChange: (val: string) => void;
+  isSaving?: boolean;
+  saveError?: string | null;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
 }
@@ -87,6 +92,8 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   onSpeedChange,
   note,
   onNoteChange,
+  isSaving = false,
+  saveError = null,
   onSubmit,
   onCancel,
 }) => {
@@ -175,44 +182,29 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   };
 
   return (
-    <div ref={dialogTopRef} className="max-w-2xl mx-auto">
-      <Card className="border-indigo-800/80 bg-slate-950/95 shadow-2xl shadow-indigo-950/70 overflow-hidden rounded-2xl">
-        <CardHeader className="border-b border-indigo-800/50 p-4 sm:p-5 bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-slate-950/80 flex flex-row items-center justify-between space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0">
-              <Music className="w-5 h-5 text-indigo-400" />
-            </div>
-            <div>
-              <CardTitle className="text-lg sm:text-xl text-white">
-                {editingPracticeId ? "Edit Practice Session" : "Record Practice Session"}
-              </CardTitle>
-              <p className="text-xs text-indigo-300/80 mt-0.5">
-                Log date, duration, song title, difficulty level, accuracy (correct/total notes), and speed.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-indigo-400 hover:text-white p-1.5 rounded-lg hover:bg-indigo-900/50 transition-colors"
-            title="Cancel"
-            aria-label="Cancel"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </CardHeader>
+    <MoveableResizableFrame
+      isOpen={true}
+      onClose={onCancel}
+      title={editingPracticeId ? "Edit Practice Session" : "Record Practice Session"}
+      subtitle="Log date, duration, song title, difficulty level, accuracy, and speed"
+      icon={<Music className="w-5 h-5 text-indigo-400" />}
+      initialWidth={760}
+      initialHeight={760}
+      minWidth={360}
+      minHeight={320}
+      ariaLabel={editingPracticeId ? "Edit Practice Session" : "Record Practice Session"}
+    >
+      <div ref={dialogTopRef} className="space-y-5">
+        {/* Real-Time Live Voice Coach while practicing */}
+        <PracticeSessionLiveCoach
+          songTitle={songTitle}
+          difficulty={difficulty}
+          speed={speed}
+          duration={duration}
+          isTimerRunning={isTimerRunning}
+        />
 
-        <CardContent className="p-4 sm:p-6 space-y-5">
-          {/* Real-Time Live Voice Coach while practicing */}
-          <PracticeSessionLiveCoach
-            songTitle={songTitle}
-            difficulty={difficulty}
-            speed={speed}
-            duration={duration}
-            isTimerRunning={isTimerRunning}
-          />
-
-          <form onSubmit={onSubmit} className="space-y-5">
+        <form onSubmit={onSubmit} className="space-y-5">
             {/* Top Row: Song Title and Date */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5 sm:col-span-2">
@@ -370,7 +362,6 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     label="Total Notes"
                     min={1}
                     step={10}
-                    required={!isTestSession}
                     disabled={isTestSession}
                     value={totalNotes}
                     onChange={(val) => onTotalNotesChange(val)}
@@ -410,7 +401,6 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     label="Correct Notes"
                     min={0}
                     max={parseInt(totalNotes, 10) > 0 ? parseInt(totalNotes, 10) : undefined}
-                    required={!isTestSession}
                     disabled={isTestSession}
                     value={isTestSession ? "" : correctNotes}
                     onChange={(val) => onCorrectNotesChange(val)}
@@ -463,7 +453,6 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     min={0}
                     max={200}
                     step={5}
-                    required
                     value={speed}
                     onChange={(val) => onSpeedChange(val)}
                     quickPresets={[
@@ -735,11 +724,20 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               />
             </div>
 
+            {/* Error Message Alert if save failed */}
+            {saveError && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-950/80 border border-rose-600 text-rose-200 text-xs">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{saveError}</span>
+              </div>
+            )}
+
             {/* Footer Actions */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-indigo-800/60">
               <Button
                 type="button"
                 variant="ghost"
+                disabled={isSaving}
                 onClick={() => {
                   setIsTimerRunning(false);
                   onCancel();
@@ -750,15 +748,19 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               </Button>
               <Button
                 type="submit"
-                disabled={!songTitle.trim()}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 shadow-md shadow-indigo-600/30"
+                disabled={isSaving || !songTitle.trim()}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 shadow-md shadow-indigo-600/30 gap-1.5"
               >
-                {editingPracticeId ? "Update Session" : "Save Practice Session"}
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSaving
+                  ? "Saving..."
+                  : editingPracticeId
+                  ? "Update Session"
+                  : "Save Practice Session"}
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+      </div>
+    </MoveableResizableFrame>
   );
 };
