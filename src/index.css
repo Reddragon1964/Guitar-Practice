@@ -51,3 +51,40 @@
 .dialog-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(165, 180, 252, 0.8);
 }
+
+/* Print Assessment Report Styling & Isolation */
+@media print {
+  body.printing-assessment {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Hide root UI and app components while printing assessment report */
+  body.printing-assessment > div:not(#print-assessment-portal),
+  body.printing-assessment > header,
+  body.printing-assessment > nav,
+  body.printing-assessment > footer {
+    display: none !important;
+  }
+
+  body.printing-assessment #print-assessment-portal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12mm 16mm !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-sizing: border-box !important;
+    page-break-inside: auto !important;
+  }
+
+  body.printing-assessment #print-assessment-portal * {
+    visibility: visible !important;
+  }
+}

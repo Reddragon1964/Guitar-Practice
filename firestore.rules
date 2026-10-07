@@ -199,5 +199,35 @@ service cloud.firestore {
 
       allow delete: if isSignedIn() && isValidId(messageId) && existing().userId == request.auth.uid;
     }
+
+    function isValidAiAssessment(data) {
+      return data.keys().hasAll(['userId', 'analysis', 'date', 'time', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'analysis', 'date', 'time', 'createdAt', 'sessionCount', 'summary']) &&
+             (!('sessionCount' in data) || data.sessionCount is number) &&
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 500)) &&
+             data.userId == request.auth.uid &&
+             data.analysis is string && data.analysis.size() > 0 && data.analysis.size() <= 20000 &&
+             data.date is string &&
+             data.time is string &&
+             data.createdAt is number;
+    }
+
+    match /aiAssessments/{assessmentId} {
+      allow get: if isSignedIn() && isValidId(assessmentId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                    isValidId(assessmentId) &&
+                    isValidAiAssessment(incoming());
+
+      allow update: if isSignedIn() &&
+                    isValidId(assessmentId) &&
+                    existing().userId == request.auth.uid &&
+                    isValidAiAssessment(incoming()) &&
+                    incoming().userId == existing().userId &&
+                    incoming().createdAt == existing().createdAt;
+
+      allow delete: if isSignedIn() && isValidId(assessmentId) && existing().userId == request.auth.uid;
+    }
   }
 }

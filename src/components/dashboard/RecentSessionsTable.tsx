@@ -213,12 +213,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
       id="practice-sessions-log"
       tabIndex={-1}
       className={cn(
-        "outline-none transition-all duration-700",
+        "scroll-mt-24 outline-none transition-all duration-700 relative",
         isHiddenForPrint && "print:hidden",
         isHighlighted &&
           "ring-4 ring-indigo-400 ring-offset-4 ring-offset-slate-950 shadow-[0_0_35px_rgba(99,102,241,0.45)] border-indigo-400"
       )}
     >
+      <div id="practice-sessions-log-top" className="absolute -top-6 left-0 w-1 h-1 pointer-events-none" />
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <CardTitle>Practice Sessions Log</CardTitle>
@@ -301,7 +302,18 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               )}
             </Button>
           )}
-          <Button size="sm" onClick={onAddSession} className="gap-1">
+          <Button
+            id="start-next-practice-session-btn"
+            size="sm"
+            onClick={onAddSession}
+            className={cn(
+              "gap-1 font-semibold transition-all duration-300",
+              isHighlighted
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-950/90 ring-4 ring-emerald-400 ring-offset-2 ring-offset-slate-950 animate-pulse"
+                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            )}
+            title="Start your next guitar practice session"
+          >
             <Plus className="w-4 h-4" /> Record Session
           </Button>
         </div>

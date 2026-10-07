@@ -39,6 +39,7 @@ import {
   DeleteConfirmState,
   WeeklyGoal,
   ChatMessage,
+  AiAssessment,
 } from "../types";
 import { Button } from "./ui/button";
 
@@ -102,7 +103,13 @@ export function Dashboard() {
   const [goalTitle, setGoalTitle] = useState("");
   const [goalSongTitle, setGoalSongTitle] = useState("");
   const [goalDate, setGoalDate] = useState("");
-  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiAssessments, setAiAssessments] = useState<AiAssessment[]>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_tracker_ai_assessments");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [editingPracticeId, setEditingPracticeId] = useState<string | null>(null);
   const [feedbackPractice, setFeedbackPractice] = useState<Practice | null>(null);
@@ -212,23 +219,27 @@ export function Dashboard() {
       prev.map((f) => (f.id === "sessions" ? { ...f, isMinimized: false } : f))
     );
 
-    // 2. Allow modal unmount to finish, then smoothly center and focus the Practice Sessions Log
+    // 2. Allow modal unmount to finish, then smoothly scroll to the TOP of the Practice Sessions Log
+    // and set focus on the button at the top to start the next session
     setTimeout(() => {
-      const container = document.getElementById("practice-sessions-log");
-      if (container) {
-        container.scrollIntoView({ behavior: "smooth", block: "center" });
-        container.focus({ preventScroll: true });
+      const topTarget =
+        document.getElementById("practice-sessions-log-top") ||
+        document.getElementById("practice-sessions-log");
+      if (topTarget) {
+        topTarget.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
-      const searchInput = document.getElementById("practice-sessions-search");
-      if (searchInput) {
-        searchInput.focus({ preventScroll: true });
+      const startNextBtn = document.getElementById("start-next-practice-session-btn");
+      if (startNextBtn) {
+        startNextBtn.focus({ preventScroll: true });
+      } else if (topTarget) {
+        topTarget.focus({ preventScroll: true });
       }
 
       setHighlightSessionsLog(true);
       setTimeout(() => {
         setHighlightSessionsLog(false);
-      }, 2500);
+      }, 3000);
     }, 120);
   }, []);
 
@@ -465,6 +476,19 @@ export function Dashboard() {
       (error) => handleFirestoreError(error, OperationType.GET, "chatMessages")
     );
 
+    const qAiAssessments = query(collection(db, "aiAssessments"), where("userId", "==", uid));
+    const unsubscribeAiAssessments = onSnapshot(
+      qAiAssessments,
+      (snapshot) => {
+        const assessments = snapshot.docs.map(
+          (d) => ({ id: d.id, ...d.data() } as AiAssessment)
+        );
+        assessments.sort((a, b) => b.createdAt - a.createdAt);
+        setAiAssessments(assessments);
+      },
+      (error) => handleFirestoreError(error, OperationType.GET, "aiAssessments")
+    );
+
     return () => {
       unsubscribePractices();
       unsubscribeGoals();
@@ -472,6 +496,7 @@ export function Dashboard() {
       unsubscribeUsage();
       unsubscribeWeeklyGoals();
       unsubscribeChatMessages();
+      unsubscribeAiAssessments();
     };
   }, []);
 
@@ -719,7 +744,8 @@ export function Dashboard() {
 
   const handleAnalyze = async (force = false) => {
     setView("ai-analysis");
-    if (aiAnalysis && !force) return;
+    // If user already has assessments and didn't explicitly request a new one, show archive
+    if (aiAssessments.length > 0 && !force) return;
 
     setIsAnalyzing(true);
     try {
@@ -730,13 +756,36 @@ export function Dashboard() {
       });
       const data = await response.json();
       if (data.analysis) {
-        setAiAnalysis(data.analysis);
-      } else {
-        setAiAnalysis(data.error || "Failed to analyze data.");
+        const now = new Date();
+        const dateStr = now.toISOString().split("T")[0];
+        const timeStr = now.toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        const newAssessmentPayload: Omit<AiAssessment, "id"> = {
+          userId: auth.currentUser?.uid || "guest",
+          analysis: data.analysis,
+          date: dateStr,
+          time: timeStr,
+          createdAt: Date.now(),
+          sessionCount: practices.length,
+          summary: `${practices.length} sessions evaluated`,
+        };
+
+        if (auth.currentUser) {
+          await addDoc(collection(db, "aiAssessments"), newAssessmentPayload);
+        } else {
+          const localItem: AiAssessment = {
+            id: `local-${Date.now()}`,
+            ...newAssessmentPayload,
+          };
+          setAiAssessments((prev) => [localItem, ...prev]);
+        }
       }
     } catch (err) {
-      console.error(err);
-      setAiAnalysis(err instanceof Error ? err.message : "Error connecting to AI Coach.");
+      console.error("Error generating AI Assessment:", err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -905,12 +954,21 @@ export function Dashboard() {
         await deleteDoc(doc(db, "songs", id));
       } else if (type === "weeklyGoal") {
         await deleteDoc(doc(db, "weeklyGoals", id));
+      } else if (type === "assessment") {
+        if (auth.currentUser) {
+          await deleteDoc(doc(db, "aiAssessments", id));
+        }
+        setAiAssessments((prev) => prev.filter((a) => a.id !== id));
       }
     } catch (error) {
       handleFirestoreError(
         error,
         OperationType.DELETE,
-        type === "weeklyGoal" ? `weeklyGoals/${id}` : `${type}s/${id}`
+        type === "weeklyGoal"
+          ? `weeklyGoals/${id}`
+          : type === "assessment"
+          ? `aiAssessments/${id}`
+          : `${type}s/${id}`
       );
     }
     setDeleteConfirm(null);
@@ -1676,19 +1734,26 @@ export function Dashboard() {
           <MoveableResizableFrame
             isOpen={true}
             onClose={() => setView("dashboard")}
-            title="AI Practice Coach Assessment"
-            subtitle="Personalized insights based on your practice history and speed"
+            title="AI Practice Coach Assessment Archive"
+            subtitle="Personalized performance insights preserved chronologically by date and time"
             icon={<Sparkles className="w-5 h-5 text-amber-400" />}
-            initialWidth={800}
-            initialHeight={680}
-            minWidth={400}
-            minHeight={320}
-            ariaLabel="AI Progress Coach Assessment"
+            initialWidth={1040}
+            initialHeight={780}
+            minWidth={460}
+            minHeight={360}
+            ariaLabel="AI Practice Coach Assessment Archive"
           >
             <AiAnalysisModal
+              assessments={aiAssessments}
               isAnalyzing={isAnalyzing}
-              aiAnalysis={aiAnalysis}
-              onReanalyze={() => handleAnalyze(true)}
+              onGenerateAssessment={() => handleAnalyze(true)}
+              onDeleteAssessment={(id) => {
+                setDeleteConfirm({
+                  id,
+                  type: "assessment",
+                  message: "Delete this AI practice assessment from your history?",
+                });
+              }}
               onBack={() => setView("dashboard")}
             />
           </MoveableResizableFrame>

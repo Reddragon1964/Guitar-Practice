@@ -76,6 +76,21 @@
         "createdAt": { "type": "number" }
       },
       "required": ["userId", "role", "text", "personaId", "model", "createdAt"]
+    },
+    "AiAssessment": {
+      "title": "AiAssessment",
+      "description": "A saved AI practice coach assessment generated for the user, recorded with date, time, and performance analysis.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "analysis": { "type": "string", "maxLength": 20000 },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "sessionCount": { "type": "number" },
+        "summary": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["userId", "analysis", "date", "time", "createdAt"]
     }
   },
   "firestore": {
@@ -98,6 +113,10 @@
     "/chatMessages/{messageId}": {
       "schema": { "$ref": "#/entities/ChatMessage" },
       "description": "Stores multi-turn Gemini chatbot messages per user."
+    },
+    "/aiAssessments/{assessmentId}": {
+      "schema": { "$ref": "#/entities/AiAssessment" },
+      "description": "Stores user AI practice coach assessments indexed by date and time."
     }
   }
 }

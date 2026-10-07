@@ -55,6 +55,17 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+export interface AiAssessment {
+  id: string;
+  userId: string;
+  analysis: string;
+  date: string; // YYYY-MM-DD
+  time: string; // formatted e.g. "12:24 PM"
+  createdAt: number;
+  sessionCount?: number;
+  summary?: string;
+}
+
 export type DashboardView =
   | "dashboard"
   | "add-practice"
@@ -74,6 +85,6 @@ export type PrintMode = "all" | "weekly" | "historical" | "recent" | "milestones
 
 export interface DeleteConfirmState {
   id: string;
-  type: "practice" | "goal" | "song" | "weeklyGoal";
+  type: "practice" | "goal" | "song" | "weeklyGoal" | "assessment";
   message: string;
 }
