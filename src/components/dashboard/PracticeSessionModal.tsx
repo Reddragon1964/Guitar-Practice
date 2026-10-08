@@ -188,13 +188,14 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
       title={editingPracticeId ? "Edit Practice Session" : "Record Practice Session"}
       subtitle="Log date, duration, song title, difficulty level, accuracy, and speed"
       icon={<Music className="w-5 h-5 text-indigo-400" />}
-      initialWidth={760}
-      initialHeight={760}
+      initialMaximized={true}
+      initialWidth={880}
+      initialHeight={800}
       minWidth={360}
       minHeight={320}
       ariaLabel={editingPracticeId ? "Edit Practice Session" : "Record Practice Session"}
     >
-      <div ref={dialogTopRef} className="space-y-5">
+      <div ref={dialogTopRef} className="max-w-5xl mx-auto space-y-5">
         {/* Real-Time Live Voice Coach while practicing */}
         <PracticeSessionLiveCoach
           songTitle={songTitle}

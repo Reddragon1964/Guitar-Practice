@@ -20,6 +20,7 @@ export interface MoveableResizableFrameProps {
   className?: string;
   bodyClassName?: string;
   hideBackdrop?: boolean;
+  initialMaximized?: boolean;
 }
 
 type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -31,6 +32,7 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
   subtitle,
   icon,
   headerActions,
+  initialMaximized = false,
   initialWidth = 780,
   initialHeight = 680,
   minWidth = 360,
@@ -43,7 +45,7 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
   bodyClassName,
   hideBackdrop = false,
 }) => {
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(initialMaximized);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
   const [size, setSize] = useState<{ width: number; height: number }>({
     width: initialWidth,
@@ -111,8 +113,8 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
     setPosition({ x: posX, y: posY });
     setSize({ width: safeW, height: safeH });
     restoreRef.current = { x: posX, y: posY, width: safeW, height: safeH };
-    setIsMaximized(false);
-  }, [isOpen, initialWidth, initialHeight, minWidth, minHeight]);
+    setIsMaximized(Boolean(initialMaximized));
+  }, [isOpen, initialMaximized, initialWidth, initialHeight, minWidth, minHeight]);
 
   // Global window listeners for moving and resizing — ensures zero slip
   useEffect(() => {
@@ -295,8 +297,10 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
                 position: "fixed",
                 left: 0,
                 top: 0,
-                width: "100vw",
-                height: "100vh",
+                right: 0,
+                bottom: 0,
+                width: "100%",
+                height: "100%",
                 zIndex: 60,
               }
             : {
