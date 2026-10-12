@@ -53,7 +53,7 @@ import { PostSessionFeedbackModal } from "./dashboard/PostSessionFeedbackModal";
 import { GoalModal } from "./dashboard/GoalModal";
 import { TrendsModal } from "./dashboard/TrendsModal";
 import { PracticeTrendsSection } from "./dashboard/PracticeTrendsSection";
-import { DurationTrendsPage } from "./dashboard/DurationTrendsPage";
+import { DurationTrendsPage, getSessionDurationMinutes } from "./dashboard/DurationTrendsPage";
 import { AiAnalysisModal } from "./dashboard/AiAnalysisModal";
 import { GeminiChatbotModal } from "./dashboard/GeminiChatbotModal";
 import { LiveVoiceCoachModal } from "./dashboard/LiveVoiceCoachModal";
@@ -62,6 +62,7 @@ import { ManageSongsModal } from "./dashboard/ManageSongsModal";
 import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
 import { MoveableResizableFrame } from "./ui/MoveableResizableFrame";
+import { TextScaleControl } from "./ui/TextScaleControl";
 import { DashboardFrame, FrameWidth } from "./dashboard/DashboardFrame";
 import { StreakCard } from "./dashboard/StreakCard";
 import { WeeklyGoalsSection } from "./dashboard/WeeklyGoalsSection";
@@ -1023,14 +1024,22 @@ export function Dashboard() {
       };
     }
 
+    practices.forEach((p) => {
+      const dateStr = p.date ? p.date.split("T")[0] : "";
+      if (data[dateStr]) {
+        const { minutes } = getSessionDurationMinutes(p);
+        data[dateStr].totalMinutes += minutes;
+      }
+    });
+
     usageLogs.forEach((u) => {
       if (data[u.date]) {
-        data[u.date].totalMinutes += u.minutes;
+        data[u.date].totalMinutes = Math.max(data[u.date].totalMinutes, u.minutes);
       }
     });
 
     return Object.values(data);
-  }, [usageLogs]);
+  }, [practices, usageLogs]);
 
   const trendsData = useMemo(() => {
     const data: Record<
@@ -1300,8 +1309,9 @@ export function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Utilities: Help & Print */}
+                {/* Utilities: Help, Text Scaling, Print, Reset */}
                 <div className="flex items-center gap-1.5">
+                  <TextScaleControl variant="toolbar" />
                   <Button
                     onClick={() => setView("help")}
                     variant="outline"
@@ -1490,8 +1500,14 @@ export function Dashboard() {
                     >
                       <WeeklyPracticeChart
                         data={barChartData}
+                        practices={practices}
+                        usageLogs={usageLogs}
                         printMode={printMode}
                         onPrint={handlePrint}
+                        onRecordSession={() => {
+                          setEditingPracticeId(null);
+                          setView("recordSession");
+                        }}
                       />
                     </DashboardFrame>
                   );

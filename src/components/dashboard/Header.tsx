@@ -1,6 +1,7 @@
 import React from "react";
 import { Guitar, LogOut, Flame, HelpCircle } from "lucide-react";
 import { Button } from "../ui/button";
+import { TextScaleControl } from "../ui/TextScaleControl";
 
 interface HeaderProps {
   userEmail?: string | null;
@@ -47,6 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* App-Wide Text Scaling Control */}
+          <TextScaleControl variant="header" />
+
           {onOpenHelp && (
             <Button
               variant="outline"

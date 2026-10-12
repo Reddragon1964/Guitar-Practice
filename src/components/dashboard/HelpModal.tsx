@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Target,
   FileSpreadsheet,
+  ALargeSmall,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -405,11 +406,56 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
               </p>
             </div>
             <div className="space-y-2 pt-2 border-t border-indigo-900/60">
+              <strong className="text-white block">Q: How do I scale or enlarge text across the entire app?</strong>
+              <p className="text-xs text-indigo-300">
+                Click the <strong>Text Size</strong> button in the top navigation bar or the dashboard toolbar. You can select presets (Compact 85%, Normal 100%, Large 115%, X-Large 130%, Max 145%), use the -5% / +5% steppers, or slide freely between 75% and 160%. Your preferred scale is saved automatically.
+              </p>
+            </div>
+            <div className="space-y-2 pt-2 border-t border-indigo-900/60">
               <strong className="text-white block">Q: Is my data saved automatically?</strong>
               <p className="text-xs text-indigo-300">
                 Yes! All sessions, songs, milestones, weekly targets, and chatbot conversation messages are securely synced to your Firebase account in real time.
               </p>
             </div>
+          </div>
+        ),
+      },
+      {
+        id: "text-scaling",
+        category: "getting-started",
+        title: "App-Wide Text Scaling & Display Accessibility",
+        summary: "Adjust font sizes application-wide from 75% to 160% with instant live preview and persistent settings.",
+        tags: ["text", "font", "scale", "zoom", "size", "accessibility", "readability", "large text"],
+        content: (
+          <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              Guitar Practice Tracker includes a built-in text scaling engine designed for comfortable reading at music stands, desktop monitors, and mobile displays:
+            </p>
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-indigo-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-900/60 text-indigo-300 border border-indigo-700/60">
+                  <ALargeSmall className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="font-semibold text-white text-sm">Text Size Control</div>
+                  <div className="text-xs text-indigo-300">Located in the top header and dashboard toolbar.</div>
+                </div>
+              </div>
+            </div>
+            <ul className="space-y-2 list-disc pl-5 text-xs text-indigo-200">
+              <li>
+                <strong className="text-white">One-Click Presets:</strong> Compact (85%), Default (100%), Large (115%), X-Large (130%), and Maximum (145%).
+              </li>
+              <li>
+                <strong className="text-white">Interactive Stepper & Slider:</strong> Fine-tune font sizes in 5% increments between 75% and 160%.
+              </li>
+              <li>
+                <strong className="text-white">App-Wide Synchronization:</strong> Scales all cards, charts, forms, dialogs, badges, and tables proportionally.
+              </li>
+              <li>
+                <strong className="text-white">Automatic Persistence:</strong> Your chosen scale is saved locally in your browser and remembered across sessions.
+              </li>
+            </ul>
           </div>
         ),
       },

@@ -52,6 +52,31 @@
   background: rgba(165, 180, 252, 0.8);
 }
 
+/* App-Wide Text Scaling Variables & Pixel Support */
+:root {
+  --app-text-scale: 1;
+}
+
+html[data-text-scale] [class*="text-[9px]"] {
+  font-size: calc(9px * var(--app-text-scale, 1)) !important;
+}
+
+html[data-text-scale] [class*="text-[10px]"] {
+  font-size: calc(10px * var(--app-text-scale, 1)) !important;
+}
+
+html[data-text-scale] [class*="text-[11px]"] {
+  font-size: calc(11px * var(--app-text-scale, 1)) !important;
+}
+
+html[data-text-scale] [class*="text-[12px]"] {
+  font-size: calc(12px * var(--app-text-scale, 1)) !important;
+}
+
+html[data-text-scale] [class*="text-[13px]"] {
+  font-size: calc(13px * var(--app-text-scale, 1)) !important;
+}
+
 /* Print Assessment Report Styling & Isolation */
 @media print {
   body.printing-assessment {
