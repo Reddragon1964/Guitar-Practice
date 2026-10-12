@@ -402,7 +402,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
             <div className="space-y-2 pt-2 border-t border-indigo-900/60">
               <strong className="text-white block">Q: How do I print my practice charts or sessions log?</strong>
               <p className="text-xs text-indigo-300">
-                Click <strong>Print All</strong> in the top dashboard bar or the small printer icon on individual cards (Weekly Practice, Historical Accuracy, Practice Trends, or Sessions Log) for printer-friendly reports.
+                Click <strong>Print All</strong> in the top dashboard bar or the small printer icon on individual cards (Weekly Practice, Historical Accuracy, Practice Trends, or Sessions Log) for printer-friendly reports. If you are viewing inside an embedded preview frame, click the <strong>Open Site</strong> button at the top of the screen to open the app in a standalone tab where printing works without iframe restrictions.
               </p>
             </div>
             <div className="space-y-2 pt-2 border-t border-indigo-900/60">

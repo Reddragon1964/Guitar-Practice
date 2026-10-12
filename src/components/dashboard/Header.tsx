@@ -2,11 +2,13 @@ import React from "react";
 import { Guitar, LogOut, Flame, HelpCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { TextScaleControl } from "../ui/TextScaleControl";
+import { SiteNavButton } from "./SiteNavButton";
 
 interface HeaderProps {
   userEmail?: string | null;
   onSignOut: () => void;
   onOpenHelp?: () => void;
+  onNavigateHome?: () => void;
   currentStreak?: number;
   hasPracticedToday?: boolean;
 }
@@ -15,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   userEmail,
   onSignOut,
   onOpenHelp,
+  onNavigateHome,
   currentStreak = 0,
   hasPracticedToday = false,
 }) => {
@@ -22,8 +25,15 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-indigo-950/60 backdrop-blur-md border-b border-indigo-800 sticky top-0 z-10 print:hidden">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 text-indigo-300">
-          <Guitar className="w-6 h-6" />
-          <h1 className="font-bold text-lg tracking-tight">Practice Tracker</h1>
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            className="flex items-center gap-2.5 text-left text-indigo-300 hover:text-white transition-colors cursor-pointer group focus:outline-none"
+            title="Return to Dashboard Home"
+          >
+            <Guitar className="w-6 h-6 group-hover:scale-105 transition-transform text-indigo-400 group-hover:text-indigo-300" />
+            <h1 className="font-bold text-lg tracking-tight group-hover:text-white">Practice Tracker</h1>
+          </button>
 
           {/* Streak Pill in Header */}
           <div
@@ -48,6 +58,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Site Navigation Button at the Top */}
+          <SiteNavButton variant="header" />
+
           {/* App-Wide Text Scaling Control */}
           <TextScaleControl variant="header" />
 

@@ -63,6 +63,7 @@ import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
 import { MoveableResizableFrame } from "./ui/MoveableResizableFrame";
 import { TextScaleControl } from "./ui/TextScaleControl";
+import { SiteNavButton } from "./dashboard/SiteNavButton";
 import { DashboardFrame, FrameWidth } from "./dashboard/DashboardFrame";
 import { StreakCard } from "./dashboard/StreakCard";
 import { WeeklyGoalsSection } from "./dashboard/WeeklyGoalsSection";
@@ -1191,6 +1192,7 @@ export function Dashboard() {
         userEmail={auth.currentUser?.email}
         onSignOut={() => auth.signOut()}
         onOpenHelp={() => setView("help")}
+        onNavigateHome={() => setView("dashboard")}
         currentStreak={streakInfo.currentStreak}
         hasPracticedToday={streakInfo.hasPracticedToday}
       />
@@ -1309,8 +1311,9 @@ export function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Utilities: Help, Text Scaling, Print, Reset */}
+                {/* Utilities: Open Site, Help, Text Scaling, Print, Reset */}
                 <div className="flex items-center gap-1.5">
+                  <SiteNavButton variant="toolbar" />
                   <TextScaleControl variant="toolbar" />
                   <Button
                     onClick={() => setView("help")}

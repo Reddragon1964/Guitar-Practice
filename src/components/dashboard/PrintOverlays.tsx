@@ -1,7 +1,8 @@
 import React from "react";
-import { Printer } from "lucide-react";
+import { Printer, ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 import { PrintMode } from "../../types";
+import { getAppCurrentUrl } from "./SiteNavButton";
 
 interface PrintOverlaysProps {
   printError: boolean;
@@ -37,21 +38,29 @@ export const PrintOverlays: React.FC<PrintOverlaysProps> = ({
                 <div className="bg-slate-800 rounded p-4 border border-slate-700 mb-2">
                   <p className="text-sm font-medium text-slate-200 mb-2">To print this page:</p>
                   <ol className="list-decimal pl-5 text-sm text-slate-400 space-y-1">
-                    <li>Look at the top right of this preview panel</li>
-                    <li>
-                      Click the <strong>"Open in new tab"</strong> icon
-                    </li>
+                    <li>Click the <strong>"Open Site in New Tab"</strong> button below or at the top</li>
                     <li>Try printing again from the new tab</li>
                   </ol>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <a
+                href={getAppCurrentUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onDismissError}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold text-sm transition-colors text-center shadow-md shadow-indigo-600/30"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open Site in New Tab</span>
+              </a>
               <Button
                 onClick={onDismissError}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white w-full"
+                variant="outline"
+                className="border-slate-700 hover:bg-slate-800 text-slate-300"
               >
-                Got it, thanks
+                Dismiss
               </Button>
             </div>
           </div>
