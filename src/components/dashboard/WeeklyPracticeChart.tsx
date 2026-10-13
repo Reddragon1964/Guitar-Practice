@@ -62,6 +62,7 @@ export interface WeeklyPracticeChartProps {
   onPrint?: (mode: "weekly") => void;
   onRecordSession?: () => void;
   dailyGoalMinutes?: number;
+  gridStroke?: string;
 }
 
 export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
@@ -72,6 +73,7 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
   onPrint,
   onRecordSession,
   dailyGoalMinutes = 30,
+  gridStroke = "#1e1b4b",
 }) => {
   const [rangeMode, setRangeMode] = useState<WeekRangeMode>("last7days");
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -355,8 +357,8 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
           </div>
         </div>
 
-        {/* Summary Metrics Strip - Zero-Pill Typographic Hierarchy */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 px-3 rounded-lg bg-indigo-950/40 border border-indigo-900/40">
+        {/* Summary Metrics Strip - Darker Grid Styling */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 px-3 rounded-lg bg-slate-950/90 border border-slate-900/90 shadow-inner">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-indigo-400 flex items-center gap-1">
               <Clock className="w-3 h-3 text-indigo-400" />
@@ -452,8 +454,8 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
 
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#3730a3"
-                  strokeOpacity={0.5}
+                  stroke={gridStroke}
+                  strokeOpacity={0.85}
                   vertical={false}
                 />
 
@@ -462,7 +464,7 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
                   stroke="#818cf8"
                   fontSize={12}
                   tickLine={false}
-                  axisLine={{ stroke: "#4338ca", strokeWidth: 1 }}
+                  axisLine={{ stroke: gridStroke, strokeWidth: 1 }}
                   tick={(props: any) => {
                     const { x, y, payload } = props;
                     const item = chartDays.find((d) => d.dayLabel === payload.value);

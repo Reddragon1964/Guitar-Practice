@@ -63,8 +63,8 @@ export const WeeklyGoalsSection: React.FC<WeeklyGoalsSectionProps> = ({
         className={cn(
           "p-4 sm:p-5 rounded-xl border transition-all relative overflow-hidden",
           isOverall
-            ? "bg-gradient-to-br from-indigo-950/70 via-slate-950/60 to-purple-950/70 border-indigo-700/60 shadow-lg shadow-indigo-950/30"
-            : "bg-indigo-950/40 border-indigo-800/50 hover:border-indigo-700/60"
+            ? "bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-slate-950/90 border-slate-800/80 shadow-xl"
+            : "bg-slate-950/80 border-slate-850/80 hover:border-slate-700/80 shadow-md"
         )}
       >
         {/* Glow effect on completion */}

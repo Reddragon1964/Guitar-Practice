@@ -33,9 +33,12 @@ interface HistoricalAccuracyChartProps {
   onStartDateFilterChange: (val: string) => void;
   endDateFilter: string;
   onEndDateFilterChange: (val: string) => void;
-  onClearFilters: () => void;
+  onClearFilters?: () => void;
   printMode: PrintMode;
   onPrint: (mode: "historical") => void;
+  gridStroke?: string;
+  showConnectingLines?: boolean;
+  onToggleConnectingLines?: (val: boolean) => void;
 }
 
 export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = ({
@@ -55,7 +58,33 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
   onClearFilters,
   printMode,
   onPrint,
+  gridStroke = "#1e1b4b",
+  showConnectingLines: showConnectingLinesProp,
+  onToggleConnectingLines,
 }) => {
+  const [localShowLines, setLocalShowLines] = React.useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_historical_accuracy_connect_lines");
+      return saved !== null ? saved === "true" : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const showLines = showConnectingLinesProp !== undefined ? showConnectingLinesProp : localShowLines;
+
+  const handleToggleLines = (checked: boolean) => {
+    if (showConnectingLinesProp === undefined) {
+      setLocalShowLines(checked);
+      try {
+        localStorage.setItem("guitar_historical_accuracy_connect_lines", String(checked));
+      } catch {
+        // ignore
+      }
+    }
+    onToggleConnectingLines?.(checked);
+  };
+
   const isHiddenForPrint = printMode && printMode !== "historical" && printMode !== "all";
 
   const hasActiveFilters = Boolean(
@@ -73,22 +102,42 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
   return (
     <Card className={isHiddenForPrint ? "print:hidden" : ""}>
       <CardHeader className="flex flex-col gap-3">
-        <div className="flex flex-row items-center justify-between space-y-0">
+        <div className="flex flex-row items-center justify-between space-y-0 gap-3 flex-wrap">
           <CardTitle>Historical Accuracy by Song</CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="print:hidden h-8"
-            onClick={() => onPrint("historical")}
-          >
-            <Printer className="w-4 h-4 text-indigo-400" />
-          </Button>
+          <div className="flex items-center gap-3 print:hidden">
+            <label
+              htmlFor="historical-connect-lines"
+              className="flex items-center gap-2 cursor-pointer select-none px-2.5 py-1 rounded-md bg-indigo-950/60 border border-indigo-800/60 hover:border-indigo-700/80 hover:bg-indigo-950/80 transition-colors group"
+              title="Turn off or on the lines connecting the data points"
+            >
+              <input
+                type="checkbox"
+                id="historical-connect-lines"
+                className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer accent-indigo-500"
+                checked={showLines}
+                onChange={(e) => handleToggleLines(e.target.checked)}
+              />
+              <span className="text-xs font-medium text-indigo-200 group-hover:text-indigo-100 whitespace-nowrap">
+                Connect data points
+              </span>
+            </label>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="print:hidden h-8"
+              onClick={() => onPrint("historical")}
+              title="Print Historical Accuracy Chart"
+            >
+              <Printer className="w-4 h-4 text-indigo-400" />
+            </Button>
+          </div>
         </div>
 
         <div className="hidden print:block text-sm text-indigo-300 italic mb-4">
           {hasActiveFilters
             ? `Active Filters: ${activeFilterDescriptions.join(", ")}`
             : "Active Filters: None"}
+          {!showLines && " • Connecting lines: Off"}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -182,7 +231,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#3730a3" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.85} vertical={false} />
                 <XAxis
                   dataKey="date"
                   stroke="#818cf8"
@@ -230,10 +279,21 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
                     dataKey={key}
                     name={key}
                     stroke={COLORS[idx % COLORS.length]}
-                    strokeWidth={3}
-                    connectNulls={true}
-                    dot={{ r: 4, fill: COLORS[idx % COLORS.length], strokeWidth: 0 }}
-                    activeDot={{ r: 6 }}
+                    strokeWidth={showLines ? 3 : 0}
+                    strokeOpacity={showLines ? 1 : 0}
+                    connectNulls={showLines}
+                    dot={{
+                      r: showLines ? 4 : 5,
+                      fill: COLORS[idx % COLORS.length],
+                      stroke: showLines ? "none" : "#ffffff",
+                      strokeWidth: showLines ? 0 : 1.5,
+                    }}
+                    activeDot={{
+                      r: 6.5,
+                      fill: COLORS[idx % COLORS.length],
+                      stroke: "#ffffff",
+                      strokeWidth: 2,
+                    }}
                     label={{
                       position: "top",
                       fill: COLORS[idx % COLORS.length],

@@ -21,7 +21,68 @@ export interface MoveableResizableFrameProps {
   bodyClassName?: string;
   hideBackdrop?: boolean;
   initialMaximized?: boolean;
+  isNeonActive?: boolean;
+  neonColor?: "cyan" | "magenta" | "emerald";
 }
+
+export type NeonFrameColor = "cyan" | "magenta" | "emerald";
+
+const NEON_WINDOW_THEMES = {
+  cyan: {
+    glowClass: "neon-glow-cyan",
+    border: "border-2 border-cyan-400",
+    ring: "ring-2 ring-cyan-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-cyan-950/95 via-slate-900 to-cyan-950/90 border-b border-cyan-400/70 shadow-[0_2px_12px_rgba(6,182,212,0.3)]",
+    badgeBg:
+      "bg-cyan-950/90 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.85)]",
+    dotPing: "bg-cyan-400",
+    laserLine:
+      "via-cyan-300 shadow-[0_0_16px_#22d3ee,0_0_32px_#06b6d4]",
+    cornerBorder: "border-cyan-300 drop-shadow-[0_0_8px_#22d3ee]",
+    handleBg:
+      "bg-cyan-950/80 border-cyan-400/80 text-cyan-200 shadow-[0_0_8px_rgba(6,182,212,0.4)]",
+    iconBox:
+      "bg-cyan-500/20 text-cyan-300 border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.4)]",
+    resizeHover: "hover:bg-cyan-500/60",
+  },
+  magenta: {
+    glowClass: "neon-glow-magenta",
+    border: "border-2 border-pink-400",
+    ring: "ring-2 ring-pink-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-pink-950/95 via-slate-900 to-pink-950/90 border-b border-pink-400/70 shadow-[0_2px_12px_rgba(236,72,153,0.3)]",
+    badgeBg:
+      "bg-pink-950/90 text-pink-300 border-pink-400 shadow-[0_0_12px_rgba(236,72,153,0.85)]",
+    dotPing: "bg-pink-400",
+    laserLine:
+      "via-pink-300 shadow-[0_0_16px_#f472b6,0_0_32px_#ec4899]",
+    cornerBorder: "border-pink-300 drop-shadow-[0_0_8px_#f472b6]",
+    handleBg:
+      "bg-pink-950/80 border-pink-400/80 text-pink-200 shadow-[0_0_8px_rgba(236,72,153,0.4)]",
+    iconBox:
+      "bg-pink-500/20 text-pink-300 border-pink-400/60 shadow-[0_0_8px_rgba(236,72,153,0.4)]",
+    resizeHover: "hover:bg-pink-500/60",
+  },
+  emerald: {
+    glowClass: "neon-glow-emerald",
+    border: "border-2 border-emerald-400",
+    ring: "ring-2 ring-emerald-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-emerald-950/95 via-slate-900 to-emerald-950/90 border-b border-emerald-400/70 shadow-[0_2px_12px_rgba(16,185,129,0.3)]",
+    badgeBg:
+      "bg-emerald-950/90 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.85)]",
+    dotPing: "bg-emerald-400",
+    laserLine:
+      "via-emerald-300 shadow-[0_0_16px_#34d399,0_0_32px_#10b981]",
+    cornerBorder: "border-emerald-300 drop-shadow-[0_0_8px_#34d399]",
+    handleBg:
+      "bg-emerald-950/80 border-emerald-400/80 text-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+    iconBox:
+      "bg-emerald-500/20 text-emerald-300 border-emerald-400/60 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+    resizeHover: "hover:bg-emerald-500/60",
+  },
+};
 
 type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -44,7 +105,10 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
   className,
   bodyClassName,
   hideBackdrop = false,
+  isNeonActive = true,
+  neonColor = "cyan",
 }) => {
+  const neon = NEON_WINDOW_THEMES[neonColor] || NEON_WINDOW_THEMES.cyan;
   const [isMaximized, setIsMaximized] = useState(initialMaximized);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
   const [size, setSize] = useState<{ width: number; height: number }>({
@@ -313,17 +377,65 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
               }
         }
         className={cn(
-          "pointer-events-auto flex flex-col rounded-2xl border-2 border-indigo-600/90 bg-slate-950/98 shadow-2xl shadow-indigo-950/90 backdrop-blur-md overflow-hidden select-none transition-shadow",
-          isMaximized ? "rounded-none border-none" : "hover:shadow-indigo-800/60",
+          "pointer-events-auto flex flex-col rounded-2xl bg-slate-950/98 shadow-2xl backdrop-blur-md overflow-hidden select-none transition-all duration-300 relative",
+          isMaximized
+            ? "rounded-none border-none"
+            : isNeonActive
+            ? cn(neon.border, neon.glowClass, neon.ring, "ring-2")
+            : "border-2 border-indigo-600/90 shadow-indigo-950/90 hover:shadow-indigo-800/60",
           className
         )}
       >
+        {/* Top Cyber Neon Laser Beam */}
+        {isNeonActive && !isMaximized && (
+          <div
+            className={cn(
+              "absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent to-transparent pointer-events-none z-20",
+              neon.laserLine
+            )}
+          />
+        )}
+
+        {/* 4 Neon Cyber Corner Brackets */}
+        {isNeonActive && !isMaximized && (
+          <>
+            <div
+              className={cn(
+                "absolute top-1 left-1 w-2.5 h-2.5 border-t-2 border-l-2 pointer-events-none z-20 transition-colors",
+                neon.cornerBorder
+              )}
+            />
+            <div
+              className={cn(
+                "absolute top-1 right-1 w-2.5 h-2.5 border-t-2 border-r-2 pointer-events-none z-20 transition-colors",
+                neon.cornerBorder
+              )}
+            />
+            <div
+              className={cn(
+                "absolute bottom-1 left-1 w-2.5 h-2.5 border-b-2 border-l-2 pointer-events-none z-20 transition-colors",
+                neon.cornerBorder
+              )}
+            />
+            <div
+              className={cn(
+                "absolute bottom-1 right-1 w-2.5 h-2.5 border-b-2 border-r-2 pointer-events-none z-20 transition-colors",
+                neon.cornerBorder
+              )}
+            />
+          </>
+        )}
+
         {/* Title Bar / Drag Zone */}
         <div
           onPointerDown={handleHeaderPointerDown}
           className={cn(
-            "shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border-b border-indigo-700/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing select-none transition-colors",
-            isMaximized && "cursor-default"
+            "shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing select-none transition-colors duration-300 relative z-10",
+            isMaximized
+              ? "cursor-default bg-slate-900 border-b border-indigo-800/60"
+              : isNeonActive
+              ? neon.headerBg
+              : "bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border-b border-indigo-700/80"
           )}
           title={isMaximized ? undefined : "Click and drag to move frame"}
         >
@@ -331,24 +443,63 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
           <div className="flex items-center gap-2.5 min-w-0 pointer-events-none">
             {!isMaximized && (
               <div
-                className="p-1.5 rounded-lg bg-indigo-900/60 border border-indigo-700/60 text-indigo-300 hover:text-white flex items-center gap-1 shadow-xs"
+                className={cn(
+                  "p-1.5 rounded-lg flex items-center gap-1 transition-colors",
+                  isNeonActive
+                    ? neon.handleBg
+                    : "bg-indigo-900/60 border border-indigo-700/60 text-indigo-300 hover:text-white"
+                )}
                 title="Move frame anywhere"
               >
-                <GripHorizontal className="w-4 h-4 text-indigo-300" />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 font-semibold hidden sm:inline">
+                <GripHorizontal className="w-4 h-4" />
+                <span className="text-[10px] font-mono uppercase tracking-wider font-semibold hidden sm:inline">
                   Move
                 </span>
               </div>
             )}
             {icon && (
-              <div className="p-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 shrink-0">
+              <div
+                className={cn(
+                  "p-1.5 rounded-lg shrink-0 border transition-colors",
+                  isNeonActive
+                    ? neon.iconBox
+                    : "bg-indigo-500/20 border border-indigo-400/30 text-indigo-300"
+                )}
+              >
                 {icon}
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
-                {title}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                  {title}
+                </h3>
+                {isNeonActive && !isMaximized && (
+                  <div
+                    className={cn(
+                      "px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider border flex items-center gap-1.5 shrink-0",
+                      neon.badgeBg
+                    )}
+                    title="Active floating frame"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span
+                        className={cn(
+                          "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                          neon.dotPing
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "relative inline-flex rounded-full h-2 w-2 shadow-[0_0_6px_currentColor]",
+                          neon.dotPing
+                        )}
+                      />
+                    </span>
+                    <span>ACTIVE FRAME</span>
+                  </div>
+                )}
+              </div>
               {subtitle && (
                 <p className="text-[11px] text-indigo-300/80 truncate">
                   {subtitle}
@@ -401,25 +552,37 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
             {/* North Edge */}
             <div
               onPointerDown={startResize("n")}
-              className="absolute top-0 left-3 right-3 h-3 cursor-ns-resize hover:bg-indigo-500/50 transition-colors z-20"
+              className={cn(
+                "absolute top-0 left-3 right-3 h-3 cursor-ns-resize transition-colors z-20",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/50"
+              )}
               title="Drag to resize vertically"
             />
             {/* South Edge */}
             <div
               onPointerDown={startResize("s")}
-              className="absolute bottom-0 left-3 right-3 h-3 cursor-ns-resize hover:bg-indigo-500/50 transition-colors z-20"
+              className={cn(
+                "absolute bottom-0 left-3 right-3 h-3 cursor-ns-resize transition-colors z-20",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/50"
+              )}
               title="Drag to resize vertically"
             />
             {/* East Edge */}
             <div
               onPointerDown={startResize("e")}
-              className="absolute top-3 bottom-3 right-0 w-3 cursor-ew-resize hover:bg-indigo-500/50 transition-colors z-20"
+              className={cn(
+                "absolute top-3 bottom-3 right-0 w-3 cursor-ew-resize transition-colors z-20",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/50"
+              )}
               title="Drag to resize horizontally"
             />
             {/* West Edge */}
             <div
               onPointerDown={startResize("w")}
-              className="absolute top-3 bottom-3 left-0 w-3 cursor-ew-resize hover:bg-indigo-500/50 transition-colors z-20"
+              className={cn(
+                "absolute top-3 bottom-3 left-0 w-3 cursor-ew-resize transition-colors z-20",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/50"
+              )}
               title="Drag to resize horizontally"
             />
 
@@ -427,31 +590,58 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
             {/* North-East */}
             <div
               onPointerDown={startResize("ne")}
-              className="absolute top-0 right-0 w-5 h-5 cursor-nesw-resize hover:bg-indigo-500/60 z-30"
+              className={cn(
+                "absolute top-0 right-0 w-5 h-5 cursor-nesw-resize z-30 transition-colors",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/60"
+              )}
               title="Drag to resize diagonally"
             />
             {/* North-West */}
             <div
               onPointerDown={startResize("nw")}
-              className="absolute top-0 left-0 w-5 h-5 cursor-nwse-resize hover:bg-indigo-500/60 z-30"
+              className={cn(
+                "absolute top-0 left-0 w-5 h-5 cursor-nwse-resize z-30 transition-colors",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/60"
+              )}
               title="Drag to resize diagonally"
             />
             {/* South-West */}
             <div
               onPointerDown={startResize("sw")}
-              className="absolute bottom-0 left-0 w-5 h-5 cursor-nesw-resize hover:bg-indigo-500/60 z-30"
+              className={cn(
+                "absolute bottom-0 left-0 w-5 h-5 cursor-nesw-resize z-30 transition-colors",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/60"
+              )}
               title="Drag to resize diagonally"
             />
             {/* South-East: Prominent corner grip handle with tactile lines */}
             <div
               onPointerDown={startResize("se")}
-              className="absolute bottom-0 right-0 w-7 h-7 cursor-nwse-resize flex items-end justify-end p-1 hover:bg-indigo-500/40 rounded-tl-xl transition-all z-30 group"
+              className={cn(
+                "absolute bottom-0 right-0 w-7 h-7 cursor-nwse-resize flex items-end justify-end p-1 rounded-tl-xl transition-all z-30 group",
+                isNeonActive ? neon.resizeHover : "hover:bg-indigo-500/40"
+              )}
               title="Click and drag to resize frame"
             >
               <div className="flex flex-col gap-0.5 items-end justify-end pr-0.5 pb-0.5">
-                <div className="w-1.5 h-0.5 bg-indigo-400 group-hover:bg-white rounded-full transition-colors" />
-                <div className="w-2.5 h-0.5 bg-indigo-400 group-hover:bg-white rounded-full transition-colors" />
-                <div className="w-3.5 h-0.5 bg-indigo-400 group-hover:bg-white rounded-full transition-colors" />
+                <div
+                  className={cn(
+                    "w-1.5 h-0.5 rounded-full transition-colors",
+                    isNeonActive ? "bg-cyan-300 group-hover:bg-white" : "bg-indigo-400 group-hover:bg-white"
+                  )}
+                />
+                <div
+                  className={cn(
+                    "w-2.5 h-0.5 rounded-full transition-colors",
+                    isNeonActive ? "bg-cyan-300 group-hover:bg-white" : "bg-indigo-400 group-hover:bg-white"
+                  )}
+                />
+                <div
+                  className={cn(
+                    "w-3.5 h-0.5 rounded-full transition-colors",
+                    isNeonActive ? "bg-cyan-300 group-hover:bg-white" : "bg-indigo-400 group-hover:bg-white"
+                  )}
+                />
               </div>
             </div>
           </>

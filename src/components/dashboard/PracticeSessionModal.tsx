@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import {
   Clock,
   Music,
@@ -100,6 +100,37 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   const [isCustomSongMode, setIsCustomSongMode] = useState<boolean>(activeSongs.length === 0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const dialogTopRef = useRef<HTMLDivElement>(null);
+
+  // Green flash for speed textbox to remind user to set external practice software to the same speed
+  const [isSpeedFlashing, setIsSpeedFlashing] = useState<boolean>(false);
+  const flashTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevSongTitleRef = useRef<string>(songTitle);
+
+  const triggerSpeedFlash = useCallback(() => {
+    setIsSpeedFlashing(true);
+    if (flashTimerRef.current) {
+      clearTimeout(flashTimerRef.current);
+    }
+    flashTimerRef.current = setTimeout(() => {
+      setIsSpeedFlashing(false);
+    }, 4500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) {
+        clearTimeout(flashTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Flash whenever a song is selected / changed
+  useEffect(() => {
+    if (songTitle && songTitle.trim() !== "" && songTitle !== prevSongTitleRef.current) {
+      triggerSpeedFlash();
+    }
+    prevSongTitleRef.current = songTitle;
+  }, [songTitle, triggerSpeedFlash]);
 
   // Always scroll to the top of the Record Practice Session dialog when it opens
   useLayoutEffect(() => {
@@ -244,7 +275,12 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                   <Select
                     required
                     value={songTitle}
-                    onChange={(e) => onSongTitleChange(e.target.value)}
+                    onChange={(e) => {
+                      onSongTitleChange(e.target.value);
+                      if (e.target.value) {
+                        triggerSpeedFlash();
+                      }
+                    }}
                     className="w-full bg-indigo-950/70 border-indigo-700 text-white font-medium h-10"
                   >
                     <option value="" disabled>
@@ -441,13 +477,23 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                   </span>
                 </div>
 
-                {/* 4. Speed */}
-                <div className="space-y-1.5">
+                {/* 4. Speed with Green Flash Software Match Reminder */}
+                <div className="space-y-1.5 relative">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-indigo-200">
-                      Speed
-                    </label>
-                    <span className="text-[10px] text-indigo-400 font-mono">%</span>
+                    <div className="flex items-center gap-1.5">
+                      <Gauge className="w-3.5 h-3.5 text-indigo-400" />
+                      <label className="text-xs font-medium text-indigo-200">
+                        Speed
+                      </label>
+                    </div>
+                    {isSpeedFlashing ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-emerald-950 bg-emerald-400 px-2 py-0.5 rounded-md border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.95)] animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-emerald-900 animate-ping" />
+                        ⚡ SET SOFTWARE: {speed || "100"}%
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-indigo-400 font-mono">%</span>
+                    )}
                   </div>
                   <NumericKeypadInput
                     label="Speed (%)"
@@ -455,7 +501,10 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     max={200}
                     step={5}
                     value={speed}
-                    onChange={(val) => onSpeedChange(val)}
+                    onChange={(val) => {
+                      onSpeedChange(val);
+                      triggerSpeedFlash();
+                    }}
                     quickPresets={[
                       { label: "50%", value: "50" },
                       { label: "75%", value: "75" },
@@ -464,11 +513,37 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                       { label: "100%", value: "100" },
                     ]}
                     placeholder="100"
-                    inputClassName="w-full h-10 text-center font-mono font-bold text-base text-white bg-indigo-950/80 border-indigo-700 focus:border-indigo-400"
+                    containerClassName={cn(
+                      "transition-all duration-300 rounded-md",
+                      isSpeedFlashing && "ring-4 ring-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.95),0_0_70px_rgba(34,197,94,0.7)] scale-[1.01]"
+                    )}
+                    inputClassName={cn(
+                      "w-full h-10 text-center font-mono font-bold text-base text-white transition-all duration-300",
+                      isSpeedFlashing
+                        ? "animate-speed-flash-green !text-white font-black"
+                        : "bg-indigo-950/80 border-indigo-700 focus:border-indigo-400"
+                    )}
                   />
-                  <span className="text-[10px] text-indigo-400/80 block text-center">
-                    Practice Speed %
-                  </span>
+                  <div className="flex items-center justify-between text-[10px] pt-0.5">
+                    <span className="text-indigo-400/80 truncate">
+                      Practice Speed %
+                    </span>
+                    {isSpeedFlashing ? (
+                      <span className="text-emerald-300 font-bold flex items-center gap-1 animate-pulse bg-emerald-950/90 px-1.5 py-0.5 rounded border border-emerald-500/80 shadow-sm">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        Match your software speed now!
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={triggerSpeedFlash}
+                        className="text-indigo-400/70 hover:text-emerald-300 transition-colors flex items-center gap-0.5"
+                        title="Click to flash reminder: Set practice software to same speed"
+                      >
+                        ⚡ Match software
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

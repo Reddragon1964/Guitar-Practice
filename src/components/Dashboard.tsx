@@ -26,6 +26,7 @@ import {
   HelpCircle,
   Flame,
   RotateCcw,
+  Grid,
 } from "lucide-react";
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import {
@@ -64,13 +65,37 @@ import { PrintOverlays } from "./dashboard/PrintOverlays";
 import { MoveableResizableFrame } from "./ui/MoveableResizableFrame";
 import { TextScaleControl } from "./ui/TextScaleControl";
 import { SiteNavButton } from "./dashboard/SiteNavButton";
-import { DashboardFrame, FrameWidth } from "./dashboard/DashboardFrame";
+import { cn } from "../lib/utils";
+import { DashboardFrame, FrameWidth, NeonColor } from "./dashboard/DashboardFrame";
 import { StreakCard } from "./dashboard/StreakCard";
 import { WeeklyGoalsSection } from "./dashboard/WeeklyGoalsSection";
 import { formatDurationColon, parseDurationInputToSeconds } from "../utils/durationFormat";
 import { WeeklyGoalModal } from "./dashboard/WeeklyGoalModal";
 import { calculateStreak } from "../utils/streakCalculator";
 import { calculateWeeklyGoalProgress } from "../utils/goalCalculator";
+
+export type GridDarkness = "deep" | "obsidian" | "charcoal";
+
+export const GRID_DARKNESS_THEMES: Record<
+  GridDarkness,
+  { label: string; stroke: string; description: string }
+> = {
+  deep: {
+    label: "Deep Dark",
+    stroke: "#1e1b4b", // deep indigo-950
+    description: "Deep dark indigo grid lines",
+  },
+  obsidian: {
+    label: "Obsidian",
+    stroke: "#0f172a", // deep slate-900 / obsidian
+    description: "Ultra-dark obsidian grid lines",
+  },
+  charcoal: {
+    label: "Charcoal",
+    stroke: "#1e293b", // slate-800 charcoal
+    description: "Dark charcoal grid lines",
+  },
+};
 
 export function Dashboard() {
   const [practices, setPractices] = useState<Practice[]>([]);
@@ -212,6 +237,69 @@ export function Dashboard() {
     saveFrameLayout(defaultLayout);
   };
 
+  // Active Neon Highlighted Frame
+  const [activeFrameId, setActiveFrameId] = useState<
+    "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"
+  >(() => {
+    try {
+      const saved = localStorage.getItem("guitar_dashboard_active_frame");
+      if (
+        saved === "streak" ||
+        saved === "goals" ||
+        saved === "trends" ||
+        saved === "milestones" ||
+        saved === "weeklyChart" ||
+        saved === "accuracyChart" ||
+        saved === "sessions"
+      ) {
+        return saved;
+      }
+    } catch {}
+    return "streak";
+  });
+
+  const [neonColor, setNeonColor] = useState<NeonColor>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_dashboard_neon_color");
+      if (saved === "cyan" || saved === "magenta" || saved === "emerald") return saved as NeonColor;
+    } catch {}
+    return "cyan";
+  });
+
+  const selectActiveFrame = (
+    id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"
+  ) => {
+    setActiveFrameId(id);
+    try {
+      localStorage.setItem("guitar_dashboard_active_frame", id);
+    } catch {}
+  };
+
+  const selectNeonColor = (color: NeonColor) => {
+    setNeonColor(color);
+    try {
+      localStorage.setItem("guitar_dashboard_neon_color", color);
+    } catch {}
+  };
+
+  // Chart & Dashboard Grid Darkness Level
+  const [gridDarkness, setGridDarkness] = useState<GridDarkness>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_dashboard_grid_darkness");
+      if (saved === "deep" || saved === "obsidian" || saved === "charcoal") {
+        return saved as GridDarkness;
+      }
+    } catch {}
+    return "deep";
+  });
+
+  const selectGridDarkness = (darkness: GridDarkness) => {
+    setGridDarkness(darkness);
+    try {
+      localStorage.setItem("guitar_dashboard_grid_darkness", darkness);
+    } catch {}
+  };
+
   // Focus and highlight Practice Sessions Log when session saves and closes
   const [highlightSessionsLog, setHighlightSessionsLog] = useState(false);
 
@@ -220,6 +308,12 @@ export function Dashboard() {
     setFrameLayout((prev) =>
       prev.map((f) => (f.id === "sessions" ? { ...f, isMinimized: false } : f))
     );
+
+    // Make sessions the active neon frame
+    setActiveFrameId("sessions");
+    try {
+      localStorage.setItem("guitar_dashboard_active_frame", "sessions");
+    } catch {}
 
     // 2. Allow modal unmount to finish, then smoothly scroll to the TOP of the Practice Sessions Log
     // and set focus on the button at the top to start the next session
@@ -1187,8 +1281,14 @@ export function Dashboard() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-indigo-50 font-sans">
-      <Header
+    <div className="min-h-screen bg-slate-950 text-indigo-50 font-sans relative overflow-x-hidden selection:bg-indigo-600 selection:text-white">
+      {/* Dark Technical Grid Background Overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-30 z-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:32px_32px]"
+        aria-hidden="true"
+      />
+      <div className="relative z-10">
+        <Header
         userEmail={auth.currentUser?.email}
         onSignOut={() => auth.signOut()}
         onOpenHelp={() => setView("help")}
@@ -1311,8 +1411,144 @@ export function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Utilities: Open Site, Help, Text Scaling, Print, Reset */}
-                <div className="flex items-center gap-1.5">
+                {/* Utilities: Active Neon Frame Selector, Open Site, Help, Text Scaling, Print, Reset */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Active Neon Frame Highlight Controller */}
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-900/90 border transition-all duration-300",
+                      neonColor === "cyan"
+                        ? "border-cyan-500/70 shadow-[0_0_12px_rgba(6,182,212,0.35)]"
+                        : neonColor === "magenta"
+                        ? "border-pink-500/70 shadow-[0_0_12px_rgba(236,72,153,0.35)]"
+                        : "border-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span
+                          className={cn(
+                            "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                            neonColor === "cyan"
+                              ? "bg-cyan-400"
+                              : neonColor === "magenta"
+                              ? "bg-pink-400"
+                              : "bg-emerald-400"
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "relative inline-flex rounded-full h-2 w-2 shadow-[0_0_6px_currentColor]",
+                            neonColor === "cyan"
+                              ? "bg-cyan-400 text-cyan-400"
+                              : neonColor === "magenta"
+                              ? "bg-pink-400 text-pink-400"
+                              : "bg-emerald-400 text-emerald-400"
+                          )}
+                        />
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] font-mono font-bold uppercase tracking-wider hidden lg:inline",
+                          neonColor === "cyan"
+                            ? "text-cyan-300"
+                            : neonColor === "magenta"
+                            ? "text-pink-300"
+                            : "text-emerald-300"
+                        )}
+                      >
+                        Neon Frame:
+                      </span>
+                      <select
+                        value={activeFrameId}
+                        onChange={(e) => selectActiveFrame(e.target.value as any)}
+                        className={cn(
+                          "bg-slate-950 text-xs font-semibold rounded-lg px-2 py-1 border focus:outline-none cursor-pointer transition-colors",
+                          neonColor === "cyan"
+                            ? "text-cyan-200 border-cyan-600/70 focus:border-cyan-400"
+                            : neonColor === "magenta"
+                            ? "text-pink-200 border-pink-600/70 focus:border-pink-400"
+                            : "text-emerald-200 border-emerald-600/70 focus:border-emerald-400"
+                        )}
+                        title="Choose which frame is highlighted with vibrant neon"
+                        aria-label="Active frame neon selector"
+                      >
+                        <option value="streak">Daily Practice Streak</option>
+                        <option value="goals">Weekly Goals</option>
+                        <option value="trends">30-Day Trends</option>
+                        <option value="milestones">Milestones & Repertoire</option>
+                        <option value="weeklyChart">Weekly Practice Hours</option>
+                        <option value="accuracyChart">Historical Accuracy</option>
+                        <option value="sessions">Recent Sessions Log</option>
+                      </select>
+                    </div>
+
+                    {/* Neon Color Toggles (Cyan / Magenta / Emerald) */}
+                    <div className="flex items-center gap-1 pl-1.5 border-l border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => selectNeonColor("cyan")}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all cursor-pointer",
+                          neonColor === "cyan"
+                            ? "ring-2 ring-cyan-300 ring-offset-1 ring-offset-slate-900 scale-125 shadow-[0_0_8px_#22d3ee]"
+                            : "opacity-50 hover:opacity-100 hover:scale-110"
+                        )}
+                        style={{ backgroundColor: "#22d3ee" }}
+                        title="Electric Cyan Neon"
+                        aria-label="Electric Cyan Neon Theme"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => selectNeonColor("magenta")}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all cursor-pointer",
+                          neonColor === "magenta"
+                            ? "ring-2 ring-pink-300 ring-offset-1 ring-offset-slate-900 scale-125 shadow-[0_0_8px_#ec4899]"
+                            : "opacity-50 hover:opacity-100 hover:scale-110"
+                        )}
+                        style={{ backgroundColor: "#ec4899" }}
+                        title="Synthwave Pink Neon"
+                        aria-label="Synthwave Pink Neon Theme"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => selectNeonColor("emerald")}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all cursor-pointer",
+                          neonColor === "emerald"
+                            ? "ring-2 ring-emerald-300 ring-offset-1 ring-offset-slate-900 scale-125 shadow-[0_0_8px_#10b981]"
+                            : "opacity-50 hover:opacity-100 hover:scale-110"
+                        )}
+                        style={{ backgroundColor: "#10b981" }}
+                        title="Electric Emerald Neon"
+                        aria-label="Electric Emerald Neon Theme"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Grid Darkness Controller */}
+                  <div
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md"
+                    title="Control chart and dashboard grid line darkness"
+                  >
+                    <Grid className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 hidden xl:inline">
+                      Grids:
+                    </span>
+                    <select
+                      value={gridDarkness}
+                      onChange={(e) => selectGridDarkness(e.target.value as GridDarkness)}
+                      className="bg-slate-950 text-xs font-semibold rounded-lg px-2 py-1 border border-slate-700/80 text-slate-200 focus:outline-none cursor-pointer hover:border-slate-500 transition-colors"
+                      title="Select grid line darkness"
+                      aria-label="Grid darkness selector"
+                    >
+                      <option value="deep">Deep Dark (Default)</option>
+                      <option value="obsidian">Obsidian (Ultra Dark)</option>
+                      <option value="charcoal">Charcoal</option>
+                    </select>
+                  </div>
+
                   <SiteNavButton variant="toolbar" />
                   <TextScaleControl variant="toolbar" />
                   <Button
@@ -1368,6 +1604,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "streak"}
+                      onActivate={() => selectActiveFrame("streak")}
+                      neonColor={neonColor}
                     >
                       <StreakCard
                         streakInfo={streakInfo}
@@ -1397,6 +1636,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "goals"}
+                      onActivate={() => selectActiveFrame("goals")}
+                      neonColor={neonColor}
                     >
                       <WeeklyGoalsSection
                         overallProgress={weeklyGoalProgress.overallProgress}
@@ -1431,6 +1673,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "trends"}
+                      onActivate={() => selectActiveFrame("trends")}
+                      neonColor={neonColor}
                     >
                       <PracticeTrendsSection
                         practices={practices}
@@ -1439,6 +1684,7 @@ export function Dashboard() {
                         printMode={printMode}
                         onPrint={handlePrint}
                         onOpenFullTrends={() => setView("trends")}
+                        gridStroke={GRID_DARKNESS_THEMES[gridDarkness].stroke}
                       />
                     </DashboardFrame>
                   );
@@ -1460,6 +1706,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "milestones"}
+                      onActivate={() => selectActiveFrame("milestones")}
+                      neonColor={neonColor}
                     >
                       <MilestonesCard
                         goals={goals}
@@ -1500,6 +1749,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "weeklyChart"}
+                      onActivate={() => selectActiveFrame("weeklyChart")}
+                      neonColor={neonColor}
                     >
                       <WeeklyPracticeChart
                         data={barChartData}
@@ -1511,6 +1763,7 @@ export function Dashboard() {
                           setEditingPracticeId(null);
                           setView("recordSession");
                         }}
+                        gridStroke={GRID_DARKNESS_THEMES[gridDarkness].stroke}
                       />
                     </DashboardFrame>
                   );
@@ -1532,6 +1785,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "accuracyChart"}
+                      onActivate={() => selectActiveFrame("accuracyChart")}
+                      neonColor={neonColor}
                     >
                       <HistoricalAccuracyChart
                         chartData={chartData}
@@ -1556,6 +1812,7 @@ export function Dashboard() {
                         }}
                         printMode={printMode}
                         onPrint={handlePrint}
+                        gridStroke={GRID_DARKNESS_THEMES[gridDarkness].stroke}
                       />
                     </DashboardFrame>
                   );
@@ -1577,6 +1834,9 @@ export function Dashboard() {
                       onMoveDown={() => moveFrame(index, "down")}
                       canMoveUp={index > 0}
                       canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "sessions"}
+                      onActivate={() => selectActiveFrame("sessions")}
+                      neonColor={neonColor}
                     >
                       <RecentSessionsTable
                         practices={filteredPractices}
@@ -1935,6 +2195,7 @@ export function Dashboard() {
           </div>
         )}
       </main>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   Printer,
@@ -113,6 +113,28 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   const [quickNote, setQuickNote] = useState("");
   const [isSavingQuick, setIsSavingQuick] = useState(false);
   const [csvExported, setCsvExported] = useState(false);
+
+  // Speed textbox green flash reminder
+  const [isQuickSpeedFlashing, setIsQuickSpeedFlashing] = useState(false);
+  const quickFlashTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerQuickSpeedFlash = useCallback(() => {
+    setIsQuickSpeedFlashing(true);
+    if (quickFlashTimerRef.current) {
+      clearTimeout(quickFlashTimerRef.current);
+    }
+    quickFlashTimerRef.current = setTimeout(() => {
+      setIsQuickSpeedFlashing(false);
+    }, 4500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (quickFlashTimerRef.current) {
+        clearTimeout(quickFlashTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleDownloadCsv = () => {
     if (practices.length === 0) return;
@@ -324,9 +346,9 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
         {showQuickForm && onQuickRecordSession && (
           <form
             onSubmit={handleQuickSubmit}
-            className="mb-5 p-4 rounded-xl bg-indigo-950/70 border border-indigo-700/80 space-y-3 print:hidden animate-in fade-in duration-150"
+            className="mb-5 p-4 rounded-xl bg-slate-950/90 border border-slate-800/80 space-y-3 print:hidden animate-in fade-in duration-150"
           >
-            <div className="flex items-center justify-between border-b border-indigo-800/60 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
               <div className="flex items-center gap-2">
                 <Music className="w-4 h-4 text-indigo-400" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
@@ -394,7 +416,19 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   <Select
                     required
                     value={quickSongTitle}
-                    onChange={(e) => setQuickSongTitle(e.target.value)}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setQuickSongTitle(title);
+                      if (title) {
+                        const lastP = practices.find((p) => p.songTitle === title);
+                        if (lastP) {
+                          setQuickSpeed(String(lastP.speed));
+                          setQuickDifficulty(lastP.difficulty);
+                          if (lastP.totalNotes) setQuickTotalNotes(String(lastP.totalNotes));
+                        }
+                        triggerQuickSpeedFlash();
+                      }
+                    }}
                     className="h-9 text-xs"
                   >
                     <option value="" disabled>
@@ -446,11 +480,18 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                 />
               </div>
 
-              {/* Speed */}
+              {/* Speed with Green Flash Software Match Reminder */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 block">
-                  Speed (%)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-indigo-300 block">
+                    Speed (%)
+                  </label>
+                  {isQuickSpeedFlashing && (
+                    <span className="text-[9px] font-mono font-black text-emerald-950 bg-emerald-400 px-1.5 py-0.5 rounded shadow-[0_0_12px_rgba(16,185,129,0.9)] animate-pulse">
+                      ⚡ SET SOFTWARE: {quickSpeed}%
+                    </span>
+                  )}
+                </div>
                 <NumericKeypadInput
                   compact
                   label="Speed (%)"
@@ -458,8 +499,20 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   max={200}
                   step={5}
                   value={quickSpeed}
-                  onChange={setQuickSpeed}
-                  inputClassName="h-9 text-xs font-mono text-center"
+                  onChange={(val) => {
+                    setQuickSpeed(val);
+                    triggerQuickSpeedFlash();
+                  }}
+                  containerClassName={cn(
+                    "transition-all duration-300 rounded-md",
+                    isQuickSpeedFlashing && "ring-4 ring-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.95),0_0_55px_rgba(34,197,94,0.6)] scale-[1.01]"
+                  )}
+                  inputClassName={cn(
+                    "h-9 text-xs font-mono text-center transition-all duration-300",
+                    isQuickSpeedFlashing
+                      ? "animate-speed-flash-green !text-white font-bold"
+                      : "text-white"
+                  )}
                   quickPresets={[
                     { label: "75%", value: "75" },
                     { label: "90%", value: "90" },
@@ -620,10 +673,10 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-indigo-400 uppercase bg-indigo-900/40 border-b border-indigo-800">
+            <thead className="text-xs text-slate-400 uppercase bg-slate-950/90 border-b border-slate-800/80">
               <tr>
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-indigo-900/60 transition-colors whitespace-nowrap"
+                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
                   onClick={() => onSort("date")}
                 >
                   <div className="flex items-center gap-1">
@@ -631,7 +684,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </div>
                 </th>
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-indigo-900/60 transition-colors whitespace-nowrap"
+                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
                   onClick={() => onSort("duration")}
                 >
                   <div className="flex items-center gap-1">
@@ -639,7 +692,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </div>
                 </th>
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-indigo-900/60 transition-colors"
+                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors"
                   onClick={() => onSort("songTitle")}
                 >
                   <div className="flex items-center gap-1">
@@ -647,7 +700,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </div>
                 </th>
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-indigo-900/60 transition-colors whitespace-nowrap"
+                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
                   onClick={() => onSort("difficulty")}
                 >
                   <div className="flex items-center gap-1">
@@ -655,7 +708,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </div>
                 </th>
                 <th
-                  className="px-4 py-3 font-medium text-right cursor-pointer hover:bg-indigo-900/60 transition-colors whitespace-nowrap"
+                  className="px-4 py-3 font-medium text-right cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
                   onClick={() => onSort("accuracy")}
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -664,7 +717,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </div>
                 </th>
                 <th
-                  className="px-4 py-3 font-medium text-right cursor-pointer hover:bg-indigo-900/60 transition-colors whitespace-nowrap"
+                  className="px-4 py-3 font-medium text-right cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
                   onClick={() => onSort("speed")}
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -672,7 +725,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </div>
                 </th>
                 <th className="px-4 py-3 font-medium text-left">Note</th>
-                <th className="px-4 py-3 print:hidden text-right sticky right-0 z-10 bg-indigo-950/90 shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.1)]">
+                <th className="px-4 py-3 print:hidden text-right sticky right-0 z-10 bg-slate-950/95 shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.3)]">
                   Actions
                 </th>
               </tr>
@@ -681,7 +734,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               {practices.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b border-indigo-800 last:border-0 hover:bg-indigo-900/20 transition-colors"
+                  className="border-b border-slate-800/70 last:border-0 hover:bg-slate-900/40 transition-colors"
                 >
                   {/* 1. Date */}
                   <td className="px-4 py-3 whitespace-nowrap text-indigo-200 font-medium">

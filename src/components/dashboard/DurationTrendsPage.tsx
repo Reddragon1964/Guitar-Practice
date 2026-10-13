@@ -557,13 +557,13 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#312e81" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" strokeOpacity={0.85} vertical={false} />
                     <XAxis
                       dataKey="shortLabel"
                       stroke="#818cf8"
                       fontSize={11}
                       tickLine={false}
-                      axisLine={{ stroke: "#3730a3" }}
+                      axisLine={{ stroke: "#1e1b4b" }}
                       dy={10}
                     />
                     <YAxis
@@ -669,13 +669,13 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                     data={chartData}
                     margin={{ top: 10, right: 30, bottom: 25, left: 10 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#312e81" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" strokeOpacity={0.85} vertical={false} />
                     <XAxis
                       dataKey="shortLabel"
                       stroke="#818cf8"
                       fontSize={11}
                       tickLine={false}
-                      axisLine={{ stroke: "#3730a3" }}
+                      axisLine={{ stroke: "#1e1b4b" }}
                       dy={10}
                     />
                     <YAxis

@@ -56,6 +56,7 @@ interface PracticeTrendsSectionProps {
   printMode: PrintMode;
   onPrint: (mode: "trends") => void;
   onOpenFullTrends?: () => void;
+  gridStroke?: string;
 }
 
 type WeeksRangeOption = "4w" | "8w" | "12w" | "24w" | "all";
@@ -204,6 +205,7 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
   printMode,
   onPrint,
   onOpenFullTrends,
+  gridStroke = "#1e1b4b",
 }) => {
   const [weeksRange, setWeeksRange] = useState<WeeksRangeOption>("8w");
   const [songFilter, setSongFilter] = useState<string>("");
@@ -481,7 +483,7 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
               data={weeklyData}
               margin={{ top: 10, right: 25, bottom: 20, left: 10 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#312e81" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.85} vertical={false} />
               <XAxis
                 dataKey="weekLabel"
                 stroke="#818cf8"

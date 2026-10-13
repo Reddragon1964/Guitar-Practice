@@ -6,17 +6,16 @@ import {
   ArrowUp,
   ArrowDown,
   ExternalLink,
-  SlidersHorizontal,
   Columns,
-  Maximize2,
   Sparkles,
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 import { cn } from "../../lib/utils";
 
 export type FrameWidth = "one-third" | "half" | "two-thirds" | "full";
+export type NeonColor = "cyan" | "magenta" | "emerald";
 
 export interface DashboardFrameProps {
   id: string;
@@ -36,7 +35,70 @@ export interface DashboardFrameProps {
   headerActions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  isActive?: boolean;
+  onActivate?: () => void;
+  neonColor?: NeonColor;
 }
+
+const NEON_THEMES = {
+  cyan: {
+    glowClass: "neon-glow-cyan",
+    border: "border-2 border-cyan-400",
+    ring: "ring-2 ring-cyan-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-cyan-950/90 via-slate-900 to-cyan-950/80 border-b border-cyan-400/70 shadow-[0_2px_12px_rgba(6,182,212,0.3)]",
+    badgeBg:
+      "bg-cyan-950/90 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.85)]",
+    dotPing: "bg-cyan-400",
+    laserLine:
+      "via-cyan-300 shadow-[0_0_14px_#22d3ee,0_0_28px_#06b6d4]",
+    cornerBorder: "border-cyan-300 drop-shadow-[0_0_8px_#22d3ee]",
+    handleBg:
+      "bg-cyan-950/80 border-cyan-400/80 text-cyan-200 shadow-[0_0_8px_rgba(6,182,212,0.4)]",
+    iconBox:
+      "bg-cyan-500/20 text-cyan-300 border-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.4)]",
+    hoverPreview:
+      "hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-950/40",
+  },
+  magenta: {
+    glowClass: "neon-glow-magenta",
+    border: "border-2 border-pink-400",
+    ring: "ring-2 ring-pink-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-pink-950/90 via-slate-900 to-pink-950/80 border-b border-pink-400/70 shadow-[0_2px_12px_rgba(236,72,153,0.3)]",
+    badgeBg:
+      "bg-pink-950/90 text-pink-300 border-pink-400 shadow-[0_0_12px_rgba(236,72,153,0.85)]",
+    dotPing: "bg-pink-400",
+    laserLine:
+      "via-pink-300 shadow-[0_0_14px_#f472b6,0_0_28px_#ec4899]",
+    cornerBorder: "border-pink-300 drop-shadow-[0_0_8px_#f472b6]",
+    handleBg:
+      "bg-pink-950/80 border-pink-400/80 text-pink-200 shadow-[0_0_8px_rgba(236,72,153,0.4)]",
+    iconBox:
+      "bg-pink-500/20 text-pink-300 border-pink-400/60 shadow-[0_0_8px_rgba(236,72,153,0.4)]",
+    hoverPreview:
+      "hover:border-pink-500/50 hover:shadow-lg hover:shadow-pink-950/40",
+  },
+  emerald: {
+    glowClass: "neon-glow-emerald",
+    border: "border-2 border-emerald-400",
+    ring: "ring-2 ring-emerald-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/80 border-b border-emerald-400/70 shadow-[0_2px_12px_rgba(16,185,129,0.3)]",
+    badgeBg:
+      "bg-emerald-950/90 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.85)]",
+    dotPing: "bg-emerald-400",
+    laserLine:
+      "via-emerald-300 shadow-[0_0_14px_#34d399,0_0_28px_#10b981]",
+    cornerBorder: "border-emerald-300 drop-shadow-[0_0_8px_#34d399]",
+    handleBg:
+      "bg-emerald-950/80 border-emerald-400/80 text-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+    iconBox:
+      "bg-emerald-500/20 text-emerald-300 border-emerald-400/60 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
+    hoverPreview:
+      "hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-950/40",
+  },
+};
 
 export const DashboardFrame: React.FC<DashboardFrameProps> = ({
   id,
@@ -55,10 +117,14 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
   headerActions,
   children,
   className,
+  isActive = false,
+  onActivate,
+  neonColor = "cyan",
 }) => {
   const [isPoppedOut, setIsPoppedOut] = useState(false);
 
   const currentWidth: FrameWidth = (width as FrameWidth) || "full";
+  const neon = NEON_THEMES[neonColor] || NEON_THEMES.cyan;
 
   // Width CSS mappings based on 12-column responsive grid
   const getColSpanClass = (w: FrameWidth) => {
@@ -88,22 +154,103 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
       {/* 1. Main Dashboard Card Container */}
       <div
         className={cn(
-          "transition-all duration-200 flex flex-col group/frame relative",
+          "transition-all duration-300 flex flex-col group/frame relative",
           getColSpanClass(currentWidth),
           className
         )}
       >
-        <Card className="h-full flex flex-col border border-indigo-800/70 bg-slate-950/90 shadow-xl hover:border-indigo-600/80 transition-colors rounded-2xl overflow-hidden">
+        <Card
+          onClick={() => {
+            onActivate?.();
+          }}
+          onFocusCapture={() => {
+            onActivate?.();
+          }}
+          tabIndex={0}
+          role="region"
+          aria-label={`${title} frame${isActive ? " (Active Frame with Neon Highlight)" : ""}`}
+          className={cn(
+            "h-full flex flex-col bg-slate-950/98 rounded-2xl overflow-hidden transition-all duration-300 relative focus:outline-none",
+            isActive
+              ? cn(
+                  neon.border,
+                  neon.glowClass,
+                  neon.ring,
+                  "z-10 ring-2"
+                )
+              : cn(
+                  "border border-slate-900/95 shadow-2xl bg-slate-950/98",
+                  neon.hoverPreview
+                )
+          )}
+        >
+          {/* Cyber Neon Top Laser Tube Line when Active */}
+          {isActive && (
+            <div
+              className={cn(
+                "absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent to-transparent pointer-events-none z-20",
+                neon.laserLine
+              )}
+            />
+          )}
+
+          {/* Cyber Neon Corner Brackets when Active */}
+          {isActive && (
+            <>
+              <div
+                className={cn(
+                  "absolute top-1 left-1 w-2.5 h-2.5 border-t-2 border-l-2 pointer-events-none z-20 transition-colors",
+                  neon.cornerBorder
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute top-1 right-1 w-2.5 h-2.5 border-t-2 border-r-2 pointer-events-none z-20 transition-colors",
+                  neon.cornerBorder
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute bottom-1 left-1 w-2.5 h-2.5 border-b-2 border-l-2 pointer-events-none z-20 transition-colors",
+                  neon.cornerBorder
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute bottom-1 right-1 w-2.5 h-2.5 border-b-2 border-r-2 pointer-events-none z-20 transition-colors",
+                  neon.cornerBorder
+                )}
+              />
+            </>
+          )}
+
           {/* Frame Tool Bar Header with Move & Resize Controls */}
-          <div className="shrink-0 px-3.5 py-2.5 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-indigo-950/80 border-b border-indigo-800/60 flex items-center justify-between gap-2 select-none">
+          <div
+            className={cn(
+              "shrink-0 px-3.5 py-2.5 flex items-center justify-between gap-2 select-none transition-colors duration-300 relative z-10",
+              isActive
+                ? neon.headerBg
+                : "bg-gradient-to-r from-slate-950 via-slate-900/95 to-slate-950 border-b border-slate-900/90"
+            )}
+          >
             {/* Left: Move & Title info */}
             <div className="flex items-center gap-2 min-w-0">
               {/* Move Handle / Order Controls */}
-              <div className="flex items-center gap-0.5 shrink-0 bg-indigo-950/70 border border-indigo-700/60 rounded-lg p-0.5 text-indigo-300">
+              <div
+                className={cn(
+                  "flex items-center gap-0.5 shrink-0 rounded-lg p-0.5 transition-colors",
+                  isActive
+                    ? neon.handleBg
+                    : "bg-slate-900/90 border border-slate-800/80 text-slate-400"
+                )}
+              >
                 {canMoveUp && (
                   <button
                     type="button"
-                    onClick={onMoveUp}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveUp?.();
+                    }}
                     className="p-1 hover:text-white hover:bg-indigo-800/80 rounded transition-colors"
                     title="Move frame up"
                     aria-label="Move frame up"
@@ -114,7 +261,10 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
                 {canMoveDown && (
                   <button
                     type="button"
-                    onClick={onMoveDown}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveDown?.();
+                    }}
                     className="p-1 hover:text-white hover:bg-indigo-800/80 rounded transition-colors"
                     title="Move frame down"
                     aria-label="Move frame down"
@@ -123,26 +273,60 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
                   </button>
                 )}
                 <div
-                  className="px-1 text-[10px] font-mono uppercase tracking-wider text-indigo-300/90 font-medium flex items-center gap-0.5 cursor-grab"
+                  className="px-1 text-[10px] font-mono uppercase tracking-wider font-medium flex items-center gap-0.5 cursor-grab"
                   title="Moveable frame handle"
                 >
-                  <GripVertical className="w-3.5 h-3.5 text-indigo-400" />
+                  <GripVertical className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Frame</span>
                 </div>
               </div>
 
               {icon && (
-                <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 shrink-0 border border-indigo-400/20">
+                <div
+                  className={cn(
+                    "p-1.5 rounded-lg shrink-0 border transition-colors",
+                    isActive
+                      ? neon.iconBox
+                      : "bg-indigo-500/20 text-indigo-300 border-indigo-400/20"
+                  )}
+                >
                   {icon}
                 </div>
               )}
 
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight truncate">
                     {title}
                   </h3>
                   {badge}
+
+                  {/* Highlighting Active Frame like Neon Badge */}
+                  {isActive && (
+                    <div
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider border flex items-center gap-1.5 shrink-0",
+                        neon.badgeBg
+                      )}
+                      title="This is the currently active frame highlighted in neon"
+                    >
+                      <span className="relative flex h-2 w-2">
+                        <span
+                          className={cn(
+                            "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                            neon.dotPing
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "relative inline-flex rounded-full h-2 w-2 shadow-[0_0_6px_currentColor]",
+                            neon.dotPing
+                          )}
+                        />
+                      </span>
+                      <span>ACTIVE</span>
+                    </div>
+                  )}
                 </div>
                 {subtitle && (
                   <p className="text-[10px] text-indigo-300/80 truncate hidden sm:block">
@@ -160,7 +344,10 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
               {onWidthChange && (
                 <button
                   type="button"
-                  onClick={cycleWidth}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    cycleWidth();
+                  }}
                   className="px-2 py-1 rounded-lg text-[10px] font-mono font-medium bg-indigo-950/80 hover:bg-indigo-800 border border-indigo-700/60 text-indigo-200 hover:text-white transition-colors flex items-center gap-1"
                   title={`Current size: ${width}. Click to resize frame width.`}
                 >
@@ -172,7 +359,10 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
               {/* Pop-Out to Floating Window */}
               <button
                 type="button"
-                onClick={() => setIsPoppedOut(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPoppedOut(true);
+                }}
                 className="p-1.5 rounded-lg text-indigo-300 hover:text-white hover:bg-indigo-800/70 border border-transparent hover:border-indigo-700/50 transition-colors"
                 title="Pop out into floating movable & resizable window"
                 aria-label="Pop out into floating movable & resizable window"
@@ -184,7 +374,10 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
               {onToggleMinimize && (
                 <button
                   type="button"
-                  onClick={onToggleMinimize}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleMinimize();
+                  }}
                   className="p-1.5 rounded-lg text-indigo-300 hover:text-white hover:bg-indigo-800/70 border border-transparent hover:border-indigo-700/50 transition-colors"
                   title={isMinimized ? "Expand frame content" : "Minimize frame content"}
                   aria-label={isMinimized ? "Expand frame content" : "Minimize frame content"}
@@ -201,13 +394,16 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
 
           {/* Frame Content Body */}
           {!isMinimized && (
-            <div className="p-3 sm:p-5 flex-1 flex flex-col min-h-0 overflow-visible relative">
+            <div className="p-3 sm:p-5 flex-1 flex flex-col min-h-0 overflow-visible relative z-10">
               {children}
 
               {/* Visual Resize Affordance at bottom right */}
               {onWidthChange && (
                 <div
-                  onClick={cycleWidth}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    cycleWidth();
+                  }}
                   className="absolute bottom-1 right-1 p-1 text-indigo-500/60 hover:text-indigo-300 cursor-pointer transition-colors"
                   title="Click to cycle frame width"
                 >
@@ -236,15 +432,20 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
           minWidth={400}
           minHeight={300}
           ariaLabel={title}
+          isNeonActive={true}
+          neonColor={neonColor}
         >
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-indigo-950/60 border border-indigo-800/60 text-xs text-indigo-300">
-              <span>Floating frame mode active. You can drag and resize this window anywhere.</span>
+            <div className="flex items-center justify-between p-2 rounded-xl bg-cyan-950/60 border border-cyan-800/60 text-xs text-cyan-300">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span>Floating neon frame mode active. You can drag and resize this window anywhere.</span>
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsPoppedOut(false)}
-                className="h-7 text-xs text-indigo-200 hover:text-white"
+                className="h-7 text-xs text-cyan-200 hover:text-white"
               >
                 Dock back to dashboard
               </Button>
