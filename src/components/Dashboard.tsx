@@ -27,6 +27,8 @@ import {
   Flame,
   RotateCcw,
   Grid,
+  FileSpreadsheet,
+  Settings,
 } from "lucide-react";
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import {
@@ -61,6 +63,8 @@ import { LiveVoiceCoachModal } from "./dashboard/LiveVoiceCoachModal";
 import { HelpModal } from "./dashboard/HelpModal";
 import { ManageSongsModal } from "./dashboard/ManageSongsModal";
 import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
+import { DailyAccuracyReportModal } from "./dashboard/DailyAccuracyReportModal";
+import { SettingsModal } from "./dashboard/SettingsModal";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
 import { MoveableResizableFrame } from "./ui/MoveableResizableFrame";
 import { TextScaleControl } from "./ui/TextScaleControl";
@@ -71,33 +75,45 @@ import { StreakCard } from "./dashboard/StreakCard";
 import { WeeklyGoalsSection } from "./dashboard/WeeklyGoalsSection";
 import { formatDurationColon, parseDurationInputToSeconds } from "../utils/durationFormat";
 import { WeeklyGoalModal } from "./dashboard/WeeklyGoalModal";
+import { useColorScheme } from "../context/ColorSchemeContext";
 import { calculateStreak } from "../utils/streakCalculator";
 import { calculateWeeklyGoalProgress } from "../utils/goalCalculator";
 
-export type GridDarkness = "deep" | "obsidian" | "charcoal";
+export type GridDarkness = "deep" | "obsidian" | "charcoal" | "white";
 
 export const GRID_DARKNESS_THEMES: Record<
   GridDarkness,
-  { label: string; stroke: string; description: string }
+  { label: string; stroke: string; bgLine: string; description: string }
 > = {
   deep: {
     label: "Deep Dark",
     stroke: "#1e1b4b", // deep indigo-950
+    bgLine: "rgba(30, 27, 75, 0.4)",
     description: "Deep dark indigo grid lines",
   },
   obsidian: {
     label: "Obsidian",
     stroke: "#0f172a", // deep slate-900 / obsidian
+    bgLine: "rgba(15, 23, 42, 0.4)",
     description: "Ultra-dark obsidian grid lines",
   },
   charcoal: {
     label: "Charcoal",
     stroke: "#1e293b", // slate-800 charcoal
+    bgLine: "rgba(30, 41, 59, 0.4)",
     description: "Dark charcoal grid lines",
+  },
+  white: {
+    label: "White",
+    stroke: "#ffffff", // clean high-contrast white grid lines
+    bgLine: "rgba(255, 255, 255, 0.2)",
+    description: "Crisp high-contrast white grid lines",
   },
 };
 
 export function Dashboard() {
+  const { currentScheme } = useColorScheme();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoal[]>([]);
@@ -148,6 +164,8 @@ export function Dashboard() {
   const [sessionSortDirection, setSessionSortDirection] = useState<SortDirection>("desc");
   const [sessionFilterName, setSessionFilterName] = useState("");
   const [sessionFilterDate, setSessionFilterDate] = useState("");
+  const [sessionFilterStartDate, setSessionFilterStartDate] = useState("");
+  const [sessionFilterEndDate, setSessionFilterEndDate] = useState("");
   const [sessionFilterSpeed, setSessionFilterSpeed] = useState("");
   const [sessionFilterLevel, setSessionFilterLevel] = useState("");
 
@@ -163,6 +181,7 @@ export function Dashboard() {
 
   const [printMode, setPrintMode] = useState<PrintMode>(null);
   const [printError, setPrintError] = useState(false);
+  const [showAccuracyReport, setShowAccuracyReport] = useState<boolean>(false);
 
   // Movable and Resizable Dashboard Frames Layout Configuration
   const [frameLayout, setFrameLayout] = useState<
@@ -261,7 +280,16 @@ export function Dashboard() {
   const [neonColor, setNeonColor] = useState<NeonColor>(() => {
     try {
       const saved = localStorage.getItem("guitar_dashboard_neon_color");
-      if (saved === "cyan" || saved === "magenta" || saved === "emerald") return saved as NeonColor;
+      if (
+        saved === "cyan" ||
+        saved === "magenta" ||
+        saved === "emerald" ||
+        saved === "amber" ||
+        saved === "violet" ||
+        saved === "crimson"
+      ) {
+        return saved as NeonColor;
+      }
     } catch {}
     return "cyan";
   });
@@ -286,7 +314,7 @@ export function Dashboard() {
   const [gridDarkness, setGridDarkness] = useState<GridDarkness>(() => {
     try {
       const saved = localStorage.getItem("guitar_dashboard_grid_darkness");
-      if (saved === "deep" || saved === "obsidian" || saved === "charcoal") {
+      if (saved === "deep" || saved === "obsidian" || saved === "charcoal" || saved === "white") {
         return saved as GridDarkness;
       }
     } catch {}
@@ -1236,6 +1264,8 @@ export function Dashboard() {
   // Filtered & Sorted Recent Practices
   const filteredPractices = useMemo(() => {
     const query = sessionSearchQuery.trim().toLowerCase();
+    const effectiveStart = sessionFilterStartDate || sessionFilterDate;
+    const effectiveEnd = sessionFilterEndDate;
 
     return [...practices]
       .filter((p) => {
@@ -1244,10 +1274,11 @@ export function Dashboard() {
             Boolean(p.note && p.note.toLowerCase().includes(query))
           : true;
         const matchName = sessionFilterName ? p.songTitle === sessionFilterName : true;
-        const matchDate = sessionFilterDate ? p.date === sessionFilterDate : true;
+        const matchStartDate = effectiveStart ? p.date >= effectiveStart : true;
+        const matchEndDate = effectiveEnd ? p.date <= effectiveEnd : true;
         const matchSpeed = sessionFilterSpeed ? p.speed.toString() === sessionFilterSpeed : true;
         const matchLevel = sessionFilterLevel ? p.difficulty.toString() === sessionFilterLevel : true;
-        return matchSearch && matchName && matchDate && matchSpeed && matchLevel;
+        return matchSearch && matchName && matchStartDate && matchEndDate && matchSpeed && matchLevel;
       })
       .sort((a, b) => {
         let comparison = 0;
@@ -1274,6 +1305,8 @@ export function Dashboard() {
     sessionSearchQuery,
     sessionFilterName,
     sessionFilterDate,
+    sessionFilterStartDate,
+    sessionFilterEndDate,
     sessionFilterSpeed,
     sessionFilterLevel,
     sessionSortField,
@@ -1281,10 +1314,20 @@ export function Dashboard() {
   ]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-indigo-50 font-sans relative overflow-x-hidden selection:bg-indigo-600 selection:text-white">
-      {/* Dark Technical Grid Background Overlay */}
+    <div
+      className="min-h-screen text-indigo-50 font-sans relative overflow-x-hidden selection:bg-indigo-600 selection:text-white transition-colors duration-300"
+      style={{
+        backgroundColor: currentScheme.bgBase,
+        backgroundImage: currentScheme.bgGradient,
+      }}
+    >
+      {/* Dynamic Technical Grid Background Overlay based on chosen grid color/darkness */}
       <div
-        className="fixed inset-0 pointer-events-none opacity-30 z-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:32px_32px]"
+        className="fixed inset-0 pointer-events-none z-0 bg-[size:32px_32px] transition-all duration-300"
+        style={{
+          backgroundImage: `linear-gradient(to right, ${GRID_DARKNESS_THEMES[gridDarkness]?.bgLine || "rgba(15, 23, 42, 0.4)"} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_DARKNESS_THEMES[gridDarkness]?.bgLine || "rgba(15, 23, 42, 0.4)"} 1px, transparent 1px)`,
+          opacity: gridDarkness === "white" ? 0.35 : 0.3,
+        }}
         aria-hidden="true"
       />
       <div className="relative z-10">
@@ -1292,6 +1335,7 @@ export function Dashboard() {
         userEmail={auth.currentUser?.email}
         onSignOut={() => auth.signOut()}
         onOpenHelp={() => setView("help")}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onNavigateHome={() => setView("dashboard")}
         currentStreak={streakInfo.currentStreak}
         hasPracticedToday={streakInfo.hasPracticedToday}
@@ -1483,7 +1527,7 @@ export function Dashboard() {
                       </select>
                     </div>
 
-                    {/* Neon Color Toggles (Cyan / Magenta / Emerald) */}
+                    {/* Neon Color Toggles (Cyan / Magenta / Emerald / Amber / Violet / Crimson) */}
                     <div className="flex items-center gap-1 pl-1.5 border-l border-slate-700">
                       <button
                         type="button"
@@ -1491,7 +1535,7 @@ export function Dashboard() {
                         className={cn(
                           "w-4 h-4 rounded-full transition-all cursor-pointer",
                           neonColor === "cyan"
-                            ? "ring-2 ring-cyan-300 ring-offset-1 ring-offset-slate-900 scale-125 shadow-[0_0_8px_#22d3ee]"
+                            ? "ring-2 ring-cyan-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#22d3ee]"
                             : "opacity-50 hover:opacity-100 hover:scale-110"
                         )}
                         style={{ backgroundColor: "#22d3ee" }}
@@ -1504,7 +1548,7 @@ export function Dashboard() {
                         className={cn(
                           "w-4 h-4 rounded-full transition-all cursor-pointer",
                           neonColor === "magenta"
-                            ? "ring-2 ring-pink-300 ring-offset-1 ring-offset-slate-900 scale-125 shadow-[0_0_8px_#ec4899]"
+                            ? "ring-2 ring-pink-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#ec4899]"
                             : "opacity-50 hover:opacity-100 hover:scale-110"
                         )}
                         style={{ backgroundColor: "#ec4899" }}
@@ -1517,12 +1561,51 @@ export function Dashboard() {
                         className={cn(
                           "w-4 h-4 rounded-full transition-all cursor-pointer",
                           neonColor === "emerald"
-                            ? "ring-2 ring-emerald-300 ring-offset-1 ring-offset-slate-900 scale-125 shadow-[0_0_8px_#10b981]"
+                            ? "ring-2 ring-emerald-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#10b981]"
                             : "opacity-50 hover:opacity-100 hover:scale-110"
                         )}
                         style={{ backgroundColor: "#10b981" }}
                         title="Electric Emerald Neon"
                         aria-label="Electric Emerald Neon Theme"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => selectNeonColor("amber")}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all cursor-pointer",
+                          neonColor === "amber"
+                            ? "ring-2 ring-amber-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#f59e0b]"
+                            : "opacity-50 hover:opacity-100 hover:scale-110"
+                        )}
+                        style={{ backgroundColor: "#f59e0b" }}
+                        title="Vintage Amber Neon"
+                        aria-label="Vintage Amber Neon Theme"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => selectNeonColor("violet")}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all cursor-pointer",
+                          neonColor === "violet"
+                            ? "ring-2 ring-purple-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#a855f7]"
+                            : "opacity-50 hover:opacity-100 hover:scale-110"
+                        )}
+                        style={{ backgroundColor: "#a855f7" }}
+                        title="Cosmic Violet Neon"
+                        aria-label="Cosmic Violet Neon Theme"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => selectNeonColor("crimson")}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all cursor-pointer",
+                          neonColor === "crimson"
+                            ? "ring-2 ring-rose-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#f43f5e]"
+                            : "opacity-50 hover:opacity-100 hover:scale-110"
+                        )}
+                        style={{ backgroundColor: "#f43f5e" }}
+                        title="Ruby Crimson Neon"
+                        aria-label="Ruby Crimson Neon Theme"
                       />
                     </div>
                   </div>
@@ -1540,17 +1623,28 @@ export function Dashboard() {
                       value={gridDarkness}
                       onChange={(e) => selectGridDarkness(e.target.value as GridDarkness)}
                       className="bg-slate-950 text-xs font-semibold rounded-lg px-2 py-1 border border-slate-700/80 text-slate-200 focus:outline-none cursor-pointer hover:border-slate-500 transition-colors"
-                      title="Select grid line darkness"
-                      aria-label="Grid darkness selector"
+                      title="Select grid line color and darkness"
+                      aria-label="Grid color and darkness selector"
                     >
                       <option value="deep">Deep Dark (Default)</option>
                       <option value="obsidian">Obsidian (Ultra Dark)</option>
                       <option value="charcoal">Charcoal</option>
+                      <option value="white">White</option>
                     </select>
                   </div>
 
                   <SiteNavButton variant="toolbar" />
                   <TextScaleControl variant="toolbar" />
+                  <Button
+                    onClick={() => setIsSettingsOpen(true)}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-indigo-700/80 bg-indigo-950/60 hover:bg-indigo-800 text-indigo-200"
+                    title="Open Settings & Color Schemes"
+                  >
+                    <Settings className="w-4 h-4 text-indigo-400" />
+                    <span>Settings</span>
+                  </Button>
                   <Button
                     onClick={() => setView("help")}
                     variant="outline"
@@ -1837,6 +1931,21 @@ export function Dashboard() {
                       isActive={activeFrameId === "sessions"}
                       onActivate={() => selectActiveFrame("sessions")}
                       neonColor={neonColor}
+                      headerActions={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAccuracyReport(true);
+                          }}
+                          className="px-2.5 py-1 text-xs font-semibold bg-emerald-950/80 hover:bg-emerald-900/90 text-emerald-200 border-emerald-600/70 shadow-sm flex items-center gap-1.5 transition-colors"
+                          title="Run printable Daily Accuracy by Song report using filtered practice sessions"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="hidden sm:inline">Accuracy Report</span>
+                        </Button>
+                      }
                     >
                       <RecentSessionsTable
                         practices={filteredPractices}
@@ -1849,8 +1958,18 @@ export function Dashboard() {
                         onSort={handleSort}
                         filterName={sessionFilterName}
                         onFilterNameChange={setSessionFilterName}
-                        filterDate={sessionFilterDate}
-                        onFilterDateChange={setSessionFilterDate}
+                        filterDate={sessionFilterStartDate || sessionFilterDate}
+                        onFilterDateChange={(val) => {
+                          setSessionFilterDate(val);
+                          setSessionFilterStartDate(val);
+                        }}
+                        filterStartDate={sessionFilterStartDate || sessionFilterDate}
+                        onFilterStartDateChange={(val) => {
+                          setSessionFilterDate(val);
+                          setSessionFilterStartDate(val);
+                        }}
+                        filterEndDate={sessionFilterEndDate}
+                        onFilterEndDateChange={setSessionFilterEndDate}
                         filterSpeed={sessionFilterSpeed}
                         onFilterSpeedChange={setSessionFilterSpeed}
                         filterLevel={sessionFilterLevel}
@@ -1859,6 +1978,8 @@ export function Dashboard() {
                           setSessionSearchQuery("");
                           setSessionFilterName("");
                           setSessionFilterDate("");
+                          setSessionFilterStartDate("");
+                          setSessionFilterEndDate("");
                           setSessionFilterSpeed("");
                           setSessionFilterLevel("");
                           setSessionSortField("date");
@@ -1874,6 +1995,7 @@ export function Dashboard() {
                         onFeedbackSession={(p) => setFeedbackPractice(p)}
                         printMode={printMode}
                         onPrint={handlePrint}
+                        onOpenAccuracyReport={() => setShowAccuracyReport(true)}
                         isHighlighted={highlightSessionsLog}
                       />
                     </DashboardFrame>
@@ -1975,6 +2097,7 @@ export function Dashboard() {
               printMode={printMode}
               onPrint={handlePrint}
               onBack={() => setView("dashboard")}
+              gridStroke={GRID_DARKNESS_THEMES[gridDarkness].stroke}
             />
           </MoveableResizableFrame>
         )}
@@ -2005,6 +2128,7 @@ export function Dashboard() {
               }}
               onEditSession={handleEditPractice}
               onFeedbackSession={(p) => setFeedbackPractice(p)}
+              gridStroke={GRID_DARKNESS_THEMES[gridDarkness].stroke}
             />
           </MoveableResizableFrame>
         )}
@@ -2169,6 +2293,53 @@ export function Dashboard() {
             }
             focusPracticeSessionsLog();
           }}
+        />
+
+        {/* Daily Accuracy by Song Printable Report Modal */}
+        <DailyAccuracyReportModal
+          isOpen={showAccuracyReport || view === "accuracy-report"}
+          onClose={() => {
+            setShowAccuracyReport(false);
+            if (view === "accuracy-report") {
+              setView("dashboard");
+            }
+          }}
+          practices={filteredPractices}
+          totalAvailableCount={practices.length}
+          filters={{
+            searchQuery: sessionSearchQuery,
+            filterName: sessionFilterName,
+            filterDate: sessionFilterStartDate || sessionFilterDate,
+            filterStartDate: sessionFilterStartDate || sessionFilterDate,
+            filterEndDate: sessionFilterEndDate,
+            filterSpeed: sessionFilterSpeed,
+            filterLevel: sessionFilterLevel,
+          }}
+          onClearFilters={() => {
+            setSessionSearchQuery("");
+            setSessionFilterName("");
+            setSessionFilterDate("");
+            setSessionFilterStartDate("");
+            setSessionFilterEndDate("");
+            setSessionFilterSpeed("");
+            setSessionFilterLevel("");
+          }}
+        />
+
+        {/* Settings Dialog (Appearance, Color Schemes, Neon Highlights & Scaling) */}
+        <SettingsModal
+          isOpen={isSettingsOpen || view === "settings"}
+          onClose={() => {
+            setIsSettingsOpen(false);
+            if (view === "settings") {
+              setView("dashboard");
+            }
+          }}
+          activeNeonColor={neonColor}
+          onSelectNeonColor={selectNeonColor}
+          activeGridDarkness={gridDarkness}
+          onSelectGridDarkness={selectGridDarkness}
+          onResetLayout={resetFrameLayout}
         />
 
         {/* Floating Quick-Launch Dock for Gemini Chatbot & Live Voice */}

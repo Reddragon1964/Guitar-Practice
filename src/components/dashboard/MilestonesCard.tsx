@@ -1,6 +1,6 @@
 import React from "react";
 import { format, parseISO } from "date-fns";
-import { Printer, CheckCircle2, Circle, Trash2 } from "lucide-react";
+import { Printer, CheckCircle2, Circle, Trash2, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -103,7 +103,8 @@ export const MilestonesCard: React.FC<MilestonesCardProps> = ({
 
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 pl-1">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 pl-1 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-emerald-400" />
                   From
                 </span>
                 <Input
@@ -114,7 +115,8 @@ export const MilestonesCard: React.FC<MilestonesCardProps> = ({
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 pl-1">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 pl-1 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-emerald-400" />
                   To
                 </span>
                 <Input

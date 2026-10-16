@@ -16,6 +16,8 @@ import {
   ChevronUp,
   Download,
   Check,
+  FileSpreadsheet,
+  Calendar,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -54,8 +56,12 @@ interface RecentSessionsTableProps {
   onSort: (field: SessionSortField) => void;
   filterName: string;
   onFilterNameChange: (val: string) => void;
-  filterDate: string;
-  onFilterDateChange: (val: string) => void;
+  filterDate?: string;
+  onFilterDateChange?: (val: string) => void;
+  filterStartDate?: string;
+  onFilterStartDateChange?: (val: string) => void;
+  filterEndDate?: string;
+  onFilterEndDateChange?: (val: string) => void;
   filterSpeed: string;
   onFilterSpeedChange: (val: string) => void;
   filterLevel: string;
@@ -68,6 +74,7 @@ interface RecentSessionsTableProps {
   onFeedbackSession?: (p: Practice) => void;
   printMode: PrintMode;
   onPrint: (mode: "recent") => void;
+  onOpenAccuracyReport?: () => void;
   isHighlighted?: boolean;
 }
 
@@ -84,6 +91,10 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   onFilterNameChange,
   filterDate,
   onFilterDateChange,
+  filterStartDate,
+  onFilterStartDateChange,
+  filterEndDate,
+  onFilterEndDateChange,
   filterSpeed,
   onFilterSpeedChange,
   filterLevel,
@@ -96,6 +107,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   onFeedbackSession,
   printMode,
   onPrint,
+  onOpenAccuracyReport,
   isHighlighted = false,
 }) => {
   const isHiddenForPrint = printMode && printMode !== "recent" && printMode !== "all";
@@ -212,23 +224,33 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
     };
   }, [practices]);
 
-  const hasActiveFiltersOrSort = Boolean(
-    searchQuery ||
-      filterName ||
-      filterDate ||
-      filterSpeed ||
-      filterLevel ||
-      sortField !== "date" ||
-      sortDirection !== "desc"
-  );
+    const effectiveStartDate = filterStartDate !== undefined ? filterStartDate : filterDate || "";
+    const effectiveEndDate = filterEndDate || "";
 
-  const activeFilterDescriptions = [
-    searchQuery ? `Search: "${searchQuery}"` : "",
-    filterName,
-    filterDate ? `Date: ${filterDate}` : "",
-    filterSpeed ? `Speed: ${filterSpeed}%` : "",
-    filterLevel ? `Level: ${filterLevel}` : "",
-  ].filter(Boolean);
+    const hasActiveFiltersOrSort = Boolean(
+      searchQuery ||
+        filterName ||
+        effectiveStartDate ||
+        effectiveEndDate ||
+        filterSpeed ||
+        filterLevel ||
+        sortField !== "date" ||
+        sortDirection !== "desc"
+    );
+
+    const activeFilterDescriptions = [
+      searchQuery ? `Search: "${searchQuery}"` : "",
+      filterName,
+      effectiveStartDate && effectiveEndDate
+        ? `Date Range: ${effectiveStartDate} to ${effectiveEndDate}`
+        : effectiveStartDate
+        ? `From: ${effectiveStartDate}`
+        : effectiveEndDate
+        ? `To: ${effectiveEndDate}`
+        : "",
+      filterSpeed ? `Speed: ${filterSpeed}%` : "",
+      filterLevel ? `Level: ${filterLevel}` : "",
+    ].filter(Boolean);
 
   return (
     <Card
@@ -306,6 +328,18 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
           <Button variant="ghost" size="sm" onClick={() => onPrint("recent")} title="Print table">
             <Printer className="w-4 h-4 text-indigo-400" />
           </Button>
+          {onOpenAccuracyReport && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenAccuracyReport}
+              className="gap-1.5 border-emerald-600/70 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/70 hover:text-white transition-colors"
+              title="Run printable Daily Accuracy by Song report using filtered practice sessions"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Accuracy Report</span>
+            </Button>
+          )}
           {onQuickRecordSession && (
             <Button
               variant="outline"
@@ -363,7 +397,10 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
               {/* Date */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 block">Date</label>
+                <label className="text-[11px] font-medium text-indigo-300 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-emerald-400" />
+                  Date
+                </label>
                 <Input
                   type="date"
                   required
@@ -657,12 +694,38 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             ]}
           />
 
-          <Input
-            type="date"
-            value={filterDate}
-            onChange={(e) => onFilterDateChange(e.target.value)}
-            className="w-36"
-          />
+          {/* Date Range: From Date & To Date tables/pickers */}
+          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2 py-1">
+            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">From:</span>
+            <Input
+              type="date"
+              aria-label="Filter Start Date (From)"
+              title="Filter Start Date (From)"
+              value={effectiveStartDate}
+              onChange={(e) => {
+                if (onFilterStartDateChange) {
+                  onFilterStartDateChange(e.target.value);
+                } else if (onFilterDateChange) {
+                  onFilterDateChange(e.target.value);
+                }
+              }}
+              className="w-32 sm:w-34 h-8 text-xs bg-slate-950/90 border-slate-800 text-indigo-100 focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2 py-1">
+            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">To:</span>
+            <Input
+              type="date"
+              aria-label="Filter End Date (To)"
+              title="Filter End Date (To)"
+              value={effectiveEndDate}
+              onChange={(e) => onFilterEndDateChange?.(e.target.value)}
+              className="w-32 sm:w-34 h-8 text-xs bg-slate-950/90 border-slate-800 text-indigo-100 focus:border-indigo-500"
+            />
+          </div>
 
           {hasActiveFiltersOrSort && (
             <Button variant="ghost" onClick={onClearFilters}>

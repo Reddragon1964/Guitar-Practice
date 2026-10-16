@@ -21,6 +21,8 @@ import {
   Target,
   FileSpreadsheet,
   ALargeSmall,
+  Palette,
+  Settings,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -376,6 +378,15 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
             <p className="text-xs text-indigo-200">
               The downloaded CSV includes: Date, Duration (m:ss), Duration (seconds), Song Title, Difficulty Level, Correct Notes, Total Notes, Accuracy (%), Practice Speed (%), Session Type, Test Score, Rating (1-5), and Notes. Compatible with Microsoft Excel, Google Sheets, and Numbers.
             </p>
+            <div className="pt-2 border-t border-indigo-900/60">
+              <div className="font-semibold text-white text-sm mb-1.5 flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>Printable Daily Accuracy by Song Report</span>
+              </div>
+              <p className="text-xs text-indigo-200">
+                Click <strong>"Accuracy Report"</strong> at the top of the Practice Sessions frame to generate a printable report. It uses your filtered practice log data to display songs on the left, daily average accuracy across dates, and overall average of all entries in the final column. You can print directly or export as HTML and CSV.
+              </p>
+            </div>
           </div>
         ),
       },
@@ -454,6 +465,54 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
               </li>
               <li>
                 <strong className="text-white">Automatic Persistence:</strong> Your chosen scale is saved locally in your browser and remembered across sessions.
+              </li>
+            </ul>
+          </div>
+        ),
+      },
+      {
+        id: "settings-color-schemes",
+        category: "getting-started",
+        title: "Settings Dialog & Default Color Schemes",
+        summary: "Customize appearance with curated default color schemes, frame neon glows, and grid line density.",
+        tags: ["settings", "theme", "color scheme", "colors", "neon", "grid", "palettes", "appearance"],
+        content: (
+          <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              Open the <strong className="text-white">Settings</strong> dialog by clicking the gear icon in the top header or the dashboard toolbar:
+            </p>
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-indigo-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-900/60 text-indigo-300 border border-indigo-700/60">
+                  <Palette className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="font-semibold text-white text-sm">Curated Color Schemes</div>
+                  <div className="text-xs text-indigo-300">Choose from 7 signature stage, studio, and vintage themes.</div>
+                </div>
+              </div>
+            </div>
+            <ul className="space-y-2 list-disc pl-5 text-xs text-indigo-200">
+              <li>
+                <strong className="text-white">Cyber Indigo (Default):</strong> Deep studio midnight space with electric cyan and indigo glows.
+              </li>
+              <li>
+                <strong className="text-white">Emerald Groove:</strong> Deep lush forest pine with vibrant mint green accents for natural focus.
+              </li>
+              <li>
+                <strong className="text-white">Synthwave Sunset:</strong> Retro 80s arcade violet plum with neon magenta lasers.
+              </li>
+              <li>
+                <strong className="text-white">Sunburst Tweed:</strong> Warm vintage lacquer amber and tweed amp mahogany undertones.
+              </li>
+              <li>
+                <strong className="text-white">Electric Ocean:</strong> Arctic sky blue and oceanic abyss for crystal-clear readability.
+              </li>
+              <li>
+                <strong className="text-white">Crimson Rock:</strong> Aggressive heavy rock obsidian ruby and fiery red stage accents.
+              </li>
+              <li>
+                <strong className="text-white">Midnight Carbon:</strong> Precision audio console carbon black with high-contrast white grids.
               </li>
             </ul>
           </div>

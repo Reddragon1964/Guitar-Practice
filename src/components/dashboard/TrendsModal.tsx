@@ -23,6 +23,7 @@ interface TrendsModalProps {
   printMode: PrintMode;
   onPrint: (mode: "trends") => void;
   onBack: () => void;
+  gridStroke?: string;
 }
 
 export const TrendsModal: React.FC<TrendsModalProps> = ({
@@ -33,6 +34,7 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
   printMode,
   onPrint,
   onBack,
+  gridStroke = "#1e1b4b",
 }) => {
   const isPrintHidden = printMode && printMode !== "trends" && printMode !== "all";
 
@@ -89,7 +91,7 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data} margin={{ top: 5, right: 30, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" strokeOpacity={0.85} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.85} vertical={false} />
                 <XAxis
                   dataKey="label"
                   stroke="#818cf8"

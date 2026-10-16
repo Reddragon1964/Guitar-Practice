@@ -45,6 +45,7 @@ interface DurationTrendsPageProps {
   onAddSession: () => void;
   onEditSession: (p: Practice) => void;
   onFeedbackSession?: (p: Practice) => void;
+  gridStroke?: string;
 }
 
 type TimeRangeOption = "14d" | "30d" | "90d" | "all";
@@ -83,6 +84,7 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
   onAddSession,
   onEditSession,
   onFeedbackSession,
+  gridStroke = "#1e1b4b",
 }) => {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("30d");
   const [viewMode, setViewMode] = useState<ViewModeOption>("sessions");
@@ -557,13 +559,13 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" strokeOpacity={0.85} vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.85} vertical={false} />
                     <XAxis
                       dataKey="shortLabel"
                       stroke="#818cf8"
                       fontSize={11}
                       tickLine={false}
-                      axisLine={{ stroke: "#1e1b4b" }}
+                      axisLine={{ stroke: gridStroke }}
                       dy={10}
                     />
                     <YAxis
@@ -669,13 +671,13 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                     data={chartData}
                     margin={{ top: 10, right: 30, bottom: 25, left: 10 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" strokeOpacity={0.85} vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} strokeOpacity={0.85} vertical={false} />
                     <XAxis
                       dataKey="shortLabel"
                       stroke="#818cf8"
                       fontSize={11}
                       tickLine={false}
-                      axisLine={{ stroke: "#1e1b4b" }}
+                      axisLine={{ stroke: gridStroke }}
                       dy={10}
                     />
                     <YAxis

@@ -1,13 +1,15 @@
 import React from "react";
-import { Guitar, LogOut, Flame, HelpCircle } from "lucide-react";
+import { Guitar, LogOut, Flame, HelpCircle, Settings } from "lucide-react";
 import { Button } from "../ui/button";
 import { TextScaleControl } from "../ui/TextScaleControl";
 import { SiteNavButton } from "./SiteNavButton";
+import { useColorScheme } from "../../context/ColorSchemeContext";
 
 interface HeaderProps {
   userEmail?: string | null;
   onSignOut: () => void;
   onOpenHelp?: () => void;
+  onOpenSettings?: () => void;
   onNavigateHome?: () => void;
   currentStreak?: number;
   hasPracticedToday?: boolean;
@@ -17,12 +19,21 @@ export const Header: React.FC<HeaderProps> = ({
   userEmail,
   onSignOut,
   onOpenHelp,
+  onOpenSettings,
   onNavigateHome,
   currentStreak = 0,
   hasPracticedToday = false,
 }) => {
+  const { currentScheme } = useColorScheme();
+
   return (
-    <header className="bg-indigo-950/60 backdrop-blur-md border-b border-indigo-800 sticky top-0 z-10 print:hidden">
+    <header
+      className="backdrop-blur-md border-b sticky top-0 z-10 print:hidden transition-colors duration-300"
+      style={{
+        backgroundColor: currentScheme.bgHeader,
+        borderColor: currentScheme.borderColor,
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 text-indigo-300">
           <button
@@ -63,6 +74,19 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* App-Wide Text Scaling Control */}
           <TextScaleControl variant="header" />
+
+          {onOpenSettings && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenSettings}
+              className="gap-1.5 border-indigo-700/80 bg-indigo-900/40 text-indigo-200 hover:bg-indigo-800 hover:text-white"
+              title="Open Settings & Color Schemes"
+            >
+              <Settings className="w-4 h-4 text-indigo-400" />
+              <span>Settings</span>
+            </Button>
+          )}
 
           {onOpenHelp && (
             <Button

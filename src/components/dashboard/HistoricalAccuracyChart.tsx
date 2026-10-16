@@ -1,5 +1,5 @@
 import React from "react";
-import { Printer } from "lucide-react";
+import { Printer, Calendar } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -193,21 +193,23 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             ]}
           />
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-md px-2 py-0.5">
+            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="text-xs text-indigo-300">From</span>
             <Input
               type="date"
-              className="h-8 text-xs"
+              className="h-8 text-xs w-32"
               value={startDateFilter}
               onChange={(e) => onStartDateFilterChange(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-md px-2 py-0.5">
+            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="text-xs text-indigo-300">To</span>
             <Input
               type="date"
-              className="h-8 text-xs"
+              className="h-8 text-xs w-32"
               value={endDateFilter}
               onChange={(e) => onEndDateFilterChange(e.target.value)}
             />

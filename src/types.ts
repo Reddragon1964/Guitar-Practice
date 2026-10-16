@@ -76,12 +76,13 @@ export type DashboardView =
   | "live-voice"
   | "trends"
   | "duration-trends"
+  | "accuracy-report"
   | "help";
 
 export type SessionSortField = "date" | "duration" | "songTitle" | "difficulty" | "accuracy" | "speed";
 export type SortDirection = "asc" | "desc";
 
-export type PrintMode = "all" | "weekly" | "historical" | "recent" | "milestones" | "trends" | "durations" | null;
+export type PrintMode = "all" | "weekly" | "historical" | "recent" | "milestones" | "trends" | "durations" | "accuracy-report" | null;
 
 export interface DeleteConfirmState {
   id: string;

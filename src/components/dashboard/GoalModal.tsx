@@ -1,5 +1,5 @@
 import React from "react";
-import { Target } from "lucide-react";
+import { Target, Calendar } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
@@ -70,7 +70,10 @@ export const GoalModal: React.FC<GoalModalProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-indigo-200">Target Date</label>
+          <label className="text-sm font-medium text-indigo-200 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+            Target Date
+          </label>
           <Input
             type="date"
             required

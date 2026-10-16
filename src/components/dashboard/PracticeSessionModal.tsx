@@ -307,7 +307,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                   Date
                 </label>
                 <Input

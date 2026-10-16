@@ -27,6 +27,25 @@
   animation: progress-glow 2.4s ease-in-out infinite;
 }
 
+/* Date Input Box Calendar Icon - Set to Green (#10b981 / #22c55e) */
+input[type="date"] {
+  color-scheme: dark;
+  accent-color: #10b981;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
+  opacity: 0.95;
+  transition: transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: invert(55%) sepia(85%) saturate(2800%) hue-rotate(88deg) brightness(125%) contrast(125%);
+  transform: scale(1.15);
+}
+
 /* Neon Active Frame Glow Animations & Styles */
 @keyframes neon-pulse-cyan {
   0%, 100% {
@@ -92,6 +111,72 @@
 .neon-glow-emerald {
   border-color: #34d399 !important;
   animation: neon-pulse-emerald 3s ease-in-out infinite;
+}
+
+@keyframes neon-pulse-amber {
+  0%, 100% {
+    box-shadow: 
+      0 0 16px rgba(245, 158, 11, 0.75),
+      0 0 35px rgba(245, 158, 11, 0.5),
+      0 0 65px rgba(251, 191, 36, 0.3),
+      inset 0 0 15px rgba(245, 158, 11, 0.14);
+  }
+  50% {
+    box-shadow: 
+      0 0 26px rgba(245, 158, 11, 0.95),
+      0 0 52px rgba(245, 158, 11, 0.7),
+      0 0 85px rgba(251, 191, 36, 0.45),
+      inset 0 0 24px rgba(245, 158, 11, 0.25);
+  }
+}
+
+@keyframes neon-pulse-violet {
+  0%, 100% {
+    box-shadow: 
+      0 0 16px rgba(168, 85, 247, 0.75),
+      0 0 35px rgba(168, 85, 247, 0.5),
+      0 0 65px rgba(192, 132, 252, 0.3),
+      inset 0 0 15px rgba(168, 85, 247, 0.14);
+  }
+  50% {
+    box-shadow: 
+      0 0 26px rgba(168, 85, 247, 0.95),
+      0 0 52px rgba(168, 85, 247, 0.7),
+      0 0 85px rgba(192, 132, 252, 0.45),
+      inset 0 0 24px rgba(168, 85, 247, 0.25);
+  }
+}
+
+@keyframes neon-pulse-crimson {
+  0%, 100% {
+    box-shadow: 
+      0 0 16px rgba(244, 63, 94, 0.75),
+      0 0 35px rgba(244, 63, 94, 0.5),
+      0 0 65px rgba(239, 68, 68, 0.3),
+      inset 0 0 15px rgba(244, 63, 94, 0.14);
+  }
+  50% {
+    box-shadow: 
+      0 0 26px rgba(244, 63, 94, 0.95),
+      0 0 52px rgba(244, 63, 94, 0.7),
+      0 0 85px rgba(239, 68, 68, 0.45),
+      inset 0 0 24px rgba(244, 63, 94, 0.25);
+  }
+}
+
+.neon-glow-amber {
+  border-color: #fbbf24 !important;
+  animation: neon-pulse-amber 3s ease-in-out infinite;
+}
+
+.neon-glow-violet {
+  border-color: #c084fc !important;
+  animation: neon-pulse-violet 3s ease-in-out infinite;
+}
+
+.neon-glow-crimson {
+  border-color: #fb7185 !important;
+  animation: neon-pulse-crimson 3s ease-in-out infinite;
 }
 
 /* Speed Textbox Green Flash Alert (Practice Software Speed Match Reminder) */
@@ -275,4 +360,39 @@ html[data-text-scale] [class*="text-[13px]"] {
   body.printing-assessment #print-assessment-portal * {
     visibility: visible !important;
   }
+
+  /* Print Daily Accuracy Report Styling & Isolation */
+  body.printing-accuracy-report {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  body.printing-accuracy-report > div:not(#print-accuracy-report-portal),
+  body.printing-accuracy-report > header,
+  body.printing-accuracy-report > nav,
+  body.printing-accuracy-report > footer {
+    display: none !important;
+  }
+
+  body.printing-accuracy-report #print-accuracy-report-portal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm 12mm !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-sizing: border-box !important;
+    page-break-inside: auto !important;
+  }
+
+  body.printing-accuracy-report #print-accuracy-report-portal * {
+    visibility: visible !important;
+  }
 }
+

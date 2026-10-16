@@ -15,7 +15,7 @@ import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 import { cn } from "../../lib/utils";
 
 export type FrameWidth = "one-third" | "half" | "two-thirds" | "full";
-export type NeonColor = "cyan" | "magenta" | "emerald";
+export type NeonColor = "cyan" | "magenta" | "emerald" | "amber" | "violet" | "crimson";
 
 export interface DashboardFrameProps {
   id: string;
@@ -97,6 +97,63 @@ const NEON_THEMES = {
       "bg-emerald-500/20 text-emerald-300 border-emerald-400/60 shadow-[0_0_8px_rgba(16,185,129,0.4)]",
     hoverPreview:
       "hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-950/40",
+  },
+  amber: {
+    glowClass: "neon-glow-amber",
+    border: "border-2 border-amber-400",
+    ring: "ring-2 ring-amber-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-amber-950/90 via-slate-900 to-amber-950/80 border-b border-amber-400/70 shadow-[0_2px_12px_rgba(245,158,11,0.3)]",
+    badgeBg:
+      "bg-amber-950/90 text-amber-300 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.85)]",
+    dotPing: "bg-amber-400",
+    laserLine:
+      "via-amber-300 shadow-[0_0_14px_#fbbf24,0_0_28px_#f59e0b]",
+    cornerBorder: "border-amber-300 drop-shadow-[0_0_8px_#fbbf24]",
+    handleBg:
+      "bg-amber-950/80 border-amber-400/80 text-amber-200 shadow-[0_0_8px_rgba(245,158,11,0.4)]",
+    iconBox:
+      "bg-amber-500/20 text-amber-300 border-amber-400/60 shadow-[0_0_8px_rgba(245,158,11,0.4)]",
+    hoverPreview:
+      "hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-950/40",
+  },
+  violet: {
+    glowClass: "neon-glow-violet",
+    border: "border-2 border-purple-400",
+    ring: "ring-2 ring-purple-400/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-purple-950/90 via-slate-900 to-purple-950/80 border-b border-purple-400/70 shadow-[0_2px_12px_rgba(168,85,247,0.3)]",
+    badgeBg:
+      "bg-purple-950/90 text-purple-300 border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.85)]",
+    dotPing: "bg-purple-400",
+    laserLine:
+      "via-purple-300 shadow-[0_0_14px_#c084fc,0_0_28px_#a855f7]",
+    cornerBorder: "border-purple-300 drop-shadow-[0_0_8px_#c084fc]",
+    handleBg:
+      "bg-purple-950/80 border-purple-400/80 text-purple-200 shadow-[0_0_8px_rgba(168,85,247,0.4)]",
+    iconBox:
+      "bg-purple-500/20 text-purple-300 border-purple-400/60 shadow-[0_0_8px_rgba(168,85,247,0.4)]",
+    hoverPreview:
+      "hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-950/40",
+  },
+  crimson: {
+    glowClass: "neon-glow-crimson",
+    border: "border-2 border-rose-500",
+    ring: "ring-2 ring-rose-500/40 ring-offset-2 ring-offset-slate-950",
+    headerBg:
+      "bg-gradient-to-r from-rose-950/90 via-slate-900 to-rose-950/80 border-b border-rose-500/70 shadow-[0_2px_12px_rgba(244,63,94,0.3)]",
+    badgeBg:
+      "bg-rose-950/90 text-rose-300 border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.85)]",
+    dotPing: "bg-rose-500",
+    laserLine:
+      "via-rose-300 shadow-[0_0_14px_#fb7185,0_0_28px_#f43f5e]",
+    cornerBorder: "border-rose-400 drop-shadow-[0_0_8px_#fb7185]",
+    handleBg:
+      "bg-rose-950/80 border-rose-500/80 text-rose-200 shadow-[0_0_8px_rgba(244,63,94,0.4)]",
+    iconBox:
+      "bg-rose-500/20 text-rose-300 border-rose-500/60 shadow-[0_0_8px_rgba(244,63,94,0.4)]",
+    hoverPreview:
+      "hover:border-rose-500/50 hover:shadow-lg hover:shadow-rose-950/40",
   },
 };
 
