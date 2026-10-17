@@ -20,7 +20,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { NumericKeypadInput } from "../ui/numeric-keypad-input";
 import { Select } from "../ui/select";
-import { Song } from "../../types";
+import { Song, Practice } from "../../types";
 import { cn } from "../../lib/utils";
 import {
   formatDurationColon,
@@ -31,6 +31,7 @@ import { PracticeSessionLiveCoach } from "./PracticeSessionLiveCoach";
 import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 
 interface PracticeSessionModalProps {
+  practices?: Practice[];
   editingPracticeId: string | null;
   activeSongs: Song[];
   songTitle: string;
@@ -66,6 +67,7 @@ interface PracticeSessionModalProps {
 const DURATION_PRESETS = ["0:30", "0:45", "1:00", "1:01", "1:15", "1:30", "2:00", "3:00", "5:00"];
 
 export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
+  practices = [],
   editingPracticeId,
   activeSongs,
   songTitle,
@@ -100,6 +102,42 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   const [isCustomSongMode, setIsCustomSongMode] = useState<boolean>(activeSongs.length === 0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const dialogTopRef = useRef<HTMLDivElement>(null);
+
+  // Compute previous session specifically for this song (or fallback to latest session overall)
+  const previousSessionForSong = useMemo(() => {
+    if (!songTitle || !practices || practices.length === 0) return null;
+    const normalized = songTitle.trim().toLowerCase();
+    const songSessions = practices.filter(
+      (p) =>
+        p.id !== editingPracticeId &&
+        p.songTitle &&
+        p.songTitle.trim().toLowerCase() === normalized
+    );
+    if (songSessions.length === 0) return null;
+    return [...songSessions].sort((a, b) => {
+      const dateCmp = (b.date || "").localeCompare(a.date || "");
+      if (dateCmp !== 0) return dateCmp;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    })[0];
+  }, [songTitle, practices, editingPracticeId]);
+
+  const latestOverallSession = useMemo(() => {
+    if (!practices || practices.length === 0) return null;
+    const valid = practices.filter((p) => p.id !== editingPracticeId);
+    if (valid.length === 0) return null;
+    return [...valid].sort((a, b) => {
+      const dateCmp = (b.date || "").localeCompare(a.date || "");
+      if (dateCmp !== 0) return dateCmp;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    })[0];
+  }, [practices, editingPracticeId]);
+
+  const prevSession = previousSessionForSong || latestOverallSession;
+  const isSongSpecific = Boolean(previousSessionForSong);
+  const prevCorrectNotes = prevSession?.correctNotes;
+  const prevSpeed = prevSession?.speed;
+  const prevTotalNotes = prevSession?.totalNotes;
+  const prevDifficulty = prevSession?.difficulty;
 
   // Green flash for speed textbox to remind user to set external practice software to the same speed
   const [isSpeedFlashing, setIsSpeedFlashing] = useState<boolean>(false);
@@ -323,11 +361,23 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
             {/* Small Numeric Fields Section: Difficulty, Total Notes, Correct Notes, Speed */}
             <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-b from-indigo-950/60 to-slate-900/60 border border-indigo-800/60 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Gauge className="w-4 h-4 text-indigo-400" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
                     Session Metrics & Accuracy Score
                   </span>
+                  {prevSession && (
+                    <span
+                      className="text-xs font-semibold text-emerald-400 font-mono normal-case"
+                      title={
+                        isSongSpecific
+                          ? `Previous session for "${songTitle}": ${prevSession.correctNotes}/${prevSession.totalNotes} notes (${prevSession.accuracy}% accuracy) @ ${prevSession.speed}% speed`
+                          : `Previous session: ${prevSession.correctNotes}/${prevSession.totalNotes} notes (${prevSession.accuracy}% accuracy) @ ${prevSession.speed}% speed`
+                      }
+                    >
+                      (Prev: {prevSession.accuracy}% · {prevSession.correctNotes}/{prevSession.totalNotes} @ {prevSession.speed}%)
+                    </span>
+                  )}
                 </div>
                 {liveAccuracy !== null && (
                   <span
@@ -350,9 +400,21 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 {/* 1. Difficulty */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-indigo-200">
-                      Difficulty
-                    </label>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <label className="text-xs font-medium text-indigo-200">
+                        Difficulty
+                      </label>
+                      {prevDifficulty !== undefined && prevDifficulty !== null && (
+                        <button
+                          type="button"
+                          onClick={() => onDifficultyChange(prevDifficulty)}
+                          className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                          title={`Click to fill previous difficulty: ${prevDifficulty}`}
+                        >
+                          (Prev: {prevDifficulty})
+                        </button>
+                      )}
+                    </div>
                     <span className="text-[10px] text-indigo-400 font-mono">1-12</span>
                   </div>
                   <NumericKeypadInput
@@ -385,14 +447,27 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 {/* 2. Total Notes */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label
-                      className={cn(
-                        "text-xs font-medium transition-colors",
-                        isTestSession ? "text-indigo-400/50" : "text-indigo-200"
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <label
+                        className={cn(
+                          "text-xs font-medium transition-colors",
+                          isTestSession ? "text-indigo-400/50" : "text-indigo-200"
+                        )}
+                      >
+                        Total Notes
+                      </label>
+                      {prevTotalNotes !== undefined && prevTotalNotes !== null && (
+                        <button
+                          type="button"
+                          disabled={isTestSession}
+                          onClick={() => !isTestSession && onTotalNotesChange(String(prevTotalNotes))}
+                          className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer disabled:opacity-40"
+                          title={`Click to fill previous total notes: ${prevTotalNotes}`}
+                        >
+                          (Prev: {prevTotalNotes})
+                        </button>
                       )}
-                    >
-                      Total Notes
-                    </label>
+                    </div>
                     <span className="text-[10px] text-indigo-400 font-mono">Goal</span>
                   </div>
                   <NumericKeypadInput
@@ -424,14 +499,27 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 {/* 3. Correct Notes */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label
-                      className={cn(
-                        "text-xs font-medium transition-colors",
-                        isTestSession ? "text-indigo-400/50 cursor-not-allowed" : "text-indigo-200"
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <label
+                        className={cn(
+                          "text-xs font-medium transition-colors",
+                          isTestSession ? "text-indigo-400/50 cursor-not-allowed" : "text-indigo-200"
+                        )}
+                      >
+                        Correct Notes
+                      </label>
+                      {prevCorrectNotes !== undefined && prevCorrectNotes !== null && (
+                        <button
+                          type="button"
+                          disabled={isTestSession}
+                          onClick={() => !isTestSession && onCorrectNotesChange(String(prevCorrectNotes))}
+                          className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer disabled:opacity-40"
+                          title={`Click to fill previous correct notes: ${prevCorrectNotes}`}
+                        >
+                          (Prev: {prevCorrectNotes})
+                        </button>
                       )}
-                    >
-                      Correct Notes
-                    </label>
+                    </div>
                     <span className="text-[10px] text-indigo-400 font-mono">Hit</span>
                   </div>
                   <NumericKeypadInput
@@ -480,11 +568,24 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 {/* 4. Speed with Green Flash Software Match Reminder */}
                 <div className="space-y-1.5 relative">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Gauge className="w-3.5 h-3.5 text-indigo-400" />
                       <label className="text-xs font-medium text-indigo-200">
                         Speed
                       </label>
+                      {prevSpeed !== undefined && prevSpeed !== null && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSpeedChange(String(prevSpeed));
+                            triggerSpeedFlash();
+                          }}
+                          className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                          title={`Click to fill previous speed: ${prevSpeed}%`}
+                        >
+                          (Prev: {prevSpeed}%)
+                        </button>
+                      )}
                     </div>
                     {isSpeedFlashing ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-mono font-black text-emerald-950 bg-emerald-400 px-2 py-0.5 rounded-md border border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.95)] animate-pulse">

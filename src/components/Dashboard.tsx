@@ -2010,6 +2010,7 @@ export function Dashboard() {
         {/* Moveable & Resizable Windows */}
         {view === "add-practice" && (
           <PracticeSessionModal
+            practices={practices}
             editingPracticeId={editingPracticeId}
             activeSongs={activeSongs}
             songTitle={songTitle}

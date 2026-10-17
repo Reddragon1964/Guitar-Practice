@@ -126,6 +126,21 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   const [isSavingQuick, setIsSavingQuick] = useState(false);
   const [csvExported, setCsvExported] = useState(false);
 
+  // Compute previous session for the quick record song
+  const previousQuickSession = useMemo(() => {
+    if (!quickSongTitle || !practices || practices.length === 0) return null;
+    const normalized = quickSongTitle.trim().toLowerCase();
+    const songSessions = practices.filter(
+      (p) => p.songTitle && p.songTitle.trim().toLowerCase() === normalized
+    );
+    if (songSessions.length === 0) return null;
+    return [...songSessions].sort((a, b) => {
+      const dateCmp = (b.date || "").localeCompare(a.date || "");
+      if (dateCmp !== 0) return dateCmp;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    })[0];
+  }, [quickSongTitle, practices]);
+
   // Speed textbox green flash reminder
   const [isQuickSpeedFlashing, setIsQuickSpeedFlashing] = useState(false);
   const quickFlashTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -520,9 +535,24 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               {/* Speed with Green Flash Software Match Reminder */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300 block">
-                    Speed (%)
-                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <label className="text-[11px] font-medium text-indigo-300 block">
+                      Speed (%)
+                    </label>
+                    {previousQuickSession && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickSpeed(String(previousQuickSession.speed));
+                          triggerQuickSpeedFlash();
+                        }}
+                        className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                        title={`Click to fill previous speed: ${previousQuickSession.speed}%`}
+                      >
+                        (Prev: {previousQuickSession.speed}%)
+                      </button>
+                    )}
+                  </div>
                   {isQuickSpeedFlashing && (
                     <span className="text-[9px] font-mono font-black text-emerald-950 bg-emerald-400 px-1.5 py-0.5 rounded shadow-[0_0_12px_rgba(16,185,129,0.9)] animate-pulse">
                       ⚡ SET SOFTWARE: {quickSpeed}%
@@ -562,9 +592,21 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end pt-1">
               {/* Correct Notes */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 block">
-                  Correct Notes
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-indigo-300 block">
+                    Correct Notes
+                  </label>
+                  {previousQuickSession && (
+                    <button
+                      type="button"
+                      onClick={() => setQuickCorrectNotes(String(previousQuickSession.correctNotes))}
+                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                      title={`Click to fill previous correct notes: ${previousQuickSession.correctNotes}`}
+                    >
+                      (Prev: {previousQuickSession.correctNotes})
+                    </button>
+                  )}
+                </div>
                 <NumericKeypadInput
                   compact
                   label="Correct Notes"
@@ -577,9 +619,21 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
               {/* Total Notes */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 block">
-                  Total Notes
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-indigo-300 block">
+                    Total Notes
+                  </label>
+                  {previousQuickSession && (
+                    <button
+                      type="button"
+                      onClick={() => setQuickTotalNotes(String(previousQuickSession.totalNotes))}
+                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                      title={`Click to fill previous total notes: ${previousQuickSession.totalNotes}`}
+                    >
+                      (Prev: {previousQuickSession.totalNotes})
+                    </button>
+                  )}
+                </div>
                 <NumericKeypadInput
                   compact
                   label="Total Notes"
