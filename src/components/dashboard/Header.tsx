@@ -1,5 +1,5 @@
 import React from "react";
-import { Guitar, LogOut, Flame, HelpCircle, Settings } from "lucide-react";
+import { Guitar, LogOut, Flame, HelpCircle, Settings, Sliders } from "lucide-react";
 import { Button } from "../ui/button";
 import { TextScaleControl } from "../ui/TextScaleControl";
 import { SiteNavButton } from "./SiteNavButton";
@@ -10,6 +10,7 @@ interface HeaderProps {
   onSignOut: () => void;
   onOpenHelp?: () => void;
   onOpenSettings?: () => void;
+  onOpenCustomize?: () => void;
   onNavigateHome?: () => void;
   currentStreak?: number;
   hasPracticedToday?: boolean;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onOpenHelp,
   onOpenSettings,
+  onOpenCustomize,
   onNavigateHome,
   currentStreak = 0,
   hasPracticedToday = false,
@@ -74,6 +76,19 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* App-Wide Text Scaling Control */}
           <TextScaleControl variant="header" />
+
+          {onOpenCustomize && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenCustomize}
+              className="gap-1.5 border-cyan-700/80 bg-cyan-950/40 text-cyan-200 hover:bg-cyan-900/60 hover:text-white"
+              title="Customize Glow Colors & Active Frame"
+            >
+              <Sliders className="w-4 h-4 text-cyan-400" />
+              <span>Customize</span>
+            </Button>
+          )}
 
           {onOpenSettings && (
             <Button

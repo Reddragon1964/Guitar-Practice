@@ -23,6 +23,7 @@ import {
   ALargeSmall,
   Palette,
   Settings,
+  Volume2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -515,6 +516,41 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
                 <strong className="text-white">Midnight Carbon:</strong> Precision audio console carbon black with high-contrast white grids.
               </li>
             </ul>
+          </div>
+        ),
+      },
+      {
+        id: "customize-volume-controls",
+        category: "getting-started",
+        title: "Customize Dialog, Frame Glow Colors & Windows Volume Slider",
+        summary: "Set neon frame glow colors, choose your active highlighted frame, and adjust Windows audio volume levels.",
+        tags: ["customize", "glow", "neon", "volume", "windows volume", "slider", "sound", "audio", "frames"],
+        content: (
+          <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              The <strong className="text-white">Customize</strong> dialog and <strong className="text-white">Windows Volume Slider</strong> make personalizing and managing your practice environment fast and seamless:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-cyan-800/60 space-y-1.5">
+                <div className="flex items-center gap-2 text-cyan-300 font-semibold text-sm">
+                  <Sliders className="w-4 h-4 text-cyan-400" />
+                  Customize Dialog
+                </div>
+                <p className="text-xs text-slate-300">
+                  Click <strong className="text-white">Customize</strong> in the toolbar or header to open the dialog. From there, select from 6 vibrant neon glow colors (Electric Cyan, Synthwave Pink, Electric Emerald, Vintage Amber, Cosmic Violet, and Ruby Crimson), assign which frame gets the glowing border, and adjust grid line density.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-emerald-800/60 space-y-1.5">
+                <div className="flex items-center gap-2 text-emerald-300 font-semibold text-sm">
+                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                  Windows Volume Slider
+                </div>
+                <p className="text-xs text-slate-300">
+                  Located at the top of the Practice Tracker main form and the Record Practice Session frame top. Adjust master volume from 0% to 100% with real-time audio chime feedback, quick mute toggle, and seamless synchronization across the entire application.
+                </p>
+              </div>
+            </div>
           </div>
         ),
       },

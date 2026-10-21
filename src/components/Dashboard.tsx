@@ -29,6 +29,8 @@ import {
   Grid,
   FileSpreadsheet,
   Settings,
+  TrendingUp,
+  Sliders,
 } from "lucide-react";
 import { db, handleFirestoreError, OperationType, auth } from "../lib/firebase";
 import {
@@ -65,9 +67,12 @@ import { ManageSongsModal } from "./dashboard/ManageSongsModal";
 import { DeleteConfirmModal } from "./dashboard/DeleteConfirmModal";
 import { DailyAccuracyReportModal } from "./dashboard/DailyAccuracyReportModal";
 import { SettingsModal } from "./dashboard/SettingsModal";
+import { CustomizeModal } from "./dashboard/CustomizeModal";
+import { RecentSessionsTrendChart } from "./dashboard/RecentSessionsTrendChart";
 import { PrintOverlays } from "./dashboard/PrintOverlays";
 import { MoveableResizableFrame } from "./ui/MoveableResizableFrame";
 import { TextScaleControl } from "./ui/TextScaleControl";
+import { WindowsVolumeSlider } from "./ui/WindowsVolumeSlider";
 import { SiteNavButton } from "./dashboard/SiteNavButton";
 import { cn } from "../lib/utils";
 import { DashboardFrame, FrameWidth, NeonColor } from "./dashboard/DashboardFrame";
@@ -114,6 +119,7 @@ export const GRID_DARKNESS_THEMES: Record<
 export function Dashboard() {
   const { currentScheme } = useColorScheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoal[]>([]);
@@ -184,23 +190,40 @@ export function Dashboard() {
   const [showAccuracyReport, setShowAccuracyReport] = useState<boolean>(false);
 
   // Movable and Resizable Dashboard Frames Layout Configuration
+  type FrameId =
+    | "streak"
+    | "recentTrend"
+    | "goals"
+    | "trends"
+    | "milestones"
+    | "weeklyChart"
+    | "accuracyChart"
+    | "sessions";
+
   const [frameLayout, setFrameLayout] = useState<
-    { id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"; width: FrameWidth; isMinimized: boolean }[]
+    { id: FrameId; width: FrameWidth; isMinimized: boolean }[]
   >(() => {
-    const defaultLayout = [
-      { id: "streak" as const, width: "full" as FrameWidth, isMinimized: false },
-      { id: "goals" as const, width: "full" as FrameWidth, isMinimized: false },
-      { id: "trends" as const, width: "two-thirds" as FrameWidth, isMinimized: false },
-      { id: "milestones" as const, width: "one-third" as FrameWidth, isMinimized: false },
-      { id: "weeklyChart" as const, width: "half" as FrameWidth, isMinimized: false },
-      { id: "accuracyChart" as const, width: "half" as FrameWidth, isMinimized: false },
-      { id: "sessions" as const, width: "full" as FrameWidth, isMinimized: false },
+    const defaultLayout: { id: FrameId; width: FrameWidth; isMinimized: boolean }[] = [
+      { id: "streak", width: "full", isMinimized: false },
+      { id: "recentTrend", width: "full", isMinimized: false },
+      { id: "goals", width: "full", isMinimized: false },
+      { id: "trends", width: "two-thirds", isMinimized: false },
+      { id: "milestones", width: "one-third", isMinimized: false },
+      { id: "weeklyChart", width: "half", isMinimized: false },
+      { id: "accuracyChart", width: "half", isMinimized: false },
+      { id: "sessions", width: "full", isMinimized: false },
     ];
     try {
       const saved = localStorage.getItem("guitar_dashboard_frames_layout");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === defaultLayout.length) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasRecentTrend = parsed.some((p: any) => p.id === "recentTrend");
+          if (!hasRecentTrend) {
+            const streakIdx = parsed.findIndex((p: any) => p.id === "streak");
+            const insertAt = streakIdx >= 0 ? streakIdx + 1 : 0;
+            parsed.splice(insertAt, 0, { id: "recentTrend", width: "full", isMinimized: false });
+          }
           return parsed;
         }
       }
@@ -209,7 +232,7 @@ export function Dashboard() {
   });
 
   const saveFrameLayout = (
-    newLayout: { id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"; width: FrameWidth; isMinimized: boolean }[]
+    newLayout: { id: FrameId; width: FrameWidth; isMinimized: boolean }[]
   ) => {
     setFrameLayout(newLayout);
     try {
@@ -227,7 +250,7 @@ export function Dashboard() {
   };
 
   const updateFrameWidth = (
-    id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions",
+    id: FrameId,
     width: FrameWidth
   ) => {
     const updated = frameLayout.map((f) => (f.id === id ? { ...f, width } : f));
@@ -235,7 +258,7 @@ export function Dashboard() {
   };
 
   const toggleFrameMinimize = (
-    id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"
+    id: FrameId
   ) => {
     const updated = frameLayout.map((f) =>
       f.id === id ? { ...f, isMinimized: !f.isMinimized } : f
@@ -244,26 +267,26 @@ export function Dashboard() {
   };
 
   const resetFrameLayout = () => {
-    const defaultLayout = [
-      { id: "streak" as const, width: "full" as FrameWidth, isMinimized: false },
-      { id: "goals" as const, width: "full" as FrameWidth, isMinimized: false },
-      { id: "trends" as const, width: "two-thirds" as FrameWidth, isMinimized: false },
-      { id: "milestones" as const, width: "one-third" as FrameWidth, isMinimized: false },
-      { id: "weeklyChart" as const, width: "half" as FrameWidth, isMinimized: false },
-      { id: "accuracyChart" as const, width: "half" as FrameWidth, isMinimized: false },
-      { id: "sessions" as const, width: "full" as FrameWidth, isMinimized: false },
+    const defaultLayout: { id: FrameId; width: FrameWidth; isMinimized: boolean }[] = [
+      { id: "streak", width: "full", isMinimized: false },
+      { id: "recentTrend", width: "full", isMinimized: false },
+      { id: "goals", width: "full", isMinimized: false },
+      { id: "trends", width: "two-thirds", isMinimized: false },
+      { id: "milestones", width: "one-third", isMinimized: false },
+      { id: "weeklyChart", width: "half", isMinimized: false },
+      { id: "accuracyChart", width: "half", isMinimized: false },
+      { id: "sessions", width: "full", isMinimized: false },
     ];
     saveFrameLayout(defaultLayout);
   };
 
   // Active Neon Highlighted Frame
-  const [activeFrameId, setActiveFrameId] = useState<
-    "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"
-  >(() => {
+  const [activeFrameId, setActiveFrameId] = useState<FrameId>(() => {
     try {
       const saved = localStorage.getItem("guitar_dashboard_active_frame");
       if (
         saved === "streak" ||
+        saved === "recentTrend" ||
         saved === "goals" ||
         saved === "trends" ||
         saved === "milestones" ||
@@ -295,7 +318,7 @@ export function Dashboard() {
   });
 
   const selectActiveFrame = (
-    id: "streak" | "goals" | "trends" | "milestones" | "weeklyChart" | "accuracyChart" | "sessions"
+    id: FrameId
   ) => {
     setActiveFrameId(id);
     try {
@@ -1336,6 +1359,7 @@ export function Dashboard() {
         onSignOut={() => auth.signOut()}
         onOpenHelp={() => setView("help")}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenCustomize={() => setIsCustomizeOpen(true)}
         onNavigateHome={() => setView("dashboard")}
         currentStreak={streakInfo.currentStreak}
         hasPracticedToday={streakInfo.hasPracticedToday}
@@ -1353,17 +1377,6 @@ export function Dashboard() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5">
-                {/* Primary Action Button */}
-                <Button
-                  onClick={() => {
-                    resetPracticeForm();
-                    setView("add-practice");
-                  }}
-                  className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30 h-9 px-4"
-                >
-                  <Plus className="w-4 h-4" /> Record Session
-                </Button>
-
                 {/* AI Coaching Suite */}
                 <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/70 border border-indigo-800/80">
                   <Button
@@ -1455,183 +1468,51 @@ export function Dashboard() {
                   </Button>
                 </div>
 
-                {/* Utilities: Active Neon Frame Selector, Open Site, Help, Text Scaling, Print, Reset */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {/* Active Neon Frame Highlight Controller */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-900/90 border transition-all duration-300",
-                      neonColor === "cyan"
-                        ? "border-cyan-500/70 shadow-[0_0_12px_rgba(6,182,212,0.35)]"
-                        : neonColor === "magenta"
-                        ? "border-pink-500/70 shadow-[0_0_12px_rgba(236,72,153,0.35)]"
-                        : "border-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="relative flex h-2 w-2 shrink-0">
-                        <span
-                          className={cn(
-                            "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-                            neonColor === "cyan"
-                              ? "bg-cyan-400"
-                              : neonColor === "magenta"
-                              ? "bg-pink-400"
-                              : "bg-emerald-400"
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            "relative inline-flex rounded-full h-2 w-2 shadow-[0_0_6px_currentColor]",
-                            neonColor === "cyan"
-                              ? "bg-cyan-400 text-cyan-400"
-                              : neonColor === "magenta"
-                              ? "bg-pink-400 text-pink-400"
-                              : "bg-emerald-400 text-emerald-400"
-                          )}
-                        />
-                      </span>
-                      <span
-                        className={cn(
-                          "text-[10px] font-mono font-bold uppercase tracking-wider hidden lg:inline",
-                          neonColor === "cyan"
-                            ? "text-cyan-300"
-                            : neonColor === "magenta"
-                            ? "text-pink-300"
-                            : "text-emerald-300"
-                        )}
-                      >
-                        Neon Frame:
-                      </span>
-                      <select
-                        value={activeFrameId}
-                        onChange={(e) => selectActiveFrame(e.target.value as any)}
-                        className={cn(
-                          "bg-slate-950 text-xs font-semibold rounded-lg px-2 py-1 border focus:outline-none cursor-pointer transition-colors",
-                          neonColor === "cyan"
-                            ? "text-cyan-200 border-cyan-600/70 focus:border-cyan-400"
-                            : neonColor === "magenta"
-                            ? "text-pink-200 border-pink-600/70 focus:border-pink-400"
-                            : "text-emerald-200 border-emerald-600/70 focus:border-emerald-400"
-                        )}
-                        title="Choose which frame is highlighted with vibrant neon"
-                        aria-label="Active frame neon selector"
-                      >
-                        <option value="streak">Daily Practice Streak</option>
-                        <option value="goals">Weekly Goals</option>
-                        <option value="trends">30-Day Trends</option>
-                        <option value="milestones">Milestones & Repertoire</option>
-                        <option value="weeklyChart">Weekly Practice Hours</option>
-                        <option value="accuracyChart">Historical Accuracy</option>
-                        <option value="sessions">Recent Sessions Log</option>
-                      </select>
-                    </div>
+                {/* Utilities: Windows Volume Slider, Customize Glow/Frames, Site Nav, Text Scale, Settings, Help, Print, Reset */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Windows Volume Slider (Practice Tracker Main Form Top) */}
+                  <WindowsVolumeSlider variant="toolbar" showLabel={true} />
 
-                    {/* Neon Color Toggles (Cyan / Magenta / Emerald / Amber / Violet / Crimson) */}
-                    <div className="flex items-center gap-1 pl-1.5 border-l border-slate-700">
-                      <button
-                        type="button"
-                        onClick={() => selectNeonColor("cyan")}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all cursor-pointer",
-                          neonColor === "cyan"
-                            ? "ring-2 ring-cyan-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#22d3ee]"
-                            : "opacity-50 hover:opacity-100 hover:scale-110"
-                        )}
-                        style={{ backgroundColor: "#22d3ee" }}
-                        title="Electric Cyan Neon"
-                        aria-label="Electric Cyan Neon Theme"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectNeonColor("magenta")}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all cursor-pointer",
-                          neonColor === "magenta"
-                            ? "ring-2 ring-pink-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#ec4899]"
-                            : "opacity-50 hover:opacity-100 hover:scale-110"
-                        )}
-                        style={{ backgroundColor: "#ec4899" }}
-                        title="Synthwave Pink Neon"
-                        aria-label="Synthwave Pink Neon Theme"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectNeonColor("emerald")}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all cursor-pointer",
-                          neonColor === "emerald"
-                            ? "ring-2 ring-emerald-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#10b981]"
-                            : "opacity-50 hover:opacity-100 hover:scale-110"
-                        )}
-                        style={{ backgroundColor: "#10b981" }}
-                        title="Electric Emerald Neon"
-                        aria-label="Electric Emerald Neon Theme"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectNeonColor("amber")}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all cursor-pointer",
-                          neonColor === "amber"
-                            ? "ring-2 ring-amber-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#f59e0b]"
-                            : "opacity-50 hover:opacity-100 hover:scale-110"
-                        )}
-                        style={{ backgroundColor: "#f59e0b" }}
-                        title="Vintage Amber Neon"
-                        aria-label="Vintage Amber Neon Theme"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectNeonColor("violet")}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all cursor-pointer",
-                          neonColor === "violet"
-                            ? "ring-2 ring-purple-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#a855f7]"
-                            : "opacity-50 hover:opacity-100 hover:scale-110"
-                        )}
-                        style={{ backgroundColor: "#a855f7" }}
-                        title="Cosmic Violet Neon"
-                        aria-label="Cosmic Violet Neon Theme"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectNeonColor("crimson")}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all cursor-pointer",
-                          neonColor === "crimson"
-                            ? "ring-2 ring-rose-300 ring-offset-1 ring-offset-slate-950 scale-125 shadow-[0_0_8px_#f43f5e]"
-                            : "opacity-50 hover:opacity-100 hover:scale-110"
-                        )}
-                        style={{ backgroundColor: "#f43f5e" }}
-                        title="Ruby Crimson Neon"
-                        aria-label="Ruby Crimson Neon Theme"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Grid Darkness Controller */}
-                  <div
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md"
-                    title="Control chart and dashboard grid line darkness"
+                  {/* Customize Dialog Button (Set Glow Color, Active Neon Frame, Grids) */}
+                  <Button
+                    onClick={() => setIsCustomizeOpen(true)}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-cyan-700/80 bg-slate-900/90 hover:bg-slate-800 text-cyan-200 shadow-sm"
+                    title="Customize frame glow color, active neon frame, and grid line style"
                   >
-                    <Grid className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 hidden xl:inline">
-                      Grids:
-                    </span>
-                    <select
-                      value={gridDarkness}
-                      onChange={(e) => selectGridDarkness(e.target.value as GridDarkness)}
-                      className="bg-slate-950 text-xs font-semibold rounded-lg px-2 py-1 border border-slate-700/80 text-slate-200 focus:outline-none cursor-pointer hover:border-slate-500 transition-colors"
-                      title="Select grid line color and darkness"
-                      aria-label="Grid color and darkness selector"
-                    >
-                      <option value="deep">Deep Dark (Default)</option>
-                      <option value="obsidian">Obsidian (Ultra Dark)</option>
-                      <option value="charcoal">Charcoal</option>
-                      <option value="white">White</option>
-                    </select>
-                  </div>
+                    <Sliders className="w-4 h-4 text-cyan-400" />
+                    <span>Customize</span>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full ml-0.5 inline-block border border-white/40 shadow-[0_0_8px_currentColor]"
+                      style={{
+                        backgroundColor:
+                          neonColor === "cyan"
+                            ? "#22d3ee"
+                            : neonColor === "magenta"
+                            ? "#ec4899"
+                            : neonColor === "emerald"
+                            ? "#10b981"
+                            : neonColor === "amber"
+                            ? "#f59e0b"
+                            : neonColor === "violet"
+                            ? "#a855f7"
+                            : "#f43f5e",
+                        color:
+                          neonColor === "cyan"
+                            ? "#22d3ee"
+                            : neonColor === "magenta"
+                            ? "#ec4899"
+                            : neonColor === "emerald"
+                            ? "#10b981"
+                            : neonColor === "amber"
+                            ? "#f59e0b"
+                            : neonColor === "violet"
+                            ? "#a855f7"
+                            : "#f43f5e",
+                      }}
+                    />
+                  </Button>
 
                   <SiteNavButton variant="toolbar" />
                   <TextScaleControl variant="toolbar" />
@@ -1709,6 +1590,39 @@ export function Dashboard() {
                           setView("add-practice");
                         }}
                         printMode={printMode}
+                      />
+                    </DashboardFrame>
+                  );
+                }
+
+                if (frame.id === "recentTrend") {
+                  return (
+                    <DashboardFrame
+                      key="recentTrend"
+                      id="recentTrend"
+                      title="Last 7 Sessions Trend (Duration & Accuracy)"
+                      subtitle="Interactive trend line chart showing practice duration (minutes) and accuracy (%) over your last 7 sessions"
+                      icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
+                      width={frame.width}
+                      onWidthChange={(w) => updateFrameWidth("recentTrend", w)}
+                      isMinimized={frame.isMinimized}
+                      onToggleMinimize={() => toggleFrameMinimize("recentTrend")}
+                      onMoveUp={() => moveFrame(index, "up")}
+                      onMoveDown={() => moveFrame(index, "down")}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < frameLayout.length - 1}
+                      isActive={activeFrameId === "recentTrend"}
+                      onActivate={() => selectActiveFrame("recentTrend")}
+                      neonColor={neonColor}
+                    >
+                      <RecentSessionsTrendChart
+                        practices={practices}
+                        activeSongs={activeSongs}
+                        gridStroke={GRID_DARKNESS_THEMES[gridDarkness].stroke}
+                        onRecordSession={() => {
+                          resetPracticeForm();
+                          setView("add-practice");
+                        }}
                       />
                     </DashboardFrame>
                   );
@@ -2341,6 +2255,18 @@ export function Dashboard() {
           activeGridDarkness={gridDarkness}
           onSelectGridDarkness={selectGridDarkness}
           onResetLayout={resetFrameLayout}
+        />
+
+        {/* Customize Dialog (Set Glow Color, Active Neon Frame, Grid Line Darkness) */}
+        <CustomizeModal
+          isOpen={isCustomizeOpen}
+          onClose={() => setIsCustomizeOpen(false)}
+          activeNeonColor={neonColor}
+          onSelectNeonColor={selectNeonColor}
+          activeFrameId={activeFrameId}
+          onSelectActiveFrame={selectActiveFrame}
+          activeGridDarkness={gridDarkness}
+          onSelectGridDarkness={selectGridDarkness}
         />
 
         {/* Floating Quick-Launch Dock for Gemini Chatbot & Live Voice */}

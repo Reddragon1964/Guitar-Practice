@@ -32,6 +32,7 @@ import {
   parseDurationInputToSeconds,
 } from "../../utils/durationFormat";
 import { downloadPracticesCsv } from "../../utils/csvExport";
+import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 
 export interface QuickRecordPayload {
   date: string;
@@ -397,16 +398,19 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             onSubmit={handleQuickSubmit}
             className="mb-5 p-4 rounded-xl bg-slate-950/90 border border-slate-800/80 space-y-3 print:hidden animate-in fade-in duration-150"
           >
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+            <div className="flex flex-wrap items-center justify-between border-b border-slate-800/80 pb-2 gap-2">
               <div className="flex items-center gap-2">
                 <Music className="w-4 h-4 text-indigo-400" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
                   Quick Record Guitar Practice Session
                 </span>
               </div>
-              <span className="text-xs font-mono text-emerald-300 font-semibold">
-                Accuracy Score: {quickCorrectNotes || 0} / {quickTotalNotes || 0} ({quickAccuracy}%)
-              </span>
+              <div className="flex items-center gap-3">
+                <WindowsVolumeSlider variant="compact" />
+                <span className="text-xs font-mono text-emerald-300 font-semibold">
+                  Accuracy: {quickCorrectNotes || 0} / {quickTotalNotes || 0} ({quickAccuracy}%)
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">

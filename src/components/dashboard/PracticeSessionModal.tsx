@@ -29,6 +29,7 @@ import {
 } from "../../utils/durationFormat";
 import { PracticeSessionLiveCoach } from "./PracticeSessionLiveCoach";
 import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
+import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 
 interface PracticeSessionModalProps {
   practices?: Practice[];
@@ -263,8 +264,25 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
       minWidth={360}
       minHeight={320}
       ariaLabel={editingPracticeId ? "Edit Practice Session" : "Record Practice Session"}
+      headerActions={<WindowsVolumeSlider variant="compact" />}
     >
-      <div ref={dialogTopRef} className="max-w-5xl mx-auto space-y-5">
+      <div ref={dialogTopRef} className="max-w-5xl mx-auto space-y-4">
+        {/* Top of Frame: Windows Volume Slider & Session Status Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-950/80 border border-indigo-800/70 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+            <div>
+              <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                Session Audio & Volume Control
+              </span>
+              <span className="text-[11px] text-indigo-300/80">
+                Adjust backing tracks, metronome, and Windows volume levels
+              </span>
+            </div>
+          </div>
+          <WindowsVolumeSlider variant="toolbar" showLabel={true} />
+        </div>
+
         {/* Real-Time Live Voice Coach while practicing */}
         <PracticeSessionLiveCoach
           songTitle={songTitle}
@@ -364,7 +382,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <Gauge className="w-4 h-4 text-indigo-400" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
-                    Session Metrics & Accuracy Score
+                    Session Metrics
                   </span>
                   {prevSession && (
                     <span
@@ -375,7 +393,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                           : `Previous session: ${prevSession.correctNotes}/${prevSession.totalNotes} notes (${prevSession.accuracy}% accuracy) @ ${prevSession.speed}% speed`
                       }
                     >
-                      (Prev: {prevSession.accuracy}% · {prevSession.correctNotes}/{prevSession.totalNotes} @ {prevSession.speed}%)
+                      (Prev: {prevSession.correctNotes}/{prevSession.totalNotes} notes · {prevSession.speed}% speed · {prevSession.accuracy}%)
                     </span>
                   )}
                 </div>
