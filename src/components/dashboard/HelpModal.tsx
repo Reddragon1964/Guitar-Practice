@@ -164,8 +164,13 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
                 <strong className="text-emerald-300">Practice with Live Coach (gemini-3.8-live):</strong> Directly inside the session dialog, tap <strong>"Start Live Coach"</strong> to talk hands-free with your AI coach while practicing, running the stopwatch timer, and logging your session.
               </li>
             </ul>
-            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-700/50 text-xs text-emerald-200">
-              💡 <strong>Quick Entry:</strong> You can also use the collapsible <strong>Quick Entry</strong> form directly above the sessions table on the dashboard for rapid logging without opening the full dialog!
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg bg-cyan-950/40 border border-cyan-700/50 text-xs text-cyan-200">
+                ✨ <strong>Rearrangeable Dialog Frames:</strong> The 6 sections inside the Record Practice Session dialog (Song & Date, Session Metrics, Duration & Stopwatch, Live Coach, Options & Score, Notes) are modular frames. Drag by their grip handles (⠿) or use the <strong>↑</strong> and <strong>↓</strong> buttons to customize your layout. You can also minimize frames you don't need or click <strong>Reset Order</strong> at any time. Your customized layout is automatically saved!
+              </div>
+              <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-700/50 text-xs text-emerald-200">
+                💡 <strong>Quick Entry:</strong> You can also use the collapsible <strong>Quick Entry</strong> form directly above the sessions table on the dashboard for rapid logging without opening the full dialog!
+              </div>
             </div>
           </div>
         ),

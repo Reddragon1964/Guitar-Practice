@@ -26,6 +26,11 @@ import {
 } from "../../utils/printAccuracyReport";
 import { getAppCurrentUrl } from "./SiteNavButton";
 import { cn } from "../../lib/utils";
+import {
+  useResizableColumns,
+  AdjustableTableToolbar,
+  ColumnResizeHandle,
+} from "../ui/AdjustableTable";
 
 interface DailyAccuracyReportModalProps {
   isOpen: boolean;
@@ -102,6 +107,37 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
     if (acc >= 70) return "text-amber-400 bg-amber-950/40 border-amber-800/40";
     return "text-rose-400 bg-rose-950/40 border-rose-800/40";
   };
+
+  const defaultColWidths = useMemo(() => {
+    const map: Record<string, number> = {
+      songTitle: 220,
+      average: 150,
+    };
+    reportData.dates.forEach((d) => {
+      map[`date_${d}`] = 95;
+    });
+    return map;
+  }, [reportData.dates]);
+
+  const {
+    widths,
+    density,
+    densityStyle,
+    activeResizingColumn,
+    setDensity,
+    resetWidths,
+    resetColumn,
+    resetAll,
+    startResize,
+  } = useResizableColumns({
+    tableId: "daily_accuracy_report",
+    defaultWidths: defaultColWidths,
+    minWidth: 70,
+    maxWidth: 500,
+    defaultDensity: "default",
+  });
+
+  const [isExpandedHeight, setIsExpandedHeight] = useState<boolean>(false);
 
   const { songs, dates, dailyTotals, grandTotalSessions, grandAvgAccuracy, filters: filterSummary } = reportData;
 
@@ -368,16 +404,58 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
             </div>
           ) : (
             <div className="border border-indigo-800/70 rounded-xl overflow-hidden shadow-xl bg-slate-950">
-              <div className="overflow-x-auto max-h-[50vh]">
-                <table className="w-full text-left text-xs border-collapse">
+              {/* Adjustable Rows and Columns Toolbar */}
+              <AdjustableTableToolbar
+                density={density}
+                onDensityChange={setDensity}
+                onResetColumns={resetWidths}
+                onResetAll={resetAll}
+                rowCount={songs.length}
+                columnCount={dates.length + 2}
+                isMaximizedHeight={isExpandedHeight}
+                onToggleMaximizeHeight={() => setIsExpandedHeight((prev) => !prev)}
+              />
+
+              <div
+                className={cn(
+                  "overflow-x-auto transition-all duration-300",
+                  isExpandedHeight ? "max-h-[75vh]" : "max-h-[50vh]"
+                )}
+              >
+                <table className={cn("w-full text-left border-collapse", densityStyle.fontSize)}>
                   <thead className="bg-slate-900/95 sticky top-0 z-20 shadow-md">
                     <tr className="border-b border-indigo-800/80">
                       {/* Left Sticky Song Column */}
-                      <th className="py-3 px-4 font-bold text-white tracking-wide min-w-[180px] sticky left-0 bg-slate-900/95 z-30 border-r border-indigo-800/60">
-                        Song Title
+                      <th
+                        style={{
+                          width: widths.songTitle || defaultColWidths.songTitle,
+                          minWidth: widths.songTitle || defaultColWidths.songTitle,
+                        }}
+                        className={cn(
+                          "relative group/resize font-bold text-white tracking-wide sticky left-0 bg-slate-900/95 z-30 border-r border-indigo-800/60 select-none",
+                          densityStyle.headerPaddingY,
+                          densityStyle.paddingX
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-1 pr-2">
+                          <span className="truncate">Song Title</span>
+                        </div>
+                        <ColumnResizeHandle
+                          onResizeStart={(e) =>
+                            startResize(
+                              "songTitle",
+                              "touches" in e ? e.touches[0].clientX : e.clientX
+                            )
+                          }
+                          onDoubleClick={() => resetColumn("songTitle")}
+                          isResizing={activeResizingColumn === "songTitle"}
+                        />
                       </th>
+
                       {/* Dates Across Columns */}
                       {dates.map((dateStr) => {
+                        const colKey = `date_${dateStr}`;
+                        const colWidth = widths[colKey] || defaultColWidths[colKey] || 95;
                         let formattedDate = dateStr;
                         let dayOfWeek = "";
                         try {
@@ -390,17 +468,53 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                         return (
                           <th
                             key={dateStr}
-                            className="py-2.5 px-3 font-semibold text-indigo-200 text-center min-w-[85px] border-r border-indigo-900/60"
+                            style={{ width: colWidth, minWidth: colWidth }}
+                            className={cn(
+                              "relative group/resize font-semibold text-indigo-200 text-center border-r border-indigo-900/60 select-none",
+                              densityStyle.headerPaddingY,
+                              densityStyle.paddingX
+                            )}
                             title={dateStr}
                           >
-                            <div className="text-xs font-bold text-white">{formattedDate}</div>
+                            <div className="text-xs font-bold text-white truncate">{formattedDate}</div>
                             <div className="text-[10px] text-indigo-400 font-normal">{dayOfWeek}</div>
+                            <ColumnResizeHandle
+                              onResizeStart={(e) =>
+                                startResize(
+                                  colKey,
+                                  "touches" in e ? e.touches[0].clientX : e.clientX
+                                )
+                              }
+                              onDoubleClick={() => resetColumn(colKey)}
+                              isResizing={activeResizingColumn === colKey}
+                            />
                           </th>
                         );
                       })}
+
                       {/* Final Column: Average of all entries */}
-                      <th className="py-3 px-4 font-bold text-emerald-300 text-center min-w-[140px] bg-emerald-950/40 border-l border-emerald-800/50">
-                        Average of All Entries
+                      <th
+                        style={{
+                          width: widths.average || defaultColWidths.average,
+                          minWidth: widths.average || defaultColWidths.average,
+                        }}
+                        className={cn(
+                          "relative group/resize font-bold text-emerald-300 text-center bg-emerald-950/40 border-l border-emerald-800/50 select-none",
+                          densityStyle.headerPaddingY,
+                          densityStyle.paddingX
+                        )}
+                      >
+                        <span className="truncate">Average</span>
+                        <ColumnResizeHandle
+                          onResizeStart={(e) =>
+                            startResize(
+                              "average",
+                              "touches" in e ? e.touches[0].clientX : e.clientX
+                            )
+                          }
+                          onDoubleClick={() => resetColumn("average")}
+                          isResizing={activeResizingColumn === "average"}
+                        />
                       </th>
                     </tr>
                   </thead>
@@ -416,12 +530,18 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                         >
                           {/* Song Title (Sticky Left) */}
                           <td
+                            style={{
+                              width: widths.songTitle || defaultColWidths.songTitle,
+                              minWidth: widths.songTitle || defaultColWidths.songTitle,
+                            }}
                             className={cn(
-                              "py-3 px-4 font-semibold text-white sticky left-0 z-10 border-r border-indigo-800/60",
-                              rowIdx % 2 === 0 ? "bg-slate-950" : "bg-slate-900"
+                              "font-semibold text-white sticky left-0 z-10 border-r border-indigo-800/60",
+                              rowIdx % 2 === 0 ? "bg-slate-950" : "bg-slate-900",
+                              densityStyle.paddingY,
+                              densityStyle.paddingX
                             )}
                           >
-                            <div className="font-bold text-slate-100">{song.songTitle}</div>
+                            <div className="font-bold text-slate-100 truncate">{song.songTitle}</div>
                             <div className="text-[10px] text-indigo-400 font-mono">
                               {song.totalSessions} {song.totalSessions === 1 ? "entry" : "entries"}
                             </div>
@@ -429,16 +549,24 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
 
                           {/* Daily Accuracy Across */}
                           {dates.map((dateStr) => {
+                            const colKey = `date_${dateStr}`;
+                            const colWidth = widths[colKey] || defaultColWidths[colKey] || 95;
                             const cell = song.dailyValues[dateStr];
                             if (cell && cell.avgAccuracy !== null) {
                               return (
                                 <td
                                   key={dateStr}
-                                  className="py-3 px-3 text-center border-r border-indigo-950/60"
+                                  style={{ width: colWidth, minWidth: colWidth }}
+                                  className={cn(
+                                    "text-center border-r border-indigo-950/60",
+                                    densityStyle.paddingY,
+                                    densityStyle.paddingX
+                                  )}
                                 >
                                   <span
                                     className={cn(
-                                      "inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-mono font-bold border",
+                                      "inline-flex items-center justify-center rounded-md font-mono font-bold border",
+                                      densityStyle.badgeSize,
                                       getAccuracyColor(cell.avgAccuracy)
                                     )}
                                     title={`${song.songTitle} on ${dateStr}: ${cell.avgAccuracy}% average across ${cell.count} session${cell.count === 1 ? "" : "s"}`}
@@ -456,7 +584,12 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                             return (
                               <td
                                 key={dateStr}
-                                className="py-3 px-3 text-center text-slate-600 font-mono border-r border-indigo-950/60"
+                                style={{ width: colWidth, minWidth: colWidth }}
+                                className={cn(
+                                  "text-center text-slate-600 font-mono border-r border-indigo-950/60",
+                                  densityStyle.paddingY,
+                                  densityStyle.paddingX
+                                )}
                               >
                                 —
                               </td>
@@ -464,10 +597,21 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                           })}
 
                           {/* Final Column: Average of all entries */}
-                          <td className="py-3 px-4 text-center bg-emerald-950/20 border-l border-emerald-900/40">
+                          <td
+                            style={{
+                              width: widths.average || defaultColWidths.average,
+                              minWidth: widths.average || defaultColWidths.average,
+                            }}
+                            className={cn(
+                              "text-center bg-emerald-950/20 border-l border-emerald-900/40",
+                              densityStyle.paddingY,
+                              densityStyle.paddingX
+                            )}
+                          >
                             <span
                               className={cn(
-                                "inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold border shadow-sm",
+                                "inline-flex items-center justify-center rounded-lg font-mono font-extrabold border shadow-sm",
+                                densityStyle.badgeSize,
                                 getAccuracyColor(song.overallAvgAccuracy)
                               )}
                               title={`Overall average accuracy for ${song.songTitle} across all ${song.totalSessions} entries`}
@@ -482,16 +626,33 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                   {/* Daily Averages Footer Row */}
                   <tfoot className="bg-slate-900/95 font-bold border-t-2 border-indigo-700/80 sticky bottom-0 z-20">
                     <tr>
-                      <td className="py-3 px-4 text-white sticky left-0 bg-slate-900 z-30 border-r border-indigo-800/60 font-bold">
+                      <td
+                        style={{
+                          width: widths.songTitle || defaultColWidths.songTitle,
+                          minWidth: widths.songTitle || defaultColWidths.songTitle,
+                        }}
+                        className={cn(
+                          "text-white sticky left-0 bg-slate-900 z-30 border-r border-indigo-800/60 font-bold",
+                          densityStyle.paddingY,
+                          densityStyle.paddingX
+                        )}
+                      >
                         Daily Average
                       </td>
                       {dates.map((dateStr) => {
+                        const colKey = `date_${dateStr}`;
+                        const colWidth = widths[colKey] || defaultColWidths[colKey] || 95;
                         const dt = dailyTotals[dateStr];
                         if (dt && dt.avgAccuracy !== null) {
                           return (
                             <td
                               key={dateStr}
-                              className="py-3 px-3 text-center border-r border-indigo-900/60"
+                              style={{ width: colWidth, minWidth: colWidth }}
+                              className={cn(
+                                "text-center border-r border-indigo-900/60",
+                                densityStyle.paddingY,
+                                densityStyle.paddingX
+                              )}
                             >
                               <span
                                 className={cn(
@@ -507,13 +668,28 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                         return (
                           <td
                             key={dateStr}
-                            className="py-3 px-3 text-center text-slate-600 font-mono border-r border-indigo-900/60"
+                            style={{ width: colWidth, minWidth: colWidth }}
+                            className={cn(
+                              "text-center text-slate-600 font-mono border-r border-indigo-900/60",
+                              densityStyle.paddingY,
+                              densityStyle.paddingX
+                            )}
                           >
                             —
                           </td>
                         );
                       })}
-                      <td className="py-3 px-4 text-center bg-emerald-950/40 border-l border-emerald-800/50">
+                      <td
+                        style={{
+                          width: widths.average || defaultColWidths.average,
+                          minWidth: widths.average || defaultColWidths.average,
+                        }}
+                        className={cn(
+                          "text-center bg-emerald-950/40 border-l border-emerald-800/50",
+                          densityStyle.paddingY,
+                          densityStyle.paddingX
+                        )}
+                      >
                         <span className="font-mono font-extrabold text-sm text-emerald-300">
                           {grandAvgAccuracy}%
                         </span>

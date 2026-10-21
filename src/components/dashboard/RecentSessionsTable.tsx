@@ -33,6 +33,11 @@ import {
 } from "../../utils/durationFormat";
 import { downloadPracticesCsv } from "../../utils/csvExport";
 import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
+import {
+  useResizableColumns,
+  AdjustableTableToolbar,
+  ColumnResizeHandle,
+} from "../ui/AdjustableTable";
 
 export interface QuickRecordPayload {
   date: string;
@@ -126,6 +131,39 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   const [quickNote, setQuickNote] = useState("");
   const [isSavingQuick, setIsSavingQuick] = useState(false);
   const [csvExported, setCsvExported] = useState(false);
+
+  // Resizable columns and adjustable row density
+  const defaultColWidths = useMemo(
+    () => ({
+      date: 130,
+      duration: 130,
+      songTitle: 220,
+      difficulty: 110,
+      accuracy: 190,
+      speed: 110,
+      note: 200,
+      actions: 110,
+    }),
+    []
+  );
+
+  const {
+    widths,
+    density,
+    densityStyle,
+    activeResizingColumn,
+    setDensity,
+    resetWidths,
+    resetColumn,
+    resetAll,
+    startResize,
+  } = useResizableColumns({
+    tableId: "recent_sessions_log",
+    defaultWidths: defaultColWidths,
+    minWidth: 70,
+    maxWidth: 550,
+    defaultDensity: "default",
+  });
 
   // Compute previous session for the quick record song
   const previousQuickSession = useMemo(() => {
