@@ -32,6 +32,8 @@
         "userId": { "type": "string", "maxLength": 128 },
         "title": { "type": "string", "maxLength": 200 },
         "retired": { "type": "boolean" },
+        "duration": { "type": "number", "description": "Default practice duration or song length in seconds" },
+        "difficulty": { "type": "number", "description": "Default difficulty level (1-12)" },
         "createdAt": { "type": "number" }
       },
       "required": ["userId", "title", "createdAt"]

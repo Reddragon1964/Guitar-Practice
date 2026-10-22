@@ -43,6 +43,8 @@ export interface Song {
   title: string;
   retired?: boolean;
   createdAt: number;
+  duration?: number; // default duration / song length in seconds
+  difficulty?: number; // default difficulty level (1-12)
 }
 
 export interface ChatMessage {

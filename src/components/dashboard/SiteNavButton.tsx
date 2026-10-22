@@ -12,14 +12,20 @@ import {
 import { Button } from "../ui/button";
 
 const DEFAULT_SHARED_URL =
-  "https://ais-pre-fxcyutlqlajxqsx44znlxy-630697288820.us-west2.run.app";
+  typeof window !== "undefined" && window.location?.origin
+    ? window.location.origin
+    : "https://ais-dev-fxcyutlqlajxqsx44znlxy-630697288820.us-west2.run.app";
 
 const STORAGE_KEY = "guitar_tracker_custom_site_url";
 
 export function getAppCurrentUrl(): string {
   if (typeof window !== "undefined" && window.location) {
+    const origin = window.location.origin;
+    if (origin && origin.startsWith("http") && !origin.includes("about:") && !origin.includes("data:")) {
+      return origin;
+    }
     const href = window.location.href;
-    if (href && !href.startsWith("about:") && !href.startsWith("data:")) {
+    if (href && href.startsWith("http") && !href.startsWith("about:") && !href.startsWith("data:")) {
       return href;
     }
   }

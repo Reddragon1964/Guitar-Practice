@@ -127,6 +127,7 @@ interface PracticeSessionModalProps {
   onNoteChange: (val: string) => void;
   isSaving?: boolean;
   saveError?: string | null;
+  onUpdateSongDefaults?: (title: string, durationSec?: number, diffLevel?: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
 }
@@ -163,6 +164,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   onNoteChange,
   isSaving = false,
   saveError = null,
+  onUpdateSongDefaults,
   onSubmit,
   onCancel,
 }) => {
@@ -642,6 +644,82 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 className="w-full bg-indigo-950/70 border-indigo-700 text-white h-10 font-mono"
               />
             </div>
+
+            {/* Song Library Defaults Status & Sync */}
+            {songTitle.trim() && (() => {
+              const matchingSong = activeSongs.find(
+                (s) => s.title.trim().toLowerCase() === songTitle.trim().toLowerCase()
+              );
+              const hasDefaults =
+                matchingSong &&
+                (matchingSong.duration !== undefined || matchingSong.difficulty !== undefined);
+
+              return (
+                <div className="sm:col-span-3 p-2.5 rounded-lg bg-indigo-950/70 border border-indigo-700/60 flex items-center justify-between flex-wrap gap-2 text-xs shadow-sm">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-cyan-300 flex items-center gap-1">
+                      <Music className="w-3.5 h-3.5 text-cyan-400" />
+                      Song Library Defaults:
+                    </span>
+                    {matchingSong?.duration !== undefined && matchingSong.duration > 0 ? (
+                      <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded text-[11px]">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        Time: {formatDurationColon(matchingSong.duration)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-sans italic text-[11px]">
+                        No default time set
+                      </span>
+                    )}
+                    <span className="text-slate-600">·</span>
+                    {matchingSong?.difficulty !== undefined && matchingSong.difficulty >= 1 ? (
+                      <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded text-[11px]">
+                        <Gauge className="w-3 h-3 text-amber-400" />
+                        Difficulty: Level {matchingSong.difficulty}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-sans italic text-[11px]">
+                        No default difficulty set
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {hasDefaults && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (matchingSong?.difficulty !== undefined) {
+                            onDifficultyChange(matchingSong.difficulty);
+                          }
+                          if (matchingSong?.duration !== undefined) {
+                            onDurationChange(formatDurationColon(matchingSong.duration));
+                          }
+                        }}
+                        className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                        title="Re-apply this song's library defaults (time & difficulty) to the current form"
+                      >
+                        (Re-apply Library Defaults)
+                      </button>
+                    )}
+                    {onUpdateSongDefaults && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const parsedSec = duration ? parseDurationInputToSeconds(duration) : undefined;
+                          onUpdateSongDefaults(songTitle, parsedSec, difficulty);
+                        }}
+                        className="text-[11px] font-medium text-cyan-300 hover:text-cyan-100 bg-cyan-950/70 border border-cyan-500/50 hover:border-cyan-400 px-2.5 py-1 rounded transition-colors cursor-pointer flex items-center gap-1"
+                        title="Save current time and difficulty level as this song's default in the Songs Library"
+                      >
+                        <Sparkles className="w-3 h-3 text-cyan-400" />
+                        Save as Song Defaults
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
 

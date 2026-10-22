@@ -5,14 +5,13 @@ import {
   FileSpreadsheet,
   FileText,
   X,
-  ExternalLink,
-  Calendar,
-  Layers,
-  Sparkles,
   Filter,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
+  Copy,
+  Check,
+  Eye,
+  Sliders,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Practice } from "../../types";
@@ -22,9 +21,8 @@ import {
   printAccuracyReportDirectly,
   downloadAccuracyReportHtml,
   downloadAccuracyReportCsv,
-  AccuracyReportFilters,
+  copyAccuracyReportToClipboard,
 } from "../../utils/printAccuracyReport";
-import { getAppCurrentUrl } from "./SiteNavButton";
 import { cn } from "../../lib/utils";
 import {
   useResizableColumns,
@@ -57,9 +55,11 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
   filters,
   onClearFilters,
 }) => {
+  const [viewMode, setViewMode] = useState<"interactive" | "sheet">("interactive");
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
   const [sandboxBlocked, setSandboxBlocked] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   const reportData = useMemo(() => {
     return computeAccuracyReportData(practices, {
@@ -68,45 +68,6 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
       filteredSessionsCount: practices.length,
     });
   }, [practices, filters, totalAvailableCount]);
-
-  if (!isOpen) return null;
-
-  const handlePrint = async () => {
-    setIsPrinting(true);
-    setSandboxBlocked(false);
-    setStatusMessage(null);
-
-    const result = await printAccuracyReportDirectly(reportData);
-    setIsPrinting(false);
-
-    if (result.blockedBySandbox) {
-      setSandboxBlocked(true);
-      setStatusMessage("Browser preview iframe blocked direct printing. Use 'Open in New Tab' or download standalone HTML.");
-    } else if (result.success) {
-      setStatusMessage("Print dialog triggered! You can print or save as PDF.");
-      setTimeout(() => setStatusMessage(null), 4000);
-    }
-  };
-
-  const handleDownloadHtml = () => {
-    downloadAccuracyReportHtml(reportData);
-    setStatusMessage("Downloaded standalone printable HTML report!");
-    setTimeout(() => setStatusMessage(null), 3000);
-  };
-
-  const handleDownloadCsv = () => {
-    downloadAccuracyReportCsv(reportData);
-    setStatusMessage("Exported daily accuracy matrix CSV!");
-    setTimeout(() => setStatusMessage(null), 3000);
-  };
-
-  const getAccuracyColor = (acc: number | null) => {
-    if (acc === null) return "text-slate-500";
-    if (acc >= 90) return "text-emerald-400 bg-emerald-950/40 border-emerald-800/40";
-    if (acc >= 80) return "text-cyan-400 bg-cyan-950/40 border-cyan-800/40";
-    if (acc >= 70) return "text-amber-400 bg-amber-950/40 border-amber-800/40";
-    return "text-rose-400 bg-rose-950/40 border-rose-800/40";
-  };
 
   const defaultColWidths = useMemo(() => {
     const map: Record<string, number> = {
@@ -139,22 +100,83 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
 
   const [isExpandedHeight, setIsExpandedHeight] = useState<boolean>(false);
 
+  if (!isOpen) return null;
+
   const { songs, dates, dailyTotals, grandTotalSessions, grandAvgAccuracy, filters: filterSummary } = reportData;
+
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    setSandboxBlocked(false);
+    setStatusMessage(null);
+
+    const result = await printAccuracyReportDirectly(reportData);
+    setIsPrinting(false);
+
+    if (result.blockedBySandbox) {
+      setSandboxBlocked(true);
+      setViewMode("sheet");
+      setStatusMessage("Browser preview restricted direct window.print(). Showing on-screen Printable Sheet Preview! You can also download standalone HTML or copy to clipboard.");
+    } else if (result.success) {
+      setStatusMessage("Print dialog triggered! You can print or save as PDF.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  };
+
+  const handleCopyTable = async () => {
+    const ok = await copyAccuracyReportToClipboard(reportData);
+    if (ok) {
+      setCopySuccess(true);
+      setStatusMessage("Copied formatted table to clipboard! Ready to paste into Excel or Sheets.");
+      setTimeout(() => setCopySuccess(false), 3000);
+      setTimeout(() => setStatusMessage(null), 4000);
+    } else {
+      setStatusMessage("Could not copy table to clipboard in this browser.");
+      setTimeout(() => setStatusMessage(null), 3000);
+    }
+  };
+
+  const handleDownloadHtml = () => {
+    downloadAccuracyReportHtml(reportData);
+    setStatusMessage("Downloaded standalone printable HTML report!");
+    setTimeout(() => setStatusMessage(null), 3000);
+  };
+
+  const handleDownloadCsv = () => {
+    downloadAccuracyReportCsv(reportData);
+    setStatusMessage("Exported daily accuracy matrix CSV!");
+    setTimeout(() => setStatusMessage(null), 3000);
+  };
+
+  const getAccuracyColor = (acc: number | null) => {
+    if (acc === null) return "text-slate-500";
+    if (acc >= 90) return "text-emerald-400 bg-emerald-950/40 border-emerald-800/40";
+    if (acc >= 80) return "text-cyan-400 bg-cyan-950/40 border-cyan-800/40";
+    if (acc >= 70) return "text-amber-400 bg-amber-950/40 border-amber-800/40";
+    return "text-rose-400 bg-rose-950/40 border-rose-800/40";
+  };
+
+  const getPrintSheetAccuracyColor = (acc: number | null) => {
+    if (acc === null) return "text-slate-400";
+    if (acc >= 90) return "text-emerald-700 font-bold";
+    if (acc >= 80) return "text-sky-700 font-semibold";
+    if (acc >= 70) return "text-amber-700 font-semibold";
+    return "text-rose-700 font-bold";
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-5 overflow-y-auto print:hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto print:hidden"
       onClick={onClose}
     >
       <div
-        className="bg-slate-950 border border-indigo-700/80 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col relative overflow-hidden"
+        className="bg-slate-950 border border-indigo-700/80 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[94vh] flex flex-col relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top laser accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-500" />
 
         {/* Modal Header */}
-        <div className="p-4 sm:p-6 pb-4 border-b border-indigo-900/60 bg-gradient-to-r from-slate-950 via-indigo-950/30 to-slate-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 pb-3.5 border-b border-indigo-900/60 bg-gradient-to-r from-slate-950 via-indigo-950/40 to-slate-950 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.25)] shrink-0 mt-0.5">
               <FileSpreadsheet className="w-6 h-6" />
@@ -174,13 +196,43 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                 )}
               </div>
               <p className="text-xs text-indigo-300/80 mt-1">
-                Songs listed on the left, daily averages across dates, and final column showing overall average of all entries.
+                Song list on left, chronological daily averages across dates, and final column showing overall average of all entries.
               </p>
             </div>
           </div>
 
-          {/* Action Buttons Toolbar */}
+          {/* Controls & Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* View Mode Toggle */}
+            <div className="flex items-center p-0.5 rounded-lg bg-slate-900 border border-indigo-800/80">
+              <button
+                type="button"
+                onClick={() => setViewMode("interactive")}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-semibold rounded-md transition-colors",
+                  viewMode === "interactive"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-indigo-300 hover:text-white"
+                )}
+              >
+                Interactive
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("sheet")}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-semibold rounded-md transition-colors flex items-center gap-1",
+                  viewMode === "sheet"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-indigo-300 hover:text-white"
+                )}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Print Preview</span>
+              </button>
+            </div>
+
+            {/* Print Button */}
             <Button
               size="sm"
               onClick={handlePrint}
@@ -192,6 +244,29 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
               <span>{isPrinting ? "Printing..." : "Print Report"}</span>
             </Button>
 
+            {/* Copy Table to Clipboard */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyTable}
+              disabled={songs.length === 0}
+              className="border-indigo-700/80 text-indigo-200 hover:bg-indigo-900/60 gap-1.5"
+              title="Copy formatted table to clipboard for pasting into Excel, Sheets, or Word"
+            >
+              {copySuccess ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span className="hidden sm:inline">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 text-indigo-300" />
+                  <span className="hidden sm:inline">Copy Table</span>
+                </>
+              )}
+            </Button>
+
+            {/* Download Standalone HTML */}
             <Button
               variant="outline"
               size="sm"
@@ -204,6 +279,7 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
               <span className="hidden sm:inline">HTML</span>
             </Button>
 
+            {/* Download CSV */}
             <Button
               variant="outline"
               size="sm"
@@ -228,29 +304,28 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
           </div>
         </div>
 
-        {/* Sandbox Warning Banner if window.print was blocked */}
+        {/* Sandbox Notification Banner (No external dead links) */}
         {sandboxBlocked && (
-          <div className="bg-amber-950/80 border-b border-amber-600/70 p-3 px-6 flex items-center justify-between gap-4 text-xs text-amber-200">
+          <div className="bg-amber-950/90 border-b border-amber-600/70 p-3 px-6 flex items-center justify-between gap-4 text-xs text-amber-200">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
-                Browser preview iframe blocked direct printing. Open the app in a new tab or download the standalone HTML report to print cleanly.
+                Browser preview restricted direct window printing. Switched to <strong>Print Preview Sheet</strong> below! You can also download the standalone HTML report to open & print from your desktop browser.
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <a
-                href={getAppCurrentUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded font-medium inline-flex items-center gap-1 transition-colors"
+              <Button
+                size="sm"
+                onClick={handleDownloadHtml}
+                className="h-7 text-xs bg-amber-600 hover:bg-amber-500 text-white font-medium"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Open in New Tab</span>
-              </a>
+                Download HTML File
+              </Button>
               <button
                 type="button"
                 onClick={() => setSandboxBlocked(false)}
                 className="text-amber-400 hover:text-white p-1"
+                title="Dismiss"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -381,7 +456,7 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
             </div>
           </div>
 
-          {/* Report Data Table */}
+          {/* Empty State */}
           {songs.length === 0 ? (
             <div className="p-12 text-center border border-dashed border-indigo-800/60 rounded-xl bg-slate-900/40 space-y-3">
               <FileSpreadsheet className="w-12 h-12 text-indigo-400/50 mx-auto" />
@@ -402,7 +477,218 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                 </Button>
               )}
             </div>
+          ) : viewMode === "sheet" ? (
+            /* PRINT PREVIEW SHEET: Clean, Crisp White Paper Layout with High Contrast */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-indigo-950/60 border border-indigo-800/70 text-xs">
+                <span className="text-indigo-200 flex items-center gap-1.5 font-medium">
+                  <Eye className="w-4 h-4 text-emerald-400" />
+                  Print Preview Mode: Exact 1:1 paper rendering with landscape matrix & totals
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handlePrint}
+                    disabled={isPrinting}
+                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-1"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Print Now
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setViewMode("interactive")}
+                    className="h-7 text-xs border-indigo-700 text-indigo-200 hover:bg-indigo-900/60"
+                  >
+                    Return to Interactive
+                  </Button>
+                </div>
+              </div>
+
+              {/* White Paper Sheet */}
+              <div className="bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-2xl border border-slate-300 overflow-x-auto font-sans">
+                {/* Sheet Header */}
+                <div className="border-b-2 border-slate-900 pb-4 mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-slate-900 text-white mb-1.5">
+                      Practice Log Report
+                    </div>
+                    <h1 className="text-2xl font-extrabold text-slate-950 tracking-tight">
+                      Daily Practice Accuracy by Song
+                    </h1>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Guitar Practice Tracker &bull; Comprehensive daily accuracy breakdown and overall entry averages
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-slate-600 space-y-0.5 shrink-0">
+                    <div>Generated: <strong className="text-slate-900">{reportData.generatedAt}</strong></div>
+                    <div>Sessions Evaluated: <strong className="text-slate-900">{grandTotalSessions}</strong></div>
+                  </div>
+                </div>
+
+                {/* Filter info summary box on paper */}
+                <div className="bg-slate-100 border border-slate-300 rounded p-2.5 mb-4 text-xs text-slate-700">
+                  <span className="font-bold text-slate-900">Query Scope: </span>
+                  {filterSummary.hasActiveFilters ? (
+                    <span>
+                      Filtered ({filterSummary.filteredSessionsCount} of {filterSummary.totalAvailableSessions} sessions) &bull;{" "}
+                      {[
+                        filterSummary.filterName ? `Song: "${filterSummary.filterName}"` : null,
+                        filterSummary.filterStartDate || filterSummary.filterDate ? `From: ${filterSummary.filterStartDate || filterSummary.filterDate}` : null,
+                        filterSummary.filterEndDate ? `To: ${filterSummary.filterEndDate}` : null,
+                        filterSummary.filterSpeed ? `Speed: ${filterSummary.filterSpeed}%` : null,
+                        filterSummary.filterLevel ? `Level: ${filterSummary.filterLevel}` : null,
+                        filterSummary.searchQuery ? `Search: "${filterSummary.searchQuery}"` : null,
+                      ].filter(Boolean).join(" • ")}
+                    </span>
+                  ) : (
+                    <span>All logged practice sessions (no active filters applied)</span>
+                  )}
+                </div>
+
+                {/* Summary stat tiles on paper */}
+                <div className="grid grid-cols-4 gap-3 mb-5 text-center">
+                  <div className="border border-slate-300 rounded p-2.5 bg-slate-50">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase">Songs</div>
+                    <div className="text-lg font-bold text-slate-900">{songs.length}</div>
+                  </div>
+                  <div className="border border-slate-300 rounded p-2.5 bg-slate-50">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase">Practice Days</div>
+                    <div className="text-lg font-bold text-slate-900">{dates.length}</div>
+                  </div>
+                  <div className="border border-slate-300 rounded p-2.5 bg-slate-50">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase">Total Sessions</div>
+                    <div className="text-lg font-bold text-slate-900">{grandTotalSessions}</div>
+                  </div>
+                  <div className="border-2 border-emerald-600 rounded p-2.5 bg-emerald-50">
+                    <div className="text-[10px] font-extrabold text-emerald-800 uppercase">Average of All Entries</div>
+                    <div className="text-lg font-black text-emerald-800">{grandAvgAccuracy}%</div>
+                  </div>
+                </div>
+
+                {/* Print Sheet Table */}
+                <table className="w-full text-left border-collapse border border-slate-400 text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 border-b-2 border-slate-400">
+                      <th className="p-2.5 font-bold text-slate-900 border-r border-slate-300 min-w-[180px]">
+                        Song Title
+                      </th>
+                      {dates.map((dateStr) => {
+                        let formattedDate = dateStr;
+                        let dayOfWeek = "";
+                        try {
+                          const parsed = parseISO(dateStr);
+                          formattedDate = format(parsed, "MMM d");
+                          dayOfWeek = format(parsed, "EEE");
+                        } catch {}
+                        return (
+                          <th key={dateStr} className="p-2 text-center border-r border-slate-300 min-w-[70px]">
+                            <div className="font-bold text-slate-900">{formattedDate}</div>
+                            <div className="text-[10px] text-slate-500 font-normal">{dayOfWeek}</div>
+                          </th>
+                        );
+                      })}
+                      <th className="p-2.5 text-center font-extrabold text-slate-950 bg-slate-200 border-l border-slate-400 min-w-[110px]">
+                        Average of All Entries
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {songs.map((song, rowIdx) => (
+                      <tr
+                        key={song.songTitle}
+                        className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
+                      >
+                        <td className="p-2.5 border-t border-r border-slate-300">
+                          <div className="font-bold text-slate-900">{song.songTitle}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {song.totalSessions} {song.totalSessions === 1 ? "session" : "sessions"}
+                          </div>
+                        </td>
+                        {dates.map((dateStr) => {
+                          const cell = song.dailyValues[dateStr];
+                          if (cell && cell.avgAccuracy !== null) {
+                            return (
+                              <td
+                                key={dateStr}
+                                className={cn(
+                                  "p-2 text-center font-mono border-t border-r border-slate-300",
+                                  getPrintSheetAccuracyColor(cell.avgAccuracy)
+                                )}
+                              >
+                                {cell.avgAccuracy}%
+                                {cell.count > 1 && (
+                                  <span className="text-[9px] text-slate-500 font-sans ml-0.5">
+                                    ({cell.count})
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          }
+                          return (
+                            <td key={dateStr} className="p-2 text-center text-slate-300 border-t border-r border-slate-300">
+                              —
+                            </td>
+                          );
+                        })}
+                        <td
+                          className={cn(
+                            "p-2.5 text-center font-mono font-bold text-sm bg-slate-100/60 border-t border-l border-slate-400",
+                            getPrintSheetAccuracyColor(song.overallAvgAccuracy)
+                          )}
+                        >
+                          {song.overallAvgAccuracy}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-200 font-bold border-t-2 border-slate-400">
+                      <td className="p-2.5 border-r border-slate-300 text-slate-900 font-extrabold">
+                        Daily Average
+                      </td>
+                      {dates.map((dateStr) => {
+                        const dt = dailyTotals[dateStr];
+                        if (dt && dt.avgAccuracy !== null) {
+                          return (
+                            <td
+                              key={dateStr}
+                              className={cn(
+                                "p-2 text-center font-mono border-r border-slate-300",
+                                getPrintSheetAccuracyColor(dt.avgAccuracy)
+                              )}
+                            >
+                              {dt.avgAccuracy}%
+                            </td>
+                          );
+                        }
+                        return (
+                          <td key={dateStr} className="p-2 text-center text-slate-400 border-r border-slate-300">
+                            —
+                          </td>
+                        );
+                      })}
+                      <td
+                        className={cn(
+                          "p-2.5 text-center font-mono font-extrabold text-base bg-slate-300 border-l border-slate-400",
+                          getPrintSheetAccuracyColor(grandAvgAccuracy)
+                        )}
+                      >
+                        {grandAvgAccuracy}%
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* Print Sheet Footer */}
+                <div className="mt-4 pt-3 border-t border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>Guitar Practice Tracker &bull; Accurate Practice Log Metric Matrix</span>
+                  <span>Page 1 of 1 &bull; Printed {reportData.generatedAt}</span>
+                </div>
+              </div>
+            </div>
           ) : (
+            /* INTERACTIVE ADJUSTABLE TABLE VIEW */
             <div className="border border-indigo-800/70 rounded-xl overflow-hidden shadow-xl bg-slate-950">
               {/* Adjustable Rows and Columns Toolbar */}
               <AdjustableTableToolbar
@@ -462,9 +748,7 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                           const parsed = parseISO(dateStr);
                           formattedDate = format(parsed, "MMM d");
                           dayOfWeek = format(parsed, "EEE");
-                        } catch {
-                          // raw fallback
-                        }
+                        } catch {}
                         return (
                           <th
                             key={dateStr}
@@ -569,12 +853,11 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                                       densityStyle.badgeSize,
                                       getAccuracyColor(cell.avgAccuracy)
                                     )}
-                                    title={`${song.songTitle} on ${dateStr}: ${cell.avgAccuracy}% average across ${cell.count} session${cell.count === 1 ? "" : "s"}`}
                                   >
                                     {cell.avgAccuracy}%
                                     {cell.count > 1 && (
-                                      <span className="text-[9px] opacity-75 ml-1">
-                                        x{cell.count}
+                                      <span className="text-[9px] text-slate-400 font-sans ml-1">
+                                        ({cell.count})
                                       </span>
                                     )}
                                   </span>
@@ -596,25 +879,24 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                             );
                           })}
 
-                          {/* Final Column: Average of all entries */}
+                          {/* Final Column: Overall Average for Song */}
                           <td
                             style={{
                               width: widths.average || defaultColWidths.average,
                               minWidth: widths.average || defaultColWidths.average,
                             }}
                             className={cn(
-                              "text-center bg-emerald-950/20 border-l border-emerald-900/40",
+                              "text-center bg-indigo-950/30 border-l border-indigo-800/60",
                               densityStyle.paddingY,
                               densityStyle.paddingX
                             )}
                           >
                             <span
                               className={cn(
-                                "inline-flex items-center justify-center rounded-lg font-mono font-extrabold border shadow-sm",
+                                "inline-flex items-center justify-center rounded-md font-mono font-extrabold border shadow-sm",
                                 densityStyle.badgeSize,
                                 getAccuracyColor(song.overallAvgAccuracy)
                               )}
-                              title={`Overall average accuracy for ${song.songTitle} across all ${song.totalSessions} entries`}
                             >
                               {song.overallAvgAccuracy}%
                             </span>
@@ -623,8 +905,7 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                       );
                     })}
                   </tbody>
-                  {/* Daily Averages Footer Row */}
-                  <tfoot className="bg-slate-900/95 font-bold border-t-2 border-indigo-700/80 sticky bottom-0 z-20">
+                  <tfoot className="bg-slate-900/95 sticky bottom-0 z-20 shadow-inner border-t-2 border-indigo-700">
                     <tr>
                       <td
                         style={{
@@ -632,7 +913,7 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                           minWidth: widths.songTitle || defaultColWidths.songTitle,
                         }}
                         className={cn(
-                          "text-white sticky left-0 bg-slate-900 z-30 border-r border-indigo-800/60 font-bold",
+                          "font-bold text-white sticky left-0 bg-slate-900/95 z-30 border-r border-indigo-800/60 uppercase tracking-wider text-xs",
                           densityStyle.paddingY,
                           densityStyle.paddingX
                         )}
@@ -649,14 +930,15 @@ export const DailyAccuracyReportModal: React.FC<DailyAccuracyReportModalProps> =
                               key={dateStr}
                               style={{ width: colWidth, minWidth: colWidth }}
                               className={cn(
-                                "text-center border-r border-indigo-900/60",
+                                "text-center font-mono font-bold border-r border-indigo-900/60",
                                 densityStyle.paddingY,
                                 densityStyle.paddingX
                               )}
                             >
                               <span
                                 className={cn(
-                                  "font-mono font-bold text-xs",
+                                  "inline-flex items-center justify-center rounded font-mono font-bold",
+                                  densityStyle.badgeSize,
                                   getAccuracyColor(dt.avgAccuracy).split(" ")[0]
                                 )}
                               >

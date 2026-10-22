@@ -684,56 +684,170 @@ export function generateAccuracyReportCsv(report: DailyAccuracyReportData): stri
 }
 
 /**
- * Directly prints the accuracy report using DOM portal injection and @media print styling.
+ * Directly prints the accuracy report using an isolated hidden iframe
+ * to avoid polluting the host application DOM and to prevent blank pages.
  */
 export async function printAccuracyReportDirectly(
   report: DailyAccuracyReportData
 ): Promise<{ success: boolean; blockedBySandbox?: boolean }> {
   return new Promise((resolve) => {
     try {
-      // Clean up any stale portal
-      const existing = document.getElementById("print-accuracy-report-portal");
-      if (existing) {
-        existing.remove();
+      // Remove any existing print iframe
+      const oldFrame = document.getElementById("accuracy-report-print-frame");
+      if (oldFrame) {
+        oldFrame.remove();
       }
 
-      const portal = document.createElement("div");
-      portal.id = "print-accuracy-report-portal";
-      portal.innerHTML = generateAccuracyReportHtml(report, false);
+      const iframe = document.createElement("iframe");
+      iframe.id = "accuracy-report-print-frame";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      iframe.setAttribute("aria-hidden", "true");
 
-      document.body.appendChild(portal);
-      document.body.classList.add("printing-accuracy-report");
-
-      const cleanup = () => {
-        document.body.classList.remove("printing-accuracy-report");
-        if (portal.parentElement) {
-          portal.parentElement.removeChild(portal);
-        }
-        window.removeEventListener("afterprint", cleanup);
+      let hasResolved = false;
+      const finish = (success: boolean, blockedBySandbox: boolean) => {
+        if (hasResolved) return;
+        hasResolved = true;
+        setTimeout(() => {
+          try {
+            iframe.remove();
+          } catch {}
+        }, 1500);
+        resolve({ success, blockedBySandbox });
       };
 
-      window.addEventListener("afterprint", cleanup);
+      document.body.appendChild(iframe);
 
-      // Trigger print
-      setTimeout(() => {
+      const htmlContent = generateAccuracyReportHtml(report, false);
+
+      const win = iframe.contentWindow;
+      if (!win) {
+        // Fallback to direct window.print if iframe contentWindow is unavailable
         try {
           window.print();
-          resolve({ success: true });
-        } catch (printErr: any) {
-          console.warn("Direct window.print() failed (likely sandboxed iframe):", printErr);
-          cleanup();
-          resolve({ success: false, blockedBySandbox: true });
+          finish(true, false);
+        } catch {
+          finish(false, true);
         }
-      }, 80);
+        return;
+      }
 
-      // Failsafe cleanup
-      setTimeout(cleanup, 4000);
+      try {
+        win.document.open();
+        win.document.write(htmlContent);
+        win.document.close();
+
+        // Print once document finishes layout
+        setTimeout(() => {
+          try {
+            win.focus();
+            win.print();
+            finish(true, false);
+          } catch (err) {
+            console.warn("Iframe print blocked by sandbox:", err);
+            // Try window.print as secondary attempt
+            try {
+              window.print();
+              finish(true, false);
+            } catch {
+              finish(false, true);
+            }
+          }
+        }, 250);
+      } catch (err) {
+        console.warn("Failed to write to print iframe:", err);
+        finish(false, true);
+      }
+
+      // Safety timeout
+      setTimeout(() => finish(true, false), 3500);
     } catch (err) {
       console.error("Accuracy report print setup error:", err);
-      document.body.classList.remove("printing-accuracy-report");
       resolve({ success: false, blockedBySandbox: false });
     }
   });
+}
+
+/**
+ * Copies the Daily Accuracy report matrix as formatted HTML and TSV to clipboard
+ * for instant 1-click paste into Microsoft Excel, Google Sheets, or Apple Numbers.
+ */
+export async function copyAccuracyReportToClipboard(
+  report: DailyAccuracyReportData
+): Promise<boolean> {
+  try {
+    const { songs, dates, dailyTotals, grandTotalSessions, grandAvgAccuracy } = report;
+
+    // 1. Build TSV (tab-separated)
+    const tsvHeaders = ["Song Title", ...dates, "Average of All Entries (%)", "Total Sessions"].join("\t");
+    const tsvRows = songs.map((s) => {
+      const dateVals = dates.map((d) => (s.dailyValues[d]?.avgAccuracy !== null ? `${s.dailyValues[d].avgAccuracy}%` : ""));
+      return [s.songTitle, ...dateVals, `${s.overallAvgAccuracy}%`, s.totalSessions].join("\t");
+    });
+    const tsvFooter = ["Daily Average (All Songs)", ...dates.map((d) => (dailyTotals[d]?.avgAccuracy !== null ? `${dailyTotals[d].avgAccuracy}%` : "")), `${grandAvgAccuracy}%`, grandTotalSessions].join("\t");
+    const tsvText = [tsvHeaders, ...tsvRows, tsvFooter].join("\r\n");
+
+    // 2. Build HTML Table
+    const htmlTable = `
+      <table border="1" cellpadding="6" cellspacing="0" style="font-family:sans-serif;font-size:12px;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f1f5f9;font-weight:bold;">
+            <th>Song Title</th>
+            ${dates.map((d) => `<th>${escapeHtml(d)}</th>`).join("")}
+            <th>Average of All Entries</th>
+            <th>Sessions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${songs.map((s) => `
+            <tr>
+              <td><strong>${escapeHtml(s.songTitle)}</strong></td>
+              ${dates.map((d) => {
+                const c = s.dailyValues[d];
+                return `<td align="center">${c && c.avgAccuracy !== null ? `${c.avgAccuracy}%` : "-"}</td>`;
+              }).join("")}
+              <td align="center" style="font-weight:bold;">${s.overallAvgAccuracy}%</td>
+              <td align="center">${s.totalSessions}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+        <tfoot>
+          <tr style="background:#e2e8f0;font-weight:bold;">
+            <td>Daily Average</td>
+            ${dates.map((d) => {
+              const dt = dailyTotals[d];
+              return `<td align="center">${dt && dt.avgAccuracy !== null ? `${dt.avgAccuracy}%` : "-"}</td>`;
+            }).join("")}
+            <td align="center">${grandAvgAccuracy}%</td>
+            <td align="center">${grandTotalSessions}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `.trim();
+
+    if (navigator.clipboard && (window as any).ClipboardItem) {
+      const textBlob = new Blob([tsvText], { type: "text/plain" });
+      const htmlBlob = new Blob([htmlTable], { type: "text/html" });
+      await navigator.clipboard.write([
+        new (window as any).ClipboardItem({
+          "text/plain": textBlob,
+          "text/html": htmlBlob,
+        }),
+      ]);
+      return true;
+    } else if (navigator.clipboard) {
+      await navigator.clipboard.writeText(tsvText);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn("Clipboard copy failed:", err);
+    return false;
+  }
 }
 
 /**

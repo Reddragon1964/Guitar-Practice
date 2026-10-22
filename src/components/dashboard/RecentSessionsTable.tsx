@@ -514,10 +514,25 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                       const title = e.target.value;
                       setQuickSongTitle(title);
                       if (title) {
+                        const matchingSong = activeSongs.find(
+                          (s) => s.title.trim().toLowerCase() === title.trim().toLowerCase()
+                        );
                         const lastP = practices.find((p) => p.songTitle === title);
+
+                        if (matchingSong?.difficulty !== undefined && matchingSong.difficulty >= 1) {
+                          setQuickDifficulty(matchingSong.difficulty);
+                        } else if (lastP) {
+                          setQuickDifficulty(lastP.difficulty);
+                        }
+
+                        if (matchingSong?.duration !== undefined && matchingSong.duration > 0) {
+                          setQuickDuration(formatDurationColon(matchingSong.duration));
+                        } else if (lastP && lastP.duration !== undefined && lastP.duration > 0) {
+                          setQuickDuration(formatDurationColon(lastP.duration));
+                        }
+
                         if (lastP) {
                           setQuickSpeed(String(lastP.speed));
-                          setQuickDifficulty(lastP.difficulty);
                           if (lastP.totalNotes) setQuickTotalNotes(String(lastP.totalNotes));
                         }
                         triggerQuickSpeedFlash();
@@ -830,61 +845,203 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
           )}
         </div>
 
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2 print:hidden">
+          <AdjustableTableToolbar
+            density={density}
+            onDensityChange={setDensity}
+            onResetColumns={resetWidths}
+            onResetAll={resetAll}
+            rowCount={practices.length}
+            columnCount={8}
+          />
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-400 uppercase bg-slate-950/90 border-b border-slate-800/80">
+          <table className={cn("w-full text-left border-collapse", densityStyle.fontSize)}>
+            <thead className="text-xs text-slate-400 uppercase bg-slate-950/90 border-b border-slate-800/80 select-none">
               <tr>
+                {/* 1. Date */}
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
+                  style={{ width: widths.date, minWidth: widths.date }}
+                  className={cn(
+                    "relative group/resize font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
                   onClick={() => onSort("date")}
                 >
                   <div className="flex items-center gap-1">
                     Date {sortField === "date" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "date",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("date")}
+                    isResizing={activeResizingColumn === "date"}
+                  />
                 </th>
+
+                {/* 2. Duration */}
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
+                  style={{ width: widths.duration, minWidth: widths.duration }}
+                  className={cn(
+                    "relative group/resize font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
                   onClick={() => onSort("duration")}
                 >
                   <div className="flex items-center gap-1">
                     Duration {sortField === "duration" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "duration",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("duration")}
+                    isResizing={activeResizingColumn === "duration"}
+                  />
                 </th>
+
+                {/* 3. Song Title */}
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors"
+                  style={{ width: widths.songTitle, minWidth: widths.songTitle }}
+                  className={cn(
+                    "relative group/resize font-medium cursor-pointer hover:bg-slate-900/60 transition-colors",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
                   onClick={() => onSort("songTitle")}
                 >
                   <div className="flex items-center gap-1">
                     Song Title {sortField === "songTitle" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "songTitle",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("songTitle")}
+                    isResizing={activeResizingColumn === "songTitle"}
+                  />
                 </th>
+
+                {/* 4. Difficulty */}
                 <th
-                  className="px-4 py-3 font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
+                  style={{ width: widths.difficulty, minWidth: widths.difficulty }}
+                  className={cn(
+                    "relative group/resize font-medium cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
                   onClick={() => onSort("difficulty")}
                 >
                   <div className="flex items-center gap-1">
                     Difficulty {sortField === "difficulty" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "difficulty",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("difficulty")}
+                    isResizing={activeResizingColumn === "difficulty"}
+                  />
                 </th>
+
+                {/* 5. Accuracy */}
                 <th
-                  className="px-4 py-3 font-medium text-right cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
+                  style={{ width: widths.accuracy, minWidth: widths.accuracy }}
+                  className={cn(
+                    "relative group/resize font-medium text-right cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
                   onClick={() => onSort("accuracy")}
                 >
                   <div className="flex items-center justify-end gap-1">
                     Accuracy (Correct / Total){" "}
                     {sortField === "accuracy" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "accuracy",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("accuracy")}
+                    isResizing={activeResizingColumn === "accuracy"}
+                  />
                 </th>
+
+                {/* 6. Speed */}
                 <th
-                  className="px-4 py-3 font-medium text-right cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap"
+                  style={{ width: widths.speed, minWidth: widths.speed }}
+                  className={cn(
+                    "relative group/resize font-medium text-right cursor-pointer hover:bg-slate-900/60 transition-colors whitespace-nowrap",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
                   onClick={() => onSort("speed")}
                 >
                   <div className="flex items-center justify-end gap-1">
                     Speed {sortField === "speed" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "speed",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("speed")}
+                    isResizing={activeResizingColumn === "speed"}
+                  />
                 </th>
-                <th className="px-4 py-3 font-medium text-left">Note</th>
-                <th className="px-4 py-3 print:hidden text-right sticky right-0 z-10 bg-slate-950/95 shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.3)]">
+
+                {/* 7. Note */}
+                <th
+                  style={{ width: widths.note, minWidth: widths.note }}
+                  className={cn(
+                    "relative group/resize font-medium text-left",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
+                >
+                  <span>Note</span>
+                  <ColumnResizeHandle
+                    onResizeStart={(e) =>
+                      startResize(
+                        "note",
+                        "touches" in e ? e.touches[0].clientX : e.clientX
+                      )
+                    }
+                    onDoubleClick={() => resetColumn("note")}
+                    isResizing={activeResizingColumn === "note"}
+                  />
+                </th>
+
+                {/* 8. Actions */}
+                <th
+                  style={{ width: widths.actions, minWidth: widths.actions }}
+                  className={cn(
+                    "font-medium print:hidden text-right sticky right-0 z-10 bg-slate-950/95 shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.3)]",
+                    densityStyle.headerPaddingY,
+                    densityStyle.paddingX
+                  )}
+                >
                   Actions
                 </th>
               </tr>
@@ -896,12 +1053,22 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   className="border-b border-slate-800/70 last:border-0 hover:bg-slate-900/40 transition-colors"
                 >
                   {/* 1. Date */}
-                  <td className="px-4 py-3 whitespace-nowrap text-indigo-200 font-medium">
+                  <td
+                    style={{ width: widths.date, minWidth: widths.date }}
+                    className={cn(
+                      densityStyle.paddingY,
+                      densityStyle.paddingX,
+                      "whitespace-nowrap text-indigo-200 font-medium"
+                    )}
+                  >
                     {format(parseISO(p.date), "MMM d, yyyy")}
                   </td>
 
                   {/* 2. Duration */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td
+                    style={{ width: widths.duration, minWidth: widths.duration }}
+                    className={cn(densityStyle.paddingY, densityStyle.paddingX, "whitespace-nowrap")}
+                  >
                     {p.duration !== undefined && p.duration > 0 ? (
                       <div className="flex flex-col">
                         <span
@@ -920,7 +1087,10 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </td>
 
                   {/* 3. Song Title */}
-                  <td className="px-4 py-3">
+                  <td
+                    style={{ width: widths.songTitle, minWidth: widths.songTitle }}
+                    className={cn(densityStyle.paddingY, densityStyle.paddingX)}
+                  >
                     <div className="font-medium text-indigo-50 flex items-center gap-2 flex-wrap">
                       <span>{p.songTitle}</span>
                       {p.isPartial && (
@@ -947,7 +1117,10 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </td>
 
                   {/* 4. Difficulty Level */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td
+                    style={{ width: widths.difficulty, minWidth: widths.difficulty }}
+                    className={cn(densityStyle.paddingY, densityStyle.paddingX, "whitespace-nowrap")}
+                  >
                     <div className="flex items-center gap-1.5">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-900/60 text-indigo-200 border border-indigo-700/70 font-mono">
                         Level {p.difficulty}
@@ -967,7 +1140,14 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </td>
 
                   {/* 5. Accuracy Score (Correct / Total Notes) */}
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <td
+                    style={{ width: widths.accuracy, minWidth: widths.accuracy }}
+                    className={cn(
+                      densityStyle.paddingY,
+                      densityStyle.paddingX,
+                      "text-right whitespace-nowrap"
+                    )}
+                  >
                     {p.isTestSession && p.correctNotes === 0 ? (
                       <div className="flex items-center justify-end gap-2">
                         <span className="text-indigo-400/60 text-xs font-mono">
@@ -997,13 +1177,27 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </td>
 
                   {/* 6. Practice Speed */}
-                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap font-mono text-indigo-200">
+                  <td
+                    style={{ width: widths.speed, minWidth: widths.speed }}
+                    className={cn(
+                      densityStyle.paddingY,
+                      densityStyle.paddingX,
+                      "text-right tabular-nums whitespace-nowrap font-mono text-indigo-200"
+                    )}
+                  >
                     {p.speed}
                     <span className="text-xs text-indigo-400 ml-0.5">%</span>
                   </td>
 
                   {/* 7. Note */}
-                  <td className="px-4 py-3 text-left text-sm text-indigo-300">
+                  <td
+                    style={{ width: widths.note, minWidth: widths.note }}
+                    className={cn(
+                      densityStyle.paddingY,
+                      densityStyle.paddingX,
+                      "text-left text-sm text-indigo-300"
+                    )}
+                  >
                     <div
                       className="max-w-[120px] sm:max-w-[200px] whitespace-pre-wrap break-words"
                       title={p.note || ""}
@@ -1013,7 +1207,14 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   </td>
 
                   {/* 8. Actions */}
-                  <td className="px-4 py-3 text-right whitespace-nowrap print:hidden sticky right-0 z-10 bg-indigo-950/90 shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.1)]">
+                  <td
+                    style={{ width: widths.actions, minWidth: widths.actions }}
+                    className={cn(
+                      densityStyle.paddingY,
+                      densityStyle.paddingX,
+                      "text-right whitespace-nowrap print:hidden sticky right-0 z-10 bg-indigo-950/90 shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.1)]"
+                    )}
+                  >
                     <button
                       type="button"
                       onClick={() => onFeedbackSession?.(p)}

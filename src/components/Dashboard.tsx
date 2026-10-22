@@ -434,13 +434,35 @@ export function Dashboard() {
   const handleSongTitleChange = (newTitle: string) => {
     setSongTitle(newTitle);
     if (!editingPracticeId) {
-      const lastPractice = practices.find((p) => p.songTitle === newTitle);
+      const songInLibrary = songs.find(
+        (s) => s.title.trim().toLowerCase() === newTitle.trim().toLowerCase()
+      );
+      const lastPractice = practices.find(
+        (p) => p.songTitle && p.songTitle.trim().toLowerCase() === newTitle.trim().toLowerCase()
+      );
       const carriedTotal =
         songTotalsRef.current[newTitle] ||
         practices.find((p) => p.songTitle === newTitle && p.totalNotes > 0)?.totalNotes;
 
-      if (lastPractice) {
+      // 1. Difficulty: Prefer song library default if configured, else lastPractice difficulty, else 1
+      if (songInLibrary?.difficulty !== undefined && songInLibrary.difficulty >= 1) {
+        setDifficulty(songInLibrary.difficulty);
+      } else if (lastPractice) {
         setDifficulty(lastPractice.difficulty);
+      } else {
+        setDifficulty(1);
+      }
+
+      // 2. Duration / Time: Prefer song library default if configured, else lastPractice duration, else ""
+      if (songInLibrary?.duration !== undefined && songInLibrary.duration > 0) {
+        setDuration(formatDurationColon(songInLibrary.duration));
+      } else if (lastPractice && lastPractice.duration !== undefined && lastPractice.duration > 0) {
+        setDuration(formatDurationColon(lastPractice.duration));
+      } else {
+        setDuration("");
+      }
+
+      if (lastPractice) {
         setTotalNotes(
           carriedTotal
             ? carriedTotal.toString()
@@ -451,19 +473,16 @@ export function Dashboard() {
         const practiceWithNote = practices.find((p) => p.songTitle === newTitle && p.note);
         setNote(practiceWithNote?.note || "");
         setSpeed(lastPractice.speed.toString());
-        setDuration(lastPractice.duration !== undefined ? formatDurationColon(lastPractice.duration) : "");
         setIsPartial(lastPractice.isPartial || false);
         setIsShortVersion(lastPractice.isShortVersion || false);
         setScore("");
         // Do not inherit correct notes for a new practice session - must remain blank
         setCorrectNotes("");
       } else {
-        setDifficulty(1);
         setTotalNotes(carriedTotal ? carriedTotal.toString() : "100");
         // Always blank for new session
         setCorrectNotes("");
         setSpeed("100");
-        setDuration("");
         setIsPartial(false);
         setIsShortVersion(false);
         setScore("");
@@ -677,18 +696,29 @@ export function Dashboard() {
     }
   };
 
-  const ensureSongInLibrary = async (title: string) => {
+  const ensureSongInLibrary = async (
+    title: string,
+    durationSeconds?: number,
+    difficultyVal?: number
+  ) => {
     if (!auth.currentUser) return;
     const trimmed = title.trim().slice(0, 200);
     if (!trimmed) return;
     const exists = songs.some((s) => s.title.toLowerCase() === trimmed.toLowerCase());
     if (!exists) {
       try {
-        await addDoc(collection(db, "songs"), {
+        const payload: any = {
           userId: auth.currentUser.uid,
           title: trimmed,
           createdAt: Date.now(),
-        });
+        };
+        if (durationSeconds !== undefined && durationSeconds > 0) {
+          payload.duration = durationSeconds;
+        }
+        if (difficultyVal !== undefined && difficultyVal >= 1) {
+          payload.difficulty = Math.min(12, Math.max(1, difficultyVal));
+        }
+        await addDoc(collection(db, "songs"), payload);
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, "songs");
       }
@@ -753,7 +783,7 @@ export function Dashboard() {
     setPracticeSaveError(null);
 
     try {
-      await ensureSongInLibrary(trimmedTitle);
+      await ensureSongInLibrary(trimmedTitle, parsedDuration, safeDifficulty);
 
       if (editingPracticeId) {
         const existingPractice = practices.find((p) => p.id === editingPracticeId);
@@ -823,7 +853,7 @@ export function Dashboard() {
     if (!trimmedTitle) return;
 
     try {
-      await ensureSongInLibrary(trimmedTitle);
+      await ensureSongInLibrary(trimmedTitle, payload.durationSeconds, payload.difficulty);
       const newPractice: any = {
         userId: auth.currentUser.uid,
         songTitle: trimmedTitle,
@@ -987,21 +1017,106 @@ export function Dashboard() {
     setDeleteConfirm({ id, type: "goal", message: "Delete this goal?" });
   };
 
-  const handleAddSong = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auth.currentUser || !newSongInput.trim()) return;
+  const handleAddSong = async (
+    titleOrEvent?: any,
+    durationSec?: number,
+    diffVal?: number
+  ) => {
+    if (!auth.currentUser) return;
 
-    const newSong = {
+    let title = "";
+    if (typeof titleOrEvent === "string") {
+      title = titleOrEvent;
+    } else if (titleOrEvent && typeof titleOrEvent.preventDefault === "function") {
+      titleOrEvent.preventDefault();
+      title = newSongInput;
+    } else {
+      title = newSongInput;
+    }
+
+    const trimmed = title.trim().slice(0, 200);
+    if (!trimmed) return;
+
+    const newSong: any = {
       userId: auth.currentUser.uid,
-      title: newSongInput.trim(),
+      title: trimmed,
       createdAt: Date.now(),
     };
+    if (durationSec !== undefined && durationSec > 0) {
+      newSong.duration = durationSec;
+    }
+    if (diffVal !== undefined && diffVal >= 1) {
+      newSong.difficulty = Math.min(12, Math.max(1, diffVal));
+    }
 
     try {
       await addDoc(collection(db, "songs"), newSong);
       setNewSongInput("");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "songs");
+    }
+  };
+
+  const handleUpdateSong = async (songId: string, updates: Partial<Song>) => {
+    if (!auth.currentUser) return;
+    const existing = songs.find((s) => s.id === songId);
+    if (!existing) return;
+
+    try {
+      const payload: any = {
+        userId: existing.userId,
+        title: updates.title !== undefined ? updates.title.trim().slice(0, 200) : existing.title,
+        createdAt: existing.createdAt,
+      };
+      if (updates.retired !== undefined) {
+        payload.retired = updates.retired;
+      } else if (existing.retired !== undefined) {
+        payload.retired = existing.retired;
+      }
+
+      if (updates.duration !== undefined) {
+        if (updates.duration > 0) {
+          payload.duration = updates.duration;
+        } else {
+          payload.duration = deleteField();
+        }
+      } else if (existing.duration !== undefined) {
+        payload.duration = existing.duration;
+      }
+
+      if (updates.difficulty !== undefined) {
+        if (updates.difficulty >= 1) {
+          payload.difficulty = Math.min(12, Math.max(1, updates.difficulty));
+        } else {
+          payload.difficulty = deleteField();
+        }
+      } else if (existing.difficulty !== undefined) {
+        payload.difficulty = existing.difficulty;
+      }
+
+      await updateDoc(doc(db, "songs", songId), payload);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `songs/${songId}`);
+    }
+  };
+
+  const handleUpdateSongDefaultsByTitle = async (
+    title: string,
+    durationSec?: number,
+    diffLevel?: number
+  ) => {
+    if (!auth.currentUser || !title.trim()) return;
+    const trimmed = title.trim();
+    const existing = songs.find(
+      (s) => s.title.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      await handleUpdateSong(existing.id, {
+        duration: durationSec,
+        difficulty: diffLevel,
+      });
+    } else {
+      await handleAddSong(trimmed, durationSec, diffLevel);
     }
   };
 
@@ -1958,6 +2073,7 @@ export function Dashboard() {
             onNoteChange={setNote}
             isSaving={isSavingPractice}
             saveError={practiceSaveError}
+            onUpdateSongDefaults={handleUpdateSongDefaultsByTitle}
             onSubmit={handleAddPractice}
             onCancel={() => {
               resetPracticeForm();
@@ -2153,10 +2269,10 @@ export function Dashboard() {
             title="Song & Exercise Library"
             subtitle="Manage songs, retire inactive exercises, and review repertoire"
             icon={<Guitar className="w-5 h-5 text-indigo-400" />}
-            initialWidth={720}
-            initialHeight={620}
-            minWidth={400}
-            minHeight={320}
+            initialWidth={880}
+            initialHeight={680}
+            minWidth={440}
+            minHeight={340}
             ariaLabel="Song & Exercise Library"
           >
             <ManageSongsModal
@@ -2164,6 +2280,7 @@ export function Dashboard() {
               newSongInput={newSongInput}
               onNewSongInputChange={setNewSongInput}
               onAddSong={handleAddSong}
+              onUpdateSong={handleUpdateSong}
               onToggleSongRetired={toggleSongRetired}
               onDeleteSong={deleteSong}
               onDone={() => setView("dashboard")}

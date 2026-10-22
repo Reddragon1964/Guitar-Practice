@@ -1,10 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Volume2, Volume1, VolumeX, Sparkles } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Volume2, Volume1, VolumeX } from "lucide-react";
 import { cn } from "../../lib/utils";
-
-const STORAGE_KEY = "guitar_windows_volume";
-const MUTE_STORAGE_KEY = "guitar_windows_volume_muted";
-const CUSTOM_EVENT = "guitar_windows_volume_change";
+import { masterAudio } from "../../utils/masterAudioController";
 
 interface WindowsVolumeSliderProps {
   variant?: "header" | "toolbar" | "compact";
@@ -12,115 +9,36 @@ interface WindowsVolumeSliderProps {
   showLabel?: boolean;
 }
 
-// Global audio chime for audible Windows volume feedback
-const playVolumeFeedbackChime = (volPercent: number) => {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    const normalizedVol = Math.max(0, Math.min(1, volPercent / 100));
-    // Gentle non-jarring guitar high E5 chime (659.25 Hz)
-    const masterGain = normalizedVol * 0.15;
-
-    gain.gain.setValueAtTime(masterGain, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(659.25, ctx.currentTime);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.18);
-  } catch {}
-};
-
 export const WindowsVolumeSlider: React.FC<WindowsVolumeSliderProps> = ({
   variant = "toolbar",
   className,
   showLabel = true,
 }) => {
-  const [volume, setVolumeState] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved !== null) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
-          return parsed;
-        }
-      }
-    } catch {}
-    return 75;
-  });
+  const [volume, setVolumeState] = useState<number>(() => masterAudio.getVolume());
+  const [isMuted, setIsMutedState] = useState<boolean>(() => masterAudio.isMuted());
 
-  const [isMuted, setIsMutedState] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(MUTE_STORAGE_KEY) === "true";
-    } catch {}
-    return false;
-  });
-
-  const lastChimeRef = useRef<number>(0);
-
-  // Sync across all slider instances in the app (e.g. main dashboard & Record Practice Session modal)
+  // Subscribe to global master audio updates
   useEffect(() => {
-    const handleStorage = (e: CustomEvent<{ volume: number; isMuted: boolean }>) => {
-      if (e.detail) {
-        setVolumeState(e.detail.volume);
-        setIsMutedState(e.detail.isMuted);
-      }
-    };
-
-    window.addEventListener(CUSTOM_EVENT as any, handleStorage);
-    return () => {
-      window.removeEventListener(CUSTOM_EVENT as any, handleStorage);
-    };
-  }, []);
-
-  const broadcastChange = useCallback((newVol: number, newMute: boolean) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, String(newVol));
-      localStorage.setItem(MUTE_STORAGE_KEY, String(newMute));
-      window.dispatchEvent(
-        new CustomEvent(CUSTOM_EVENT, {
-          detail: { volume: newVol, isMuted: newMute },
-        })
-      );
-    } catch {}
+    const unsubscribe = masterAudio.subscribe((state) => {
+      setVolumeState(state.volume);
+      setIsMutedState(state.isMuted);
+    });
+    return unsubscribe;
   }, []);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVol = parseInt(e.target.value, 10);
-    setVolumeState(newVol);
-    if (isMuted && newVol > 0) {
-      setIsMutedState(false);
-      broadcastChange(newVol, false);
-    } else {
-      broadcastChange(newVol, isMuted);
-    }
-
-    // Audible feedback throttled to once every 200ms
-    const now = Date.now();
-    if (now - lastChimeRef.current > 200 && !isMuted) {
-      lastChimeRef.current = now;
-      playVolumeFeedbackChime(newVol);
-    }
+    masterAudio.setVolume(newVol, true);
   };
 
   const handleSliderCommit = () => {
-    if (!isMuted && volume > 0) {
-      playVolumeFeedbackChime(volume);
-    }
+    masterAudio.playWindowsFeedbackChime(true);
   };
 
   const toggleMute = () => {
-    const nextMute = !isMuted;
-    setIsMutedState(nextMute);
-    broadcastChange(volume, nextMute);
-    if (!nextMute && volume > 0) {
-      playVolumeFeedbackChime(volume);
+    masterAudio.toggleMute();
+    if (isMuted) {
+      masterAudio.playWindowsFeedbackChime(true);
     }
   };
 

@@ -91,8 +91,10 @@ service cloud.firestore {
 
     function isValidSong(data) {
       return data.keys().hasAll(['userId', 'title', 'createdAt']) &&
-             data.keys().hasOnly(['userId', 'title', 'createdAt', 'retired']) &&
+             data.keys().hasOnly(['userId', 'title', 'createdAt', 'retired', 'duration', 'difficulty']) &&
              (!('retired' in data) || data.retired is bool) &&
+             (!('duration' in data) || (data.duration is number && data.duration >= 0 && data.duration <= 86400)) &&
+             (!('difficulty' in data) || (data.difficulty is number && data.difficulty >= 1 && data.difficulty <= 12)) &&
              data.userId == request.auth.uid &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
              data.createdAt is number;

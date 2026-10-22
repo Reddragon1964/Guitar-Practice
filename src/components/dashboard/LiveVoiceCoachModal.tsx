@@ -18,6 +18,8 @@ import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { Practice, Song, Goal } from "../../types";
 import { cn } from "../../lib/utils";
+import { masterAudio } from "../../utils/masterAudioController";
+import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 
 interface LiveVoiceCoachModalProps {
   practices: Practice[];
@@ -99,6 +101,7 @@ export const LiveVoiceCoachModal: React.FC<LiveVoiceCoachModalProps> = ({
   const isMicMutedRef = useRef<boolean>(false);
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
   const outputAudioCtxRef = useRef<AudioContext | null>(null);
+  const masterGainNodeRef = useRef<GainNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const nextStartTimeRef = useRef<number>(0);
@@ -200,7 +203,11 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
 
     const source = outputCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(outputCtx.destination);
+    if (masterGainNodeRef.current) {
+      source.connect(masterGainNodeRef.current);
+    } else {
+      source.connect(outputCtx.destination);
+    }
 
     // Gapless scheduling using nextStartTimeRef
     const now = outputCtx.currentTime;
@@ -221,6 +228,8 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
 
   const cleanupSession = () => {
     stopAllPlayback();
+
+    masterGainNodeRef.current = null;
 
     if (scriptProcessorRef.current) {
       try {
@@ -323,6 +332,9 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
       const outputCtx = new AudioContextClass({ sampleRate: 24000 });
       inputAudioCtxRef.current = inputCtx;
       outputAudioCtxRef.current = outputCtx;
+      const masterGain = masterAudio.createMasterGain(outputCtx);
+      masterGain.connect(outputCtx.destination);
+      masterGainNodeRef.current = masterGain;
       nextStartTimeRef.current = outputCtx.currentTime;
 
       // 3. Connect WebSocket to server /live endpoint
@@ -468,7 +480,8 @@ Help the player with live practice check-ins, rhythm/tempo coaching, chord trans
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <WindowsVolumeSlider variant="toolbar" showLabel={true} />
           <Button
             variant="outline"
             onClick={() => {

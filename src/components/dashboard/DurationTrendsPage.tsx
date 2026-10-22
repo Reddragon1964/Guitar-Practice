@@ -34,6 +34,11 @@ import { Select } from "../ui/select";
 import { Practice, Song, PrintMode } from "../../types";
 import { cn } from "../../lib/utils";
 import { formatDurationColon, formatDurationLabel } from "../../utils/durationFormat";
+import {
+  useResizableColumns,
+  AdjustableTableToolbar,
+  ColumnResizeHandle,
+} from "../ui/AdjustableTable";
 
 interface DurationTrendsPageProps {
   practices: Practice[];
@@ -91,6 +96,37 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
   const [chartType, setChartType] = useState<ChartTypeOption>("area");
   const [songFilter, setSongFilter] = useState<string>("");
   const [showAverageLine, setShowAverageLine] = useState<boolean>(true);
+
+  // Column resizing and row density
+  const defaultColWidths = useMemo(
+    () => ({
+      date: 120,
+      song: 240,
+      duration: 170,
+      accuracy: 110,
+      speed: 100,
+      action: 90,
+    }),
+    []
+  );
+
+  const {
+    widths,
+    density,
+    densityStyle,
+    activeResizingColumn,
+    setDensity,
+    resetWidths,
+    resetColumn,
+    resetAll,
+    startResize,
+  } = useResizableColumns({
+    tableId: "duration_trends_sessions_table_v1",
+    defaultWidths: defaultColWidths,
+    minWidth: 70,
+    maxWidth: 500,
+    defaultDensity: "default",
+  });
 
   const isPrintHidden = printMode && printMode !== "durations" && printMode !== "all";
 
@@ -806,7 +842,7 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
 
       {/* Session Duration Log Table */}
       <Card className="border-indigo-800/60 bg-indigo-950/40 backdrop-blur-sm">
-        <CardHeader className="pb-3 border-b border-indigo-800/50 flex flex-row items-center justify-between">
+        <CardHeader className="pb-3 border-b border-indigo-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base text-indigo-100 flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-400" />
@@ -816,22 +852,147 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
               Click "Edit" on any session to update its duration.
             </p>
           </div>
-          <Button size="sm" onClick={onAddSession} className="gap-1 text-xs">
-            <Plus className="w-3.5 h-3.5" /> Add Session
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <AdjustableTableToolbar
+              density={density}
+              onDensityChange={setDensity}
+              onResetColumns={resetWidths}
+              onResetAll={resetAll}
+              rowCount={filteredPractices.length}
+              columnCount={6}
+            />
+            <Button size="sm" onClick={onAddSession} className="gap-1 text-xs">
+              <Plus className="w-3.5 h-3.5" /> Add Session
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-80 overflow-y-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead className="bg-indigo-950/80 sticky top-0 z-10 border-b border-indigo-800 text-xs font-semibold uppercase text-indigo-300">
+          <div className="overflow-x-auto max-h-96 overflow-y-auto">
+            <table className={cn("w-full text-left border-collapse", densityStyle.fontSize)}>
+              <thead className="bg-indigo-950/90 sticky top-0 z-10 border-b border-indigo-800 text-xs font-semibold uppercase text-indigo-300 select-none">
                 <tr>
-                  <th className="px-4 py-2.5">Date</th>
-                  <th className="px-4 py-2.5">Song</th>
-                  <th className="px-4 py-2.5 text-right">Duration</th>
-                  <th className="px-4 py-2.5 text-right">Accuracy</th>
-                  <th className="px-4 py-2.5 text-right">Speed</th>
-                  <th className="px-4 py-2.5 text-right print:hidden">Action</th>
+                  {/* 1. Date */}
+                  <th
+                    style={{ width: widths.date, minWidth: widths.date }}
+                    className={cn(
+                      "relative group/resize font-semibold",
+                      densityStyle.headerPaddingY,
+                      densityStyle.paddingX
+                    )}
+                  >
+                    <span>Date</span>
+                    <ColumnResizeHandle
+                      onResizeStart={(e) =>
+                        startResize(
+                          "date",
+                          "touches" in e ? e.touches[0].clientX : e.clientX
+                        )
+                      }
+                      onDoubleClick={() => resetColumn("date")}
+                      isResizing={activeResizingColumn === "date"}
+                    />
+                  </th>
+
+                  {/* 2. Song */}
+                  <th
+                    style={{ width: widths.song, minWidth: widths.song }}
+                    className={cn(
+                      "relative group/resize font-semibold",
+                      densityStyle.headerPaddingY,
+                      densityStyle.paddingX
+                    )}
+                  >
+                    <span>Song</span>
+                    <ColumnResizeHandle
+                      onResizeStart={(e) =>
+                        startResize(
+                          "song",
+                          "touches" in e ? e.touches[0].clientX : e.clientX
+                        )
+                      }
+                      onDoubleClick={() => resetColumn("song")}
+                      isResizing={activeResizingColumn === "song"}
+                    />
+                  </th>
+
+                  {/* 3. Duration */}
+                  <th
+                    style={{ width: widths.duration, minWidth: widths.duration }}
+                    className={cn(
+                      "relative group/resize font-semibold text-right",
+                      densityStyle.headerPaddingY,
+                      densityStyle.paddingX
+                    )}
+                  >
+                    <span>Duration</span>
+                    <ColumnResizeHandle
+                      onResizeStart={(e) =>
+                        startResize(
+                          "duration",
+                          "touches" in e ? e.touches[0].clientX : e.clientX
+                        )
+                      }
+                      onDoubleClick={() => resetColumn("duration")}
+                      isResizing={activeResizingColumn === "duration"}
+                    />
+                  </th>
+
+                  {/* 4. Accuracy */}
+                  <th
+                    style={{ width: widths.accuracy, minWidth: widths.accuracy }}
+                    className={cn(
+                      "relative group/resize font-semibold text-right",
+                      densityStyle.headerPaddingY,
+                      densityStyle.paddingX
+                    )}
+                  >
+                    <span>Accuracy</span>
+                    <ColumnResizeHandle
+                      onResizeStart={(e) =>
+                        startResize(
+                          "accuracy",
+                          "touches" in e ? e.touches[0].clientX : e.clientX
+                        )
+                      }
+                      onDoubleClick={() => resetColumn("accuracy")}
+                      isResizing={activeResizingColumn === "accuracy"}
+                    />
+                  </th>
+
+                  {/* 5. Speed */}
+                  <th
+                    style={{ width: widths.speed, minWidth: widths.speed }}
+                    className={cn(
+                      "relative group/resize font-semibold text-right",
+                      densityStyle.headerPaddingY,
+                      densityStyle.paddingX
+                    )}
+                  >
+                    <span>Speed</span>
+                    <ColumnResizeHandle
+                      onResizeStart={(e) =>
+                        startResize(
+                          "speed",
+                          "touches" in e ? e.touches[0].clientX : e.clientX
+                        )
+                      }
+                      onDoubleClick={() => resetColumn("speed")}
+                      isResizing={activeResizingColumn === "speed"}
+                    />
+                  </th>
+
+                  {/* 6. Action */}
+                  <th
+                    style={{ width: widths.action, minWidth: widths.action }}
+                    className={cn(
+                      "font-semibold text-right print:hidden sticky right-0 bg-indigo-950/95 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.3)]",
+                      densityStyle.headerPaddingY,
+                      densityStyle.paddingX
+                    )}
+                  >
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-indigo-900/40">
@@ -842,18 +1003,35 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                       key={p.id}
                       className="hover:bg-indigo-900/20 transition-colors text-indigo-200"
                     >
-                      <td className="px-4 py-2.5 whitespace-nowrap text-xs font-mono text-indigo-300">
+                      <td
+                        style={{ width: widths.date, minWidth: widths.date }}
+                        className={cn(
+                          densityStyle.paddingY,
+                          densityStyle.paddingX,
+                          "whitespace-nowrap text-xs font-mono text-indigo-300"
+                        )}
+                      >
                         {p.date}
                       </td>
-                      <td className="px-4 py-2.5">
-                        <div className="font-medium text-indigo-100 flex items-center gap-1.5">
+                      <td
+                        style={{ width: widths.song, minWidth: widths.song }}
+                        className={cn(densityStyle.paddingY, densityStyle.paddingX)}
+                      >
+                        <div className="font-medium text-indigo-100 flex items-center gap-1.5 flex-wrap">
                           <span>{p.songTitle}</span>
                           <span className="text-[10px] text-indigo-400 bg-indigo-900/40 px-1 py-0.5 rounded border border-indigo-800">
                             Lvl {p.difficulty}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <td
+                        style={{ width: widths.duration, minWidth: widths.duration }}
+                        className={cn(
+                          densityStyle.paddingY,
+                          densityStyle.paddingX,
+                          "text-right whitespace-nowrap"
+                        )}
+                      >
                         <span className="font-mono font-bold text-emerald-300">
                           {p.duration !== undefined
                             ? formatDurationColon(p.duration)
@@ -871,11 +1049,34 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-xs">
+                      <td
+                        style={{ width: widths.accuracy, minWidth: widths.accuracy }}
+                        className={cn(
+                          densityStyle.paddingY,
+                          densityStyle.paddingX,
+                          "text-right font-mono text-xs"
+                        )}
+                      >
                         {p.isTestSession && p.correctNotes === 0 ? "—" : `${p.accuracy}%`}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-xs">{p.speed}%</td>
-                      <td className="px-4 py-2.5 text-right print:hidden">
+                      <td
+                        style={{ width: widths.speed, minWidth: widths.speed }}
+                        className={cn(
+                          densityStyle.paddingY,
+                          densityStyle.paddingX,
+                          "text-right font-mono text-xs"
+                        )}
+                      >
+                        {p.speed}%
+                      </td>
+                      <td
+                        style={{ width: widths.action, minWidth: widths.action }}
+                        className={cn(
+                          densityStyle.paddingY,
+                          densityStyle.paddingX,
+                          "text-right print:hidden sticky right-0 bg-indigo-950/95 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.3)]"
+                        )}
+                      >
                         <button
                           onClick={() => onEditSession(p)}
                           className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-100 hover:underline"

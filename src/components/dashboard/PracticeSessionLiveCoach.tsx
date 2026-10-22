@@ -17,6 +17,7 @@ import { Button } from "../ui/button";
 import { Select } from "../ui/select";
 import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
+import { masterAudio } from "../../utils/masterAudioController";
 
 type VoiceName = "Zephyr" | "Puck" | "Kore" | "Fenrir" | "Charon";
 
@@ -96,6 +97,7 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   const isMicMutedRef = useRef<boolean>(false);
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
   const outputAudioCtxRef = useRef<AudioContext | null>(null);
+  const masterGainNodeRef = useRef<GainNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const nextStartTimeRef = useRef<number>(0);
@@ -192,7 +194,11 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
 
     const source = outputCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(outputCtx.destination);
+    if (masterGainNodeRef.current) {
+      source.connect(masterGainNodeRef.current);
+    } else {
+      source.connect(outputCtx.destination);
+    }
 
     const now = outputCtx.currentTime;
     const startTime = Math.max(now, nextStartTimeRef.current);
@@ -212,6 +218,8 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
 
   const cleanupSession = () => {
     stopAllPlayback();
+
+    masterGainNodeRef.current = null;
 
     if (scriptProcessorRef.current) {
       try {
@@ -312,6 +320,9 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
       const outputCtx = new AudioContextClass({ sampleRate: 24000 });
       inputAudioCtxRef.current = inputCtx;
       outputAudioCtxRef.current = outputCtx;
+      const masterGain = masterAudio.createMasterGain(outputCtx);
+      masterGain.connect(outputCtx.destination);
+      masterGainNodeRef.current = masterGain;
       nextStartTimeRef.current = outputCtx.currentTime;
 
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
