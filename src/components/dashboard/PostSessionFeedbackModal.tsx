@@ -211,7 +211,7 @@ export const PostSessionFeedbackModal: React.FC<PostSessionFeedbackModalProps> =
                 placeholder="Add notes on what went well, difficult sections, metronome settings, or focus for next time..."
                 rows={3}
                 maxLength={500}
-                className="w-full rounded-xl border border-indigo-700/80 bg-indigo-950/70 text-indigo-100 placeholder:text-indigo-400/60 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dialog-scrollbar resize-none"
+                className="w-full rounded-xl border border-blue-400 !bg-white bg-white !text-blue-700 text-blue-700 font-medium placeholder:!text-blue-400 placeholder:text-blue-400 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition-all dialog-scrollbar resize-none"
               />
 
               <div className="flex items-center justify-between text-[11px] text-indigo-400/70">

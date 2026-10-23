@@ -301,8 +301,8 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
           }
         }}
         className={cn(
-          "flex h-10 w-full rounded-md border border-indigo-700 bg-indigo-950/60 text-indigo-50 px-3 py-2 pr-7 text-sm placeholder:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield]",
-          isOpen && "ring-2 ring-emerald-400/80 border-emerald-400",
+          "flex h-10 w-full rounded-md border border-blue-400 !bg-white bg-white !text-blue-700 text-blue-700 font-medium px-3 py-2 pr-7 text-sm placeholder:!text-blue-400 placeholder:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield]",
+          isOpen && "ring-2 ring-blue-500 border-blue-600",
           inputClassName
         )}
         {...rest}
@@ -327,10 +327,10 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
         className={cn(
           "absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors",
           disabled
-            ? "text-indigo-600/30 cursor-not-allowed"
+            ? "text-blue-400/40 cursor-not-allowed"
             : isOpen
-            ? "text-emerald-300 bg-emerald-500/20"
-            : "text-indigo-400/80 hover:text-indigo-200 hover:bg-indigo-800/50",
+            ? "text-blue-800 bg-blue-100"
+            : "text-blue-600 hover:text-blue-800 hover:bg-blue-100",
           compact && "right-1 p-0.5"
         )}
       >
@@ -374,10 +374,10 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
               <div className="flex items-center gap-1.5 shrink-0">
                 <div
                   className={cn(
-                    "px-2 py-1 rounded-md font-mono font-bold text-sm min-w-[54px] text-center border",
+                    "px-2 py-1 rounded-md font-mono font-bold text-sm min-w-[54px] text-center border bg-white text-blue-700",
                     replaceOnNextKey && draft
-                      ? "bg-indigo-500/25 border-indigo-400 text-white"
-                      : "bg-indigo-950/90 border-indigo-700/80 text-emerald-300"
+                      ? "border-blue-500 ring-2 ring-blue-400/50"
+                      : "border-blue-400"
                   )}
                 >
                   {draft || placeholder || "0"}

@@ -27,23 +27,99 @@
   animation: progress-glow 2.4s ease-in-out infinite;
 }
 
+/* Global Textbox & Listbox Styling: White Background & Blue Text */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not(.animate-speed-flash-green),
+textarea,
+select,
+select option,
+select optgroup,
+[role="listbox"],
+[role="option"] {
+  background-color: #ffffff !important;
+  color: #1d4ed8 !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not(.animate-speed-flash-green)::placeholder,
+textarea::placeholder {
+  color: #60a5fa !important;
+  opacity: 1 !important;
+}
+
 /* Date Input Box Calendar Icon - Set to Green (#10b981 / #22c55e) */
 input[type="date"] {
-  color-scheme: dark;
+  color-scheme: light;
   accent-color: #10b981;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(95%) contrast(119%);
   opacity: 0.95;
   transition: transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
-  filter: invert(55%) sepia(85%) saturate(2800%) hue-rotate(88deg) brightness(125%) contrast(125%);
+  filter: invert(55%) sepia(85%) saturate(2800%) hue-rotate(88deg) brightness(105%) contrast(125%);
   transform: scale(1.15);
+}
+
+/* Global Raised 3D Button Styling for All Buttons */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.btn-raised {
+  position: relative;
+  border-top: 1px solid rgba(255, 255, 255, 0.35) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.35) !important;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.55) !important;
+  box-shadow:
+    0 3px 0 0 rgba(7, 10, 25, 0.85),
+    0 4px 8px -1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.28) !important;
+  transition: transform 0.12s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.12s cubic-bezier(0.2, 0, 0, 1), filter 0.12s ease, background-color 0.15s ease !important;
+}
+
+button:hover:not(:disabled),
+input[type="button"]:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled),
+input[type="reset"]:hover:not(:disabled),
+.btn-raised:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 4px 0 0 rgba(7, 10, 25, 0.9),
+    0 6px 12px -1px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+button:active:not(:disabled),
+input[type="button"]:active:not(:disabled),
+input[type="submit"]:active:not(:disabled),
+input[type="reset"]:active:not(:disabled),
+.btn-raised:active:not(:disabled) {
+  transform: translateY(2px) !important;
+  filter: brightness(0.95);
+  border-bottom-width: 1px !important;
+  box-shadow:
+    0 1px 0 0 rgba(7, 10, 25, 0.9),
+    0 1px 3px 0 rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+.btn-raised:disabled {
+  box-shadow:
+    0 1px 0 0 rgba(7, 10, 25, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+  transform: none !important;
 }
 
 /* Neon Active Frame Glow Animations & Styles */

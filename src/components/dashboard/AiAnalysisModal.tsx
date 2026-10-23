@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Sparkles,
   Loader2,
@@ -45,6 +45,19 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
   const [selectedId, setSelectedId] = useState<string>(() => {
     return sortedAssessments[0]?.id || "";
   });
+
+  // Track the newest assessment ID so that whenever a new assessment is generated,
+  // we automatically switch the active view to display the newly generated assessment.
+  const latestNewestIdRef = useRef<string>(sortedAssessments[0]?.id || "");
+  useEffect(() => {
+    const newestId = sortedAssessments[0]?.id || "";
+    if (newestId && newestId !== latestNewestIdRef.current) {
+      latestNewestIdRef.current = newestId;
+      setSelectedId(newestId);
+    } else if (!selectedId && newestId) {
+      setSelectedId(newestId);
+    }
+  }, [sortedAssessments, selectedId]);
 
   // Keep selected assessment up to date when new one is generated
   const activeAssessment = useMemo(() => {
@@ -191,7 +204,7 @@ export const AiAnalysisModal: React.FC<AiAnalysisModalProps> = ({
                   placeholder="Filter by date or text..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-indigo-950/60 border border-indigo-700/60 text-white placeholder:text-indigo-400/60 focus:outline-hidden focus:border-indigo-400"
+                  className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-white border border-blue-400 text-blue-700 font-medium placeholder:text-blue-400 focus:outline-hidden focus:border-blue-600"
                 />
               )}
             </div>

@@ -180,7 +180,11 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
 }) => {
   const [isPoppedOut, setIsPoppedOut] = useState(false);
 
-  const currentWidth: FrameWidth = (width as FrameWidth) || "full";
+  const validWidths: FrameWidth[] = ["one-third", "half", "two-thirds", "full"];
+  const currentWidth: FrameWidth =
+    typeof width === "string" && validWidths.includes(width as FrameWidth)
+      ? (width as FrameWidth)
+      : "full";
   const neon = NEON_THEMES[neonColor] || NEON_THEMES.cyan;
 
   // Width CSS mappings based on 12-column responsive grid
@@ -217,11 +221,21 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
         )}
       >
         <Card
-          onClick={() => {
-            onActivate?.();
+          onClick={(e) => {
+            if ((e.target as HTMLElement)?.closest?.('[data-column-resize-handle="true"]')) {
+              return;
+            }
+            if (!isActive) {
+              onActivate?.();
+            }
           }}
-          onFocusCapture={() => {
-            onActivate?.();
+          onFocusCapture={(e) => {
+            if ((e.target as HTMLElement)?.closest?.('[data-column-resize-handle="true"]')) {
+              return;
+            }
+            if (!isActive) {
+              onActivate?.();
+            }
           }}
           tabIndex={0}
           role="region"
@@ -406,10 +420,10 @@ export const DashboardFrame: React.FC<DashboardFrameProps> = ({
                     cycleWidth();
                   }}
                   className="px-2 py-1 rounded-lg text-[10px] font-mono font-medium bg-indigo-950/80 hover:bg-indigo-800 border border-indigo-700/60 text-indigo-200 hover:text-white transition-colors flex items-center gap-1"
-                  title={`Current size: ${width}. Click to resize frame width.`}
+                  title={`Current size: ${currentWidth}. Click to resize frame width.`}
                 >
                   <Columns className="w-3 h-3 text-indigo-300" />
-                  <span className="capitalize">{width.replace("-", " ")}</span>
+                  <span className="capitalize">{currentWidth.replace("-", " ")}</span>
                 </button>
               )}
 

@@ -474,7 +474,7 @@ Always tailor your advice to their specific songs, accuracy scores, and speed le
                 value={customInstruction}
                 onChange={(e) => setCustomInstruction(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-indigo-700 bg-slate-950/90 text-indigo-100 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                className="w-full rounded-lg border border-blue-400 !bg-white bg-white !text-blue-700 text-blue-700 font-medium p-2.5 text-xs placeholder:!text-blue-400 placeholder:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 placeholder="Define the system instruction and role for the Gemini chatbot..."
               />
               <p className="text-[11px] text-indigo-400">
@@ -615,7 +615,7 @@ Always tailor your advice to their specific songs, accuracy scores, and speed le
               onChange={(e) => setInputMessage(e.target.value)}
               disabled={isSending}
               placeholder={`Ask ${activePersona.name} (${selectedModel})...`}
-              className="flex-1 bg-slate-950/90 border-indigo-700 text-white placeholder:text-indigo-400/70 h-11"
+              className="flex-1 bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 h-11"
             />
             <Button
               type="submit"

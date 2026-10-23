@@ -1281,7 +1281,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               </span>
             </div>
             <textarea
-              className="flex min-h-[85px] w-full rounded-xl border border-indigo-700/80 bg-indigo-950/60 text-indigo-50 px-3.5 py-2.5 text-sm placeholder:text-indigo-500/70 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none dialog-scrollbar"
+              className="flex min-h-[85px] w-full rounded-xl border border-blue-400 !bg-white bg-white !text-blue-700 text-blue-700 font-medium px-3.5 py-2.5 text-sm placeholder:!text-blue-400 placeholder:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 transition-all resize-none dialog-scrollbar"
               value={note}
               onChange={(e) => onNoteChange(e.target.value)}
               placeholder="e.g. Focused on bridge section tempo and clean finger transitions..."

@@ -218,13 +218,27 @@ export function Dashboard() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasRecentTrend = parsed.some((p: any) => p.id === "recentTrend");
-          if (!hasRecentTrend) {
-            const streakIdx = parsed.findIndex((p: any) => p.id === "streak");
-            const insertAt = streakIdx >= 0 ? streakIdx + 1 : 0;
-            parsed.splice(insertAt, 0, { id: "recentTrend", width: "full", isMinimized: false });
+          const validWidths = new Set(["one-third", "half", "two-thirds", "full"]);
+          const sanitized = parsed
+            .filter((p: any) => p && typeof p.id === "string")
+            .map((p: any) => ({
+              id: p.id as FrameId,
+              width: validWidths.has(p.width) ? (p.width as FrameWidth) : ("full" as FrameWidth),
+              isMinimized: Boolean(p.isMinimized),
+            }));
+          if (sanitized.length > 0) {
+            const hasRecentTrend = sanitized.some((p) => p.id === "recentTrend");
+            if (!hasRecentTrend) {
+              const streakIdx = sanitized.findIndex((p) => p.id === "streak");
+              const insertAt = streakIdx >= 0 ? streakIdx + 1 : 0;
+              sanitized.splice(insertAt, 0, {
+                id: "recentTrend",
+                width: "full",
+                isMinimized: false,
+              });
+            }
+            return sanitized;
           }
-          return parsed;
         }
       }
     } catch {}
@@ -651,6 +665,9 @@ export function Dashboard() {
         );
         assessments.sort((a, b) => b.createdAt - a.createdAt);
         setAiAssessments(assessments);
+        try {
+          localStorage.setItem("guitar_tracker_ai_assessments", JSON.stringify(assessments));
+        } catch {}
       },
       (error) => handleFirestoreError(error, OperationType.GET, "aiAssessments")
     );
@@ -926,40 +943,103 @@ export function Dashboard() {
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ practices, goals, songs }),
-      });
-      const data = await response.json();
-      if (data.analysis) {
-        const now = new Date();
-        const dateStr = now.toISOString().split("T")[0];
-        const timeStr = now.toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
+      let analysisText = "";
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ practices, goals, songs }),
         });
+        const data = await response.json();
+        if (data?.analysis && typeof data.analysis === "string") {
+          analysisText = data.analysis.trim();
+        }
+      } catch (apiErr) {
+        console.warn("Primary /api/analyze request failed, building local summary:", apiErr);
+      }
 
-        const newAssessmentPayload: Omit<AiAssessment, "id"> = {
-          userId: auth.currentUser?.uid || "guest",
-          analysis: data.analysis,
-          date: dateStr,
-          time: timeStr,
-          createdAt: Date.now(),
-          sessionCount: practices.length,
-          summary: `${practices.length} sessions evaluated`,
-        };
+      if (!analysisText) {
+        const total = practices.length;
+        const avgAcc =
+          total > 0
+            ? (practices.reduce((s, p) => s + (p.accuracy || 0), 0) / total).toFixed(1)
+            : "0.0";
+        const avgSpd =
+          total > 0
+            ? (practices.reduce((s, p) => s + (p.speed || 0), 0) / total).toFixed(0)
+            : "100";
+        analysisText = [
+          "### 1. Recent Progress Overview",
+          `- Evaluated **${total}** total practice session(s) across **${songs.length}** song(s).`,
+          `- Overall average accuracy is **${avgAcc}%** at an average speed of **${avgSpd}%**.`,
+          "",
+          "### 2. Goals & Next Session Focus",
+          `- Active milestones in progress: **${goals.filter((g) => !g.achieved).length}** (${goals.filter((g) => g.achieved).length} achieved).`,
+          "- Focus your next 15-minute block on your lowest-accuracy song at 5%–10% slower tempo until you achieve 3 consecutive clean runs above 95% accuracy."
+        ].join("\n");
+      }
 
-        if (auth.currentUser) {
-          await addDoc(collection(db, "aiAssessments"), newAssessmentPayload);
-        } else {
-          const localItem: AiAssessment = {
-            id: `local-${Date.now()}`,
+      const now = new Date();
+      const dateStr = now.toISOString().split("T")[0];
+      const timeStr = now.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+      const createdAtTimestamp = Date.now();
+
+      const newAssessmentPayload: Omit<AiAssessment, "id"> = {
+        userId: auth.currentUser?.uid || "guest",
+        analysis: analysisText.slice(0, 14500),
+        date: dateStr,
+        time: timeStr,
+        createdAt: createdAtTimestamp,
+        sessionCount: practices.length,
+        summary: `${practices.length} sessions evaluated`,
+      };
+
+      if (auth.currentUser) {
+        try {
+          const docRef = await addDoc(collection(db, "aiAssessments"), newAssessmentPayload);
+          const createdItem: AiAssessment = {
+            id: docRef.id,
             ...newAssessmentPayload,
           };
-          setAiAssessments((prev) => [localItem, ...prev]);
+          setAiAssessments((prev) => {
+            if (prev.some((a) => a.id === docRef.id)) return prev;
+            const next = [createdItem, ...prev].sort((a, b) => b.createdAt - a.createdAt);
+            try {
+              localStorage.setItem("guitar_tracker_ai_assessments", JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+        } catch (firestoreErr) {
+          console.warn("Firestore addDoc for aiAssessments failed, saving locally:", firestoreErr);
+          const fallbackItem: AiAssessment = {
+            id: `local-${createdAtTimestamp}`,
+            ...newAssessmentPayload,
+          };
+          setAiAssessments((prev) => {
+            const next = [fallbackItem, ...prev];
+            try {
+              localStorage.setItem("guitar_tracker_ai_assessments", JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         }
+      } else {
+        const localItem: AiAssessment = {
+          id: `local-${createdAtTimestamp}`,
+          ...newAssessmentPayload,
+        };
+        setAiAssessments((prev) => {
+          const next = [localItem, ...prev];
+          try {
+            localStorage.setItem("guitar_tracker_ai_assessments", JSON.stringify(next));
+          } catch {}
+          return next;
+        });
       }
     } catch (err) {
       console.error("Error generating AI Assessment:", err);
@@ -1217,10 +1297,16 @@ export function Dashboard() {
       } else if (type === "weeklyGoal") {
         await deleteDoc(doc(db, "weeklyGoals", id));
       } else if (type === "assessment") {
-        if (auth.currentUser) {
+        if (auth.currentUser && !id.startsWith("local-")) {
           await deleteDoc(doc(db, "aiAssessments", id));
         }
-        setAiAssessments((prev) => prev.filter((a) => a.id !== id));
+        setAiAssessments((prev) => {
+          const next = prev.filter((a) => a.id !== id);
+          try {
+            localStorage.setItem("guitar_tracker_ai_assessments", JSON.stringify(next));
+          } catch {}
+          return next;
+        });
       }
     } catch (error) {
       handleFirestoreError(
@@ -1407,34 +1493,39 @@ export function Dashboard() {
 
     return [...practices]
       .filter((p) => {
+        if (!p) return false;
+        const songTitleStr = String(p.songTitle || "");
+        const dateStr = String(p.date || "");
+        const speedStr = String(p.speed ?? "");
+        const levelStr = String(p.difficulty ?? "");
         const matchSearch = query
-          ? p.songTitle.toLowerCase().includes(query) ||
-            Boolean(p.note && p.note.toLowerCase().includes(query))
+          ? songTitleStr.toLowerCase().includes(query) ||
+            Boolean(p.note && String(p.note).toLowerCase().includes(query))
           : true;
-        const matchName = sessionFilterName ? p.songTitle === sessionFilterName : true;
-        const matchStartDate = effectiveStart ? p.date >= effectiveStart : true;
-        const matchEndDate = effectiveEnd ? p.date <= effectiveEnd : true;
-        const matchSpeed = sessionFilterSpeed ? p.speed.toString() === sessionFilterSpeed : true;
-        const matchLevel = sessionFilterLevel ? p.difficulty.toString() === sessionFilterLevel : true;
+        const matchName = sessionFilterName ? songTitleStr === sessionFilterName : true;
+        const matchStartDate = effectiveStart ? dateStr >= effectiveStart : true;
+        const matchEndDate = effectiveEnd ? dateStr <= effectiveEnd : true;
+        const matchSpeed = sessionFilterSpeed ? speedStr === sessionFilterSpeed : true;
+        const matchLevel = sessionFilterLevel ? levelStr === sessionFilterLevel : true;
         return matchSearch && matchName && matchStartDate && matchEndDate && matchSpeed && matchLevel;
       })
       .sort((a, b) => {
         let comparison = 0;
         if (sessionSortField === "date") {
-          comparison = a.date.localeCompare(b.date);
+          comparison = String(a.date || "").localeCompare(String(b.date || ""));
           if (comparison === 0) {
-            comparison = a.createdAt - b.createdAt;
+            comparison = (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0);
           }
         } else if (sessionSortField === "duration") {
-          comparison = (a.duration || 0) - (b.duration || 0);
+          comparison = (Number(a.duration) || 0) - (Number(b.duration) || 0);
         } else if (sessionSortField === "songTitle") {
-          comparison = a.songTitle.localeCompare(b.songTitle);
+          comparison = String(a.songTitle || "").localeCompare(String(b.songTitle || ""));
         } else if (sessionSortField === "difficulty") {
-          comparison = a.difficulty - b.difficulty;
+          comparison = (Number(a.difficulty) || 0) - (Number(b.difficulty) || 0);
         } else if (sessionSortField === "accuracy") {
-          comparison = a.accuracy - b.accuracy;
+          comparison = (Number(a.accuracy) || 0) - (Number(b.accuracy) || 0);
         } else if (sessionSortField === "speed") {
-          comparison = a.speed - b.speed;
+          comparison = (Number(a.speed) || 0) - (Number(b.speed) || 0);
         }
         return sessionSortDirection === "asc" ? comparison : -comparison;
       });

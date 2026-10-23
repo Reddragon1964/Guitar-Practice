@@ -153,10 +153,12 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
     densityStyle,
     activeResizingColumn,
     setDensity,
+    adjustAllColumns,
     resetWidths,
     resetColumn,
     resetAll,
     startResize,
+    isRecentlyResized,
   } = useResizableColumns({
     tableId: "recent_sessions_log",
     defaultWidths: defaultColWidths,
@@ -164,6 +166,25 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
     maxWidth: 550,
     defaultDensity: "default",
   });
+
+  const handleHeaderSort = useCallback(
+    (field: SessionSortField) => {
+      if (isRecentlyResized()) return;
+      onSort(field);
+    },
+    [isRecentlyResized, onSort]
+  );
+
+  const formatSafeSessionDate = useCallback((dateStr: string) => {
+    if (!dateStr || typeof dateStr !== "string") return "—";
+    try {
+      const parsed = parseISO(dateStr);
+      if (isNaN(parsed.getTime())) return dateStr;
+      return format(parsed, "MMM d, yyyy");
+    } catch {
+      return dateStr;
+    }
+  }, []);
 
   // Compute previous session for the quick record song
   const previousQuickSession = useMemo(() => {
@@ -734,20 +755,20 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
         <div className="mb-4 flex flex-wrap items-center gap-3 print:hidden">
           {/* Search Bar */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm">
-            <Search className="w-4 h-4 text-indigo-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-blue-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
             <Input
               id="practice-sessions-search"
               type="text"
               placeholder="Search songs or notes..."
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
-              className="pl-9 pr-8 w-full bg-indigo-950/60 border-indigo-700/70 text-indigo-100 placeholder:text-indigo-400/60 focus:border-indigo-400"
+              className="pl-9 pr-8 w-full bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => onSearchQueryChange("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-indigo-400 hover:text-white rounded-full transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors z-10"
                 title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
@@ -821,7 +842,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   onFilterDateChange(e.target.value);
                 }
               }}
-              className="w-32 sm:w-34 h-8 text-xs bg-slate-950/90 border-slate-800 text-indigo-100 focus:border-indigo-500"
+              className="w-32 sm:w-34 h-8 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
             />
           </div>
 
@@ -834,7 +855,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               title="Filter End Date (To)"
               value={effectiveEndDate}
               onChange={(e) => onFilterEndDateChange?.(e.target.value)}
-              className="w-32 sm:w-34 h-8 text-xs bg-slate-950/90 border-slate-800 text-indigo-100 focus:border-indigo-500"
+              className="w-32 sm:w-34 h-8 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
             />
           </div>
 
@@ -849,6 +870,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
           <AdjustableTableToolbar
             density={density}
             onDensityChange={setDensity}
+            onAdjustAllColumns={adjustAllColumns}
             onResetColumns={resetWidths}
             onResetAll={resetAll}
             rowCount={practices.length}
@@ -868,18 +890,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     densityStyle.headerPaddingY,
                     densityStyle.paddingX
                   )}
-                  onClick={() => onSort("date")}
+                  onClick={() => handleHeaderSort("date")}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 pr-2">
                     Date {sortField === "date" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "date",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("date", e)}
                     onDoubleClick={() => resetColumn("date")}
                     isResizing={activeResizingColumn === "date"}
                   />
@@ -893,18 +910,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     densityStyle.headerPaddingY,
                     densityStyle.paddingX
                   )}
-                  onClick={() => onSort("duration")}
+                  onClick={() => handleHeaderSort("duration")}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 pr-2">
                     Duration {sortField === "duration" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "duration",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("duration", e)}
                     onDoubleClick={() => resetColumn("duration")}
                     isResizing={activeResizingColumn === "duration"}
                   />
@@ -918,18 +930,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     densityStyle.headerPaddingY,
                     densityStyle.paddingX
                   )}
-                  onClick={() => onSort("songTitle")}
+                  onClick={() => handleHeaderSort("songTitle")}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 pr-2">
                     Song Title {sortField === "songTitle" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "songTitle",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("songTitle", e)}
                     onDoubleClick={() => resetColumn("songTitle")}
                     isResizing={activeResizingColumn === "songTitle"}
                   />
@@ -943,18 +950,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     densityStyle.headerPaddingY,
                     densityStyle.paddingX
                   )}
-                  onClick={() => onSort("difficulty")}
+                  onClick={() => handleHeaderSort("difficulty")}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 pr-2">
                     Difficulty {sortField === "difficulty" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "difficulty",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("difficulty", e)}
                     onDoubleClick={() => resetColumn("difficulty")}
                     isResizing={activeResizingColumn === "difficulty"}
                   />
@@ -968,19 +970,14 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     densityStyle.headerPaddingY,
                     densityStyle.paddingX
                   )}
-                  onClick={() => onSort("accuracy")}
+                  onClick={() => handleHeaderSort("accuracy")}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1 pr-2">
                     Accuracy (Correct / Total){" "}
                     {sortField === "accuracy" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "accuracy",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("accuracy", e)}
                     onDoubleClick={() => resetColumn("accuracy")}
                     isResizing={activeResizingColumn === "accuracy"}
                   />
@@ -994,18 +991,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     densityStyle.headerPaddingY,
                     densityStyle.paddingX
                   )}
-                  onClick={() => onSort("speed")}
+                  onClick={() => handleHeaderSort("speed")}
                 >
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1 pr-2">
                     Speed {sortField === "speed" && (sortDirection === "asc" ? "↑" : "↓")}
                   </div>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "speed",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("speed", e)}
                     onDoubleClick={() => resetColumn("speed")}
                     isResizing={activeResizingColumn === "speed"}
                   />
@@ -1022,12 +1014,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                 >
                   <span>Note</span>
                   <ColumnResizeHandle
-                    onResizeStart={(e) =>
-                      startResize(
-                        "note",
-                        "touches" in e ? e.touches[0].clientX : e.clientX
-                      )
-                    }
+                    onResizeStart={(e) => startResize("note", e)}
                     onDoubleClick={() => resetColumn("note")}
                     isResizing={activeResizingColumn === "note"}
                   />
@@ -1061,7 +1048,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                       "whitespace-nowrap text-indigo-200 font-medium"
                     )}
                   >
-                    {format(parseISO(p.date), "MMM d, yyyy")}
+                    {formatSafeSessionDate(p.date)}
                   </td>
 
                   {/* 2. Duration */}
@@ -1069,7 +1056,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     style={{ width: widths.duration, minWidth: widths.duration }}
                     className={cn(densityStyle.paddingY, densityStyle.paddingX, "whitespace-nowrap")}
                   >
-                    {p.duration !== undefined && p.duration > 0 ? (
+                    {typeof p.duration === "number" && p.duration > 0 ? (
                       <div className="flex flex-col">
                         <span
                           className="text-emerald-300 font-mono font-semibold"
@@ -1092,7 +1079,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     className={cn(densityStyle.paddingY, densityStyle.paddingX)}
                   >
                     <div className="font-medium text-indigo-50 flex items-center gap-2 flex-wrap">
-                      <span>{p.songTitle}</span>
+                      <span>{p.songTitle || "Untitled"}</span>
                       {p.isPartial && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-indigo-900/60 text-indigo-300 border border-indigo-700">
                           Partial
@@ -1109,7 +1096,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                         </span>
                       )}
                     </div>
-                    {p.score !== undefined && (
+                    {typeof p.score === "number" && !isNaN(p.score) && (
                       <div className="text-xs text-indigo-300 font-mono mt-0.5">
                         Test Score: {p.score.toLocaleString()}
                       </div>

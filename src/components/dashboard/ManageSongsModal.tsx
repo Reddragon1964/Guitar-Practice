@@ -169,7 +169,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                   onChange={(e) => onNewSongInputChange(e.target.value)}
                   required
                   maxLength={200}
-                  className="h-9 text-sm bg-slate-950 border-slate-700 text-indigo-100 placeholder:text-slate-500 focus:border-cyan-400"
+                  className="h-9 text-sm bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
                 />
               </div>
 
@@ -187,7 +187,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                   placeholder="3:00"
                   value={newDuration}
                   onChange={(e) => setNewDuration(e.target.value)}
-                  className="h-9 text-sm font-mono text-center bg-slate-950 border-slate-700 text-emerald-300 focus:border-emerald-400"
+                  className="h-9 text-sm font-mono text-center bg-white border-blue-400 text-blue-700 focus:border-blue-600"
                 />
               </div>
 
@@ -218,7 +218,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                     { label: "8", value: "8" },
                     { label: "10", value: "10" },
                   ]}
-                  inputClassName="h-9 text-sm font-mono text-center font-bold text-amber-300 bg-slate-950 border-slate-700 focus:border-amber-400"
+                  inputClassName="h-9 text-sm font-mono text-center font-bold text-blue-700 bg-white border-blue-400 focus:border-blue-600"
                   placeholder="3"
                 />
               </div>
@@ -263,18 +263,18 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="w-3.5 h-3.5 text-indigo-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-blue-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
           <Input
             placeholder="Search songs in library..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 pr-7 h-8 text-xs bg-slate-950 border-slate-800 text-indigo-100 placeholder:text-slate-500 focus:border-cyan-400"
+            className="pl-8 pr-7 h-8 text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 z-10"
             >
               <X className="w-3 h-3" />
             </button>

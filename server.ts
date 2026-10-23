@@ -23,26 +23,180 @@ async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
 
+  // Helper to build a data-driven guitar coaching assessment from user practice logs
+  function buildDataDrivenAssessment(practices: any[] = [], goals: any[] = [], songs: any[] = []): string {
+    const safePractices = Array.isArray(practices) ? practices : [];
+    const safeGoals = Array.isArray(goals) ? goals : [];
+    const safeSongs = Array.isArray(songs) ? songs : [];
+
+    if (safePractices.length === 0) {
+      return [
+        "### Practice Progress Overview",
+        "- No practice sessions have been logged yet. Start by recording your first session with note accuracy, speed (% tempo), and difficulty level.",
+        "",
+        "### Song Performance Breakdown",
+        `- You currently have **${safeSongs.length}** song(s) in your repertoire${safeSongs.length > 0 ? ` (${safeSongs.slice(0, 5).map((s: any) => s.title).join(", ")})` : ""}.`,
+        "",
+        "### Goal & Milestone Status",
+        `- Active goals configured: **${safeGoals.filter((g: any) => !g.achieved).length}** pending, **${safeGoals.filter((g: any) => g.achieved).length}** achieved.`,
+        "",
+        "### Next Session Recommendation",
+        "- Pick one song from your library, set your metronome to a comfortable 75%–85% speed, and log a baseline accuracy session focusing on clean note articulation."
+      ].join("\n");
+    }
+
+    const sorted = [...safePractices].sort((a, b) => {
+      const dateCmp = String(b.date || "").localeCompare(String(a.date || ""));
+      if (dateCmp !== 0) return dateCmp;
+      return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+    });
+
+    const totalSessions = sorted.length;
+    const avgAccuracy =
+      sorted.reduce((sum, p) => sum + (Number(p.accuracy) || 0), 0) / totalSessions;
+    const avgSpeed =
+      sorted.reduce((sum, p) => sum + (Number(p.speed) || 0), 0) / totalSessions;
+
+    const recentSlice = sorted.slice(0, Math.min(10, totalSessions));
+    const recentAccuracy =
+      recentSlice.reduce((sum, p) => sum + (Number(p.accuracy) || 0), 0) / recentSlice.length;
+    const recentSpeed =
+      recentSlice.reduce((sum, p) => sum + (Number(p.speed) || 0), 0) / recentSlice.length;
+    const accDelta = recentAccuracy - avgAccuracy;
+
+    // Group by song
+    const songStats = new Map<
+      string,
+      { count: number; totalAcc: number; bestAcc: number; totalSpeed: number; maxDiff: number }
+    >();
+    for (const p of sorted) {
+      const title = String(p.songTitle || "Untitled").trim();
+      const curr = songStats.get(title) || {
+        count: 0,
+        totalAcc: 0,
+        bestAcc: 0,
+        totalSpeed: 0,
+        maxDiff: 1,
+      };
+      const acc = Number(p.accuracy) || 0;
+      const spd = Number(p.speed) || 0;
+      const diff = Number(p.difficulty) || 1;
+      curr.count += 1;
+      curr.totalAcc += acc;
+      curr.bestAcc = Math.max(curr.bestAcc, acc);
+      curr.totalSpeed += spd;
+      curr.maxDiff = Math.max(curr.maxDiff, diff);
+      songStats.set(title, curr);
+    }
+
+    const songSummaries = Array.from(songStats.entries()).map(([title, st]) => ({
+      title,
+      count: st.count,
+      avgAcc: st.totalAcc / st.count,
+      bestAcc: st.bestAcc,
+      avgSpeed: st.totalSpeed / st.count,
+      maxDiff: st.maxDiff,
+    }));
+
+    const strongestSongs = [...songSummaries]
+      .sort((a, b) => b.avgAcc - a.avgAcc)
+      .slice(0, 3);
+    const focusSongs = [...songSummaries]
+      .sort((a, b) => a.avgAcc - b.avgAcc)
+      .slice(0, 3);
+
+    const activeGoals = safeGoals.filter((g: any) => !g.achieved);
+    const achievedGoals = safeGoals.filter((g: any) => g.achieved);
+    const primaryFocus = focusSongs[0] || strongestSongs[0];
+
+    return [
+      "### 1. Recent Progress Overview",
+      `- **Total Logged Sessions:** ${totalSessions} sessions across ${songSummaries.length} song(s).`,
+      `- **Overall Average:** **${avgAccuracy.toFixed(1)}%** accuracy at **${avgSpeed.toFixed(0)}%** speed.`,
+      `- **Recent Form (Last ${recentSlice.length} Sessions):** **${recentAccuracy.toFixed(1)}%** accuracy (${accDelta >= 0 ? `+${accDelta.toFixed(1)}%` : `${accDelta.toFixed(1)}%`} vs. historical average) at **${recentSpeed.toFixed(0)}%** tempo.`,
+      "",
+      "### 2. Song Performance Breakdown",
+      strongestSongs.length > 0
+        ? `- **Strongest Material:** ${strongestSongs
+            .map(
+              (s) =>
+                `**${s.title}** (${s.avgAcc.toFixed(1)}% avg, ${s.bestAcc.toFixed(1)}% peak over ${s.count} session${s.count === 1 ? "" : "s"})`
+            )
+            .join("; ")}.`
+        : "- **Strongest Material:** Keep logging sessions to establish song benchmarks.",
+      focusSongs.length > 0
+        ? `- **Needs Extra Focus:** ${focusSongs
+            .map(
+              (s) =>
+                `**${s.title}** (${s.avgAcc.toFixed(1)}% avg at ${s.avgSpeed.toFixed(0)}% speed, Level ${s.maxDiff})`
+            )
+            .join("; ")}.`
+        : "",
+      "",
+      "### 3. Goals & Milestones Status",
+      `- You have completed **${achievedGoals.length}** milestone(s) with **${activeGoals.length}** active target(s) in progress.`,
+      recentAccuracy >= 90
+        ? "- Your recent accuracy is above 90%, keeping you well on track for your upcoming accuracy and tempo milestones."
+        : "- Focus on stabilizing note accuracy above 90% before pushing tempo increments to stay on schedule for your milestones.",
+      "",
+      "### 4. Specific Next-Session Recommendation",
+      primaryFocus
+        ? `- Dedicate 15 minutes in your next session to **${primaryFocus.title}** at **${Math.max(
+            60,
+            Math.round(primaryFocus.avgSpeed - 5)
+          )}%** speed. Isolate the toughest transition bars until you hit 3 consecutive clean repetitions at **95%+** accuracy, then bring tempo back up to **${Math.round(
+            primaryFocus.avgSpeed + 5
+          )}%**.`
+        : "- Start your next practice with a 5-minute chromatic warm-up, then target your lowest-accuracy passage at 80% speed until note accuracy exceeds 92%."
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   // 1. Practice Data Analysis Endpoint
   app.post("/api/analyze", async (req, res) => {
     try {
-      const { practices, goals, songs } = req.body;
+      const { practices = [], goals = [], songs = [] } = req.body || {};
+      const safePractices = Array.isArray(practices) ? practices : [];
+      const safeGoals = Array.isArray(goals) ? goals : [];
+      const safeSongs = Array.isArray(songs) ? songs : [];
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(400).json({ error: "GEMINI_API_KEY is missing." });
+        return res.json({
+          analysis: buildDataDrivenAssessment(safePractices, safeGoals, safeSongs),
+        });
       }
 
       const ai = createGenAIClient(apiKey);
+
+      // Bound practices sent to the prompt to the 60 most recent sessions to prevent payload overflow
+      const recentPractices = [...safePractices]
+        .sort((a: any, b: any) => {
+          const d = String(b.date || "").localeCompare(String(a.date || ""));
+          return d !== 0 ? d : Number(b.createdAt || 0) - Number(a.createdAt || 0);
+        })
+        .slice(0, 60)
+        .map((p: any) => ({
+          songTitle: p.songTitle,
+          date: p.date,
+          accuracy: p.accuracy,
+          speed: p.speed,
+          difficulty: p.difficulty,
+          duration: p.duration,
+          score: p.score,
+          note: p.note,
+        }));
 
       const prompt = `You are an expert guitar coach and data analyst.
 Analyze the user's practice data and provide a concise, encouraging, and actionable assessment.
 CRITICAL: You must write the entire response strictly in English.
 
 Here is the user's data:
-Songs: ${JSON.stringify(songs.map((s: any) => s.title))}
-Goals/Milestones: ${JSON.stringify(goals)}
-Practice Sessions: ${JSON.stringify(practices)}
+Total Logged Sessions: ${safePractices.length}
+Songs: ${JSON.stringify(safeSongs.map((s: any) => s.title))}
+Goals/Milestones: ${JSON.stringify(safeGoals)}
+Recent Practice Sessions (up to 60 most recent): ${JSON.stringify(recentPractices)}
 
 Provide:
 1. A brief overview of their recent progress (accuracy, speed).
@@ -52,15 +206,39 @@ Provide:
 
 Keep it structured with bullet points. Don't be too verbose. Limit to about 200-300 words. Everything must be written in English.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-      });
+      const candidateModels = [
+        "gemini-3.8-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-lite",
+      ];
 
-      res.json({ analysis: response.text });
+      let generatedText = "";
+      for (const modelName of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+          });
+          if (response?.text && response.text.trim()) {
+            generatedText = response.text.trim();
+            break;
+          }
+        } catch (modelErr) {
+          console.warn(`Analyze with ${modelName} failed, trying next fallback...`, modelErr);
+        }
+      }
+
+      if (!generatedText) {
+        generatedText = buildDataDrivenAssessment(safePractices, safeGoals, safeSongs);
+      }
+
+      res.json({ analysis: generatedText });
     } catch (error) {
-      console.error("Error calling Gemini API:", error);
-      res.status(500).json({ error: "Failed to generate analysis. " + String(error) });
+      console.error("Error in /api/analyze:", error);
+      const { practices = [], goals = [], songs = [] } = req.body || {};
+      res.json({
+        analysis: buildDataDrivenAssessment(practices, goals, songs),
+      });
     }
   });
 
