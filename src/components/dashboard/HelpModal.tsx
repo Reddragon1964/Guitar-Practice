@@ -397,14 +397,139 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
         ),
       },
       {
+        id: "manage-songs-retired",
+        category: "recording",
+        title: "Song & Exercise Library: Default Settings & Retiring Songs",
+        summary: "Configure default duration and difficulty per song, and learn how retiring a song hides it across the entire application until unretired.",
+        tags: ["songs", "library", "retire", "retired", "unretire", "hide", "defaults", "duration", "difficulty", "manage songs"],
+        content: (
+          <div className="space-y-4 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              Open the <strong>Song & Exercise Library</strong> by clicking <strong>Songs</strong> in the dashboard toolbar:
+            </p>
+            <ul className="space-y-2.5 list-disc list-inside text-indigo-200">
+              <li>
+                <strong className="text-white">Default Time & Difficulty:</strong> Each song in your library can store a default practice duration (<code>mm:ss</code>) and default difficulty level (<code>1–12</code>). Selecting that song in Record Practice Session or Quick Entry automatically fills those values.
+              </li>
+              <li>
+                <strong className="text-white">Save as Song Defaults:</strong> Inside the Record Practice Session dialog, click <strong>"Save as Song Defaults"</strong> to update the library defaults for the currently selected song at any time.
+              </li>
+              <li>
+                <strong className="text-amber-300">Retiring Songs (Complete Application-Wide Hiding):</strong> When you mark a song as <strong>Retired</strong> in the Song & Exercise Library (using the <strong>Retire</strong> button or status checkbox), that song and all of its associated practice sessions, Historical Accuracy chart lines, Last 7 Sessions trends, 30-Day Practice Trends, Duration Trends, Daily Accuracy Reports, Milestones, Weekly Practice Targets, and AI Coach contexts are <strong>completely hidden everywhere across the application</strong>.
+              </li>
+              <li>
+                <strong className="text-emerald-300">Unretiring a Song:</strong> To bring a retired song back, open the <strong>Songs</strong> library, switch to the <strong>Retired</strong> or <strong>All</strong> tab, and click <strong>Unretire</strong>. All historical sessions, charts, and goals for that song will immediately reappear across the application!
+              </li>
+            </ul>
+            {onNavigate && (
+              <div className="pt-1">
+                <Button size="sm" onClick={() => onNavigate("manage-songs")} className="gap-1.5">
+                  <Music className="w-4 h-4" /> Open Song & Exercise Library
+                </Button>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "historical-accuracy-subdivisions",
+        category: "trends",
+        title: "Historical Accuracy by Song: 5% & 2% Fine Grid Subdivisions",
+        summary: "Use 5% and 2% horizontal accuracy subdivision grid lines alongside existing 25% major lines, plus Last 7 Sessions Progression.",
+        tags: ["historical accuracy", "grid", "subdivisions", "5%", "2%", "25%", "lines", "last 7 sessions", "chart"],
+        content: (
+          <div className="space-y-4 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              The <strong>Historical Accuracy Progression</strong> frame lets you inspect note accuracy trends per song and difficulty level with precision horizontal grid subdivisions:
+            </p>
+            <ul className="space-y-2 list-disc list-inside text-indigo-200">
+              <li>
+                <strong className="text-white">5% Subdivisions (Default):</strong> Adds horizontal reference grid lines and Y-axis percentage labels at every <strong>5% increment</strong> (0%, 5%, 10%, ..., 95%, 100%) while preserving emphasized 25% major grid lines.
+              </li>
+              <li>
+                <strong className="text-white">2% Fine Subdivisions:</strong> Adds ultra-fine <strong>2% increment</strong> horizontal subdivision lines on top of the 5% and 25% grid lines so you can spot even 1%–2% accuracy gains between sessions.
+              </li>
+              <li>
+                <strong className="text-white">25% Major Only:</strong> Displays only the primary 0%, 25%, 50%, 75%, and 100% horizontal grid lines.
+              </li>
+              <li>
+                <strong className="text-white">Connect Data Points Toggle:</strong> Check or uncheck <strong>"Connect data points"</strong> to switch between connected trend lines and discrete session dots.
+              </li>
+              <li>
+                <strong className="text-emerald-300">Last 7 Sessions Trend Frame:</strong> Located directly on your dashboard, this dual-axis chart plots both <strong>Session Duration (minutes)</strong> and <strong>Note Accuracy (%)</strong> across your last 7 recorded sessions, with song filtering and Smooth vs. Linear curve options.
+              </li>
+            </ul>
+          </div>
+        ),
+      },
+      {
+        id: "adjustable-tables-and-filters",
+        category: "recording",
+        title: "Adjustable Table Columns, Row Spacing & Date Range Filtering",
+        summary: "Resize table columns by dragging dividers, customize row density, and filter sessions by From/To date ranges.",
+        tags: ["columns", "resize", "width", "table", "density", "compact", "comfortable", "date range", "from", "to", "filter"],
+        content: (
+          <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              All data tables across the application—including the <strong>Practice Sessions Log</strong>, <strong>Song & Exercise Library</strong>, <strong>Session Duration Trends</strong>, and <strong>Daily Accuracy by Song Report</strong>—feature interactive column and layout controls:
+            </p>
+            <ul className="space-y-2 list-disc list-inside text-indigo-200">
+              <li>
+                <strong className="text-white">Drag-to-Resize Columns:</strong> Drag the vertical resize handle on the right edge of any column header to widen or narrow that column smoothly. Double-click any resize handle to reset that single column.
+              </li>
+              <li>
+                <strong className="text-white">Batch Column Width Controls:</strong> Use the <code>- Col Width</code>, <code>+ Col Width</code>, and <code>Reset Columns</code> buttons in the table toolbar to scale all columns at once or restore defaults.
+              </li>
+              <li>
+                <strong className="text-white">Row Spacing Density:</strong> Switch between <code>Compact</code>, <code>Default</code>, and <code>Comfortable</code> row spacing, and save your preferred layout automatically.
+              </li>
+              <li>
+                <strong className="text-white">From / To Date Range Filtering:</strong> Filter the Practice Sessions Log, Historical Accuracy Chart, and Milestones by <strong>From</strong> (start date) and <strong>To</strong> (end date), as well as song name, speed (%), and difficulty level (1–12).
+              </li>
+            </ul>
+          </div>
+        ),
+      },
+      {
+        id: "ai-assessment-archive",
+        category: "ai",
+        title: "AI Practice Coach Assessment Archive",
+        summary: "Generate on-demand AI performance assessments and browse or print your chronological assessment history.",
+        tags: ["ai coach", "assessment", "archive", "generate", "analyze", "history", "print"],
+        content: (
+          <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              Clicking <strong>AI Coach</strong> in the top toolbar opens the <strong>AI Practice Coach Assessment Archive</strong>:
+            </p>
+            <ul className="space-y-2 list-disc list-inside text-indigo-200">
+              <li>
+                <strong className="text-white">Generate New Assessment:</strong> Click <strong>"Generate New Assessment"</strong> at any time to evaluate your active songs, recent accuracy scores, practice speeds, and active milestones.
+              </li>
+              <li>
+                <strong className="text-white">Chronological Archive:</strong> Every generated assessment is saved with its exact date, timestamp, and evaluated session count so you can compare coaching feedback over time.
+              </li>
+              <li>
+                <strong className="text-white">Print & Export:</strong> Print individual assessments or your complete assessment history using the built-in print modal.
+              </li>
+            </ul>
+          </div>
+        ),
+      },
+      {
         id: "faq-troubleshooting",
         category: "faq",
         title: "Frequently Asked Questions & Troubleshooting",
-        summary: "Solutions for common questions about printing, audio permissions, sorting, and editing sessions.",
-        tags: ["faq", "help", "troubleshooting", "microphone", "print", "edit", "delete", "firestore"],
+        summary: "Solutions for common questions about retired songs, printing, audio permissions, column widths, and editing sessions.",
+        tags: ["faq", "help", "troubleshooting", "microphone", "print", "edit", "delete", "retired", "firestore"],
         content: (
           <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
             <div className="space-y-2">
+              <strong className="text-white block">Q: Where do retired songs go, and how do I unretire a song?</strong>
+              <p className="text-xs text-indigo-300">
+                When a song is marked as retired, it does not appear anywhere in the application (charts, logs, dropdowns, goals, or reports). To view or restore a retired song, click <strong>Songs</strong> in the top toolbar, select the <strong>Retired</strong> filter tab, and click <strong>Unretire</strong>.
+              </p>
+            </div>
+            <div className="space-y-2 pt-2 border-t border-indigo-900/60">
               <strong className="text-white block">Q: How do I edit or delete a practice session?</strong>
               <p className="text-xs text-indigo-300">
                 In the Practice Sessions Log table, click the pencil icon to edit any session (which opens the form scrolled to the top) or the trash icon to delete it after confirmation.
@@ -440,13 +565,13 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
       {
         id: "text-scaling",
         category: "getting-started",
-        title: "App-Wide Text Scaling & Display Accessibility",
-        summary: "Adjust font sizes application-wide from 75% to 160% with instant live preview and persistent settings.",
-        tags: ["text", "font", "scale", "zoom", "size", "accessibility", "readability", "large text"],
+        title: "App-Wide Text Scaling, High-Contrast Inputs & 3D Raised Buttons",
+        summary: "Adjust font sizes from 75% to 160%, with high-contrast white/blue textboxes & listboxes and tactile 3D raised buttons.",
+        tags: ["text", "font", "scale", "zoom", "size", "accessibility", "readability", "large text", "raised buttons", "white", "blue", "textbox", "listbox"],
         content: (
           <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
             <p>
-              Guitar Practice Tracker includes a built-in text scaling engine designed for comfortable reading at music stands, desktop monitors, and mobile displays:
+              Guitar Practice Tracker includes a built-in text scaling engine and high-contrast tactile controls designed for effortless visibility at music stands, desktop monitors, and mobile displays:
             </p>
             <div className="p-3.5 rounded-xl bg-slate-900 border border-indigo-800 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -454,23 +579,23 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
                   <ALargeSmall className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="font-semibold text-white text-sm">Text Size Control</div>
+                  <div className="font-semibold text-white text-sm">Text Size Control & Tactile UI</div>
                   <div className="text-xs text-indigo-300">Located in the top header and dashboard toolbar.</div>
                 </div>
               </div>
             </div>
             <ul className="space-y-2 list-disc pl-5 text-xs text-indigo-200">
               <li>
-                <strong className="text-white">One-Click Presets:</strong> Compact (85%), Default (100%), Large (115%), X-Large (130%), and Maximum (145%).
+                <strong className="text-white">One-Click Text Presets & Slider:</strong> Compact (85%), Default (100%), Large (115%), X-Large (130%), and Maximum (145%), or fine-tune in 5% increments between 75% and 160%.
               </li>
               <li>
-                <strong className="text-white">Interactive Stepper & Slider:</strong> Fine-tune font sizes in 5% increments between 75% and 160%.
+                <strong className="text-white">High-Contrast White & Blue Inputs:</strong> All textboxes, numeric inputs, date pickers, and dropdown listboxes feature crisp white backgrounds with bold blue text so values are unmistakably clear in any lighting condition.
               </li>
               <li>
-                <strong className="text-white">App-Wide Synchronization:</strong> Scales all cards, charts, forms, dialogs, badges, and tables proportionally.
+                <strong className="text-white">3D Raised Tactile Buttons:</strong> Every button across the application features a raised 3D bevel, top specular highlight, drop shadow, and physical press-down feedback when clicked.
               </li>
               <li>
-                <strong className="text-white">Automatic Persistence:</strong> Your chosen scale is saved locally in your browser and remembered across sessions.
+                <strong className="text-white">Automatic Persistence:</strong> Your chosen text scale and layout settings are saved locally in your browser and remembered across sessions.
               </li>
             </ul>
           </div>

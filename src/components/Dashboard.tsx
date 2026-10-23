@@ -120,16 +120,51 @@ export function Dashboard() {
   const { currentScheme } = useColorScheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
-  const [practices, setPractices] = useState<Practice[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoal[]>([]);
+  const [allPractices, setAllPractices] = useState<Practice[]>([]);
+  const [allGoals, setAllGoals] = useState<Goal[]>([]);
+  const [allWeeklyGoals, setAllWeeklyGoals] = useState<WeeklyGoal[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [usageLogs, setUsageLogs] = useState<{ date: string; minutes: number }[]>([]);
   const [view, setView] = useState<DashboardView>("dashboard");
   const [isWeeklyGoalModalOpen, setIsWeeklyGoalModalOpen] = useState(false);
   const [editingWeeklyGoal, setEditingWeeklyGoal] = useState<WeeklyGoal | null>(null);
-  const activeSongs = songs.filter((s) => !s.retired);
+
+  // Set of normalized titles for retired songs so retired songs never show up anywhere until unretired
+  const retiredSongTitlesSet = useMemo(
+    () =>
+      new Set(
+        songs
+          .filter((s) => Boolean(s.retired) && s.title)
+          .map((s) => s.title.trim().toLowerCase())
+      ),
+    [songs]
+  );
+
+  const isSongTitleRetired = useCallback(
+    (title?: string | null) => {
+      if (!title) return false;
+      return retiredSongTitlesSet.has(title.trim().toLowerCase());
+    },
+    [retiredSongTitlesSet]
+  );
+
+  const activeSongs = useMemo(() => songs.filter((s) => !s.retired), [songs]);
+
+  const practices = useMemo(
+    () => allPractices.filter((p) => !isSongTitleRetired(p.songTitle)),
+    [allPractices, isSongTitleRetired]
+  );
+
+  const goals = useMemo(
+    () => allGoals.filter((g) => !isSongTitleRetired(g.songTitle)),
+    [allGoals, isSongTitleRetired]
+  );
+
+  const weeklyGoals = useMemo(
+    () => allWeeklyGoals.filter((wg) => !isSongTitleRetired(wg.songTitle)),
+    [allWeeklyGoals, isSongTitleRetired]
+  );
 
   // Form states
   const [songTitle, setSongTitle] = useState("");
@@ -184,6 +219,33 @@ export function Dashboard() {
   const [chartFilterSongName, setChartFilterSongName] = useState("");
   const [chartFilterSpeed, setChartFilterSpeed] = useState("");
   const [chartFilterLevel, setChartFilterLevel] = useState("");
+
+  // Automatically clear any active song filters or form selections if a song becomes retired
+  useEffect(() => {
+    if (sessionFilterName && isSongTitleRetired(sessionFilterName)) {
+      setSessionFilterName("");
+    }
+    if (chartFilterSongName && isSongTitleRetired(chartFilterSongName)) {
+      setChartFilterSongName("");
+    }
+    if (milestoneFilterSong && isSongTitleRetired(milestoneFilterSong)) {
+      setMilestoneFilterSong("");
+    }
+    if (songTitle && !editingPracticeId && isSongTitleRetired(songTitle)) {
+      setSongTitle("");
+    }
+    if (goalSongTitle && isSongTitleRetired(goalSongTitle)) {
+      setGoalSongTitle("");
+    }
+  }, [
+    isSongTitleRetired,
+    sessionFilterName,
+    chartFilterSongName,
+    milestoneFilterSong,
+    songTitle,
+    editingPracticeId,
+    goalSongTitle,
+  ]);
 
   const [printMode, setPrintMode] = useState<PrintMode>(null);
   const [printError, setPrintError] = useState(false);
@@ -593,7 +655,7 @@ export function Dashboard() {
             }
           }
         });
-        setPractices(p);
+        setAllPractices(p);
       },
       (error) => handleFirestoreError(error, OperationType.GET, "practices")
     );
@@ -604,7 +666,7 @@ export function Dashboard() {
       (snapshot) => {
         const g = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Goal));
         g.sort((a, b) => a.targetDate.localeCompare(b.targetDate));
-        setGoals(g);
+        setAllGoals(g);
       },
       (error) => handleFirestoreError(error, OperationType.GET, "goals")
     );
@@ -640,7 +702,7 @@ export function Dashboard() {
           if (a.songTitle && !b.songTitle) return 1;
           return a.title.localeCompare(b.title);
         });
-        setWeeklyGoals(wg);
+        setAllWeeklyGoals(wg);
       },
       (error) => handleFirestoreError(error, OperationType.GET, "weeklyGoals")
     );
@@ -948,7 +1010,7 @@ export function Dashboard() {
         const response = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ practices, goals, songs }),
+          body: JSON.stringify({ practices, goals, songs: activeSongs }),
         });
         const data = await response.json();
         if (data?.analysis && typeof data.analysis === "string") {
@@ -970,7 +1032,7 @@ export function Dashboard() {
             : "100";
         analysisText = [
           "### 1. Recent Progress Overview",
-          `- Evaluated **${total}** total practice session(s) across **${songs.length}** song(s).`,
+          `- Evaluated **${total}** total practice session(s) across **${activeSongs.length}** active song(s).`,
           `- Overall average accuracy is **${avgAcc}%** at an average speed of **${avgSpd}%**.`,
           "",
           "### 2. Goals & Next Session Focus",
@@ -2299,7 +2361,7 @@ export function Dashboard() {
           >
             <GeminiChatbotModal
               practices={practices}
-              songs={songs}
+              songs={activeSongs}
               goals={goals}
               persistedMessages={chatMessages}
               onSaveMessage={handleSaveChatMessage}
@@ -2325,7 +2387,7 @@ export function Dashboard() {
           >
             <LiveVoiceCoachModal
               practices={practices}
-              songs={songs}
+              songs={activeSongs}
               goals={goals}
               onOpenChatbot={() => setView("chatbot")}
               onBack={() => setView("dashboard")}

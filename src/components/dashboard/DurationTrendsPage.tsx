@@ -97,6 +97,15 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
   const [songFilter, setSongFilter] = useState<string>("");
   const [showAverageLine, setShowAverageLine] = useState<boolean>(true);
 
+  React.useEffect(() => {
+    if (
+      songFilter &&
+      !activeSongs.some((s) => s.title.trim().toLowerCase() === songFilter.trim().toLowerCase())
+    ) {
+      setSongFilter("");
+    }
+  }, [activeSongs, songFilter]);
+
   // Column resizing and row density
   const defaultColWidths = useMemo(
     () => ({

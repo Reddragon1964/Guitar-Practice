@@ -132,6 +132,16 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   const [isSavingQuick, setIsSavingQuick] = useState(false);
   const [csvExported, setCsvExported] = useState(false);
 
+  useEffect(() => {
+    if (
+      !quickCustomSong &&
+      quickSongTitle &&
+      !activeSongs.some((s) => s.title.trim().toLowerCase() === quickSongTitle.trim().toLowerCase())
+    ) {
+      setQuickSongTitle("");
+    }
+  }, [activeSongs, quickCustomSong, quickSongTitle]);
+
   // Resizable columns and adjustable row density
   const defaultColWidths = useMemo(
     () => ({

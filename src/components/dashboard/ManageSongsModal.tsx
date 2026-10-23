@@ -55,6 +55,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
   const [newDuration, setNewDuration] = useState("3:00");
   const [newDifficulty, setNewDifficulty] = useState<number>(3);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "retired">("all");
 
   // Inline editing state for existing songs
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
@@ -132,12 +133,18 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
     onAddSong(newSongInput.trim(), parsedSec, newDifficulty);
   };
 
+  const activeCount = useMemo(() => songs.filter((s) => !s.retired).length, [songs]);
+  const retiredCount = useMemo(() => songs.filter((s) => Boolean(s.retired)).length, [songs]);
+
   // Filter songs
   const filteredSongs = useMemo(() => {
-    if (!searchQuery.trim()) return songs;
-    const q = searchQuery.toLowerCase();
-    return songs.filter((s) => s.title.toLowerCase().includes(q));
-  }, [songs, searchQuery]);
+    return songs.filter((s) => {
+      if (statusFilter === "active" && s.retired) return false;
+      if (statusFilter === "retired" && !s.retired) return false;
+      if (!searchQuery.trim()) return true;
+      return s.title.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [songs, searchQuery, statusFilter]);
 
   return (
     <div className="space-y-5">
@@ -259,26 +266,80 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
         </CardContent>
       </Card>
 
+      {/* Retired Songs Behavior Notice */}
+      <div className="p-3 rounded-xl bg-indigo-950/60 border border-indigo-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-indigo-200">
+        <div className="flex items-center gap-2">
+          <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            <strong>Retired Song Visibility:</strong> When a song is retired, it (along with its sessions, charts, trends, goals, and reports) is completely hidden across the entire application until you click <strong>Unretire</strong> below.
+          </span>
+        </div>
+        {retiredCount > 0 && statusFilter !== "retired" && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setStatusFilter("retired")}
+            className="h-7 text-[11px] shrink-0 border-amber-600/70 text-amber-200 hover:bg-amber-950/60"
+          >
+            View {retiredCount} Retired {retiredCount === 1 ? "Song" : "Songs"}
+          </Button>
+        )}
+      </div>
+
       {/* Library Table Controls & Search */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="w-3.5 h-3.5 text-blue-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
-          <Input
-            placeholder="Search songs in library..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 pr-7 h-8 text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
-          />
-          {searchQuery && (
-            <button
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="w-3.5 h-3.5 text-blue-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+            <Input
+              placeholder="Search songs in library..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-7 h-8 text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 z-10"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-900 border border-slate-800">
+            <Button
               type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 z-10"
+              size="sm"
+              variant={statusFilter === "all" ? "default" : "ghost"}
+              onClick={() => setStatusFilter("all")}
+              className="h-7 px-2.5 text-xs"
             >
-              <X className="w-3 h-3" />
-            </button>
-          )}
+              All ({songs.length})
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={statusFilter === "active" ? "default" : "ghost"}
+              onClick={() => setStatusFilter("active")}
+              className="h-7 px-2.5 text-xs"
+            >
+              Active ({activeCount})
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={statusFilter === "retired" ? "default" : "ghost"}
+              onClick={() => setStatusFilter("retired")}
+              className="h-7 px-2.5 text-xs"
+            >
+              Retired ({retiredCount})
+            </Button>
+          </div>
         </div>
 
         {/* Adjustable Table Toolbar (Density & Reset) */}
@@ -535,26 +596,28 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                       "text-center"
                     )}
                   >
-                    <label
-                      htmlFor={`retired-${song.id}`}
-                      className="inline-flex items-center gap-1.5 cursor-pointer select-none"
-                    >
-                      <input
-                        type="checkbox"
-                        id={`retired-${song.id}`}
-                        className="rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
-                        checked={song.retired || false}
-                        onChange={() => onToggleSongRetired(song)}
-                      />
-                      <span
-                        className={cn(
-                          "text-xs font-medium",
-                          song.retired ? "text-slate-400" : "text-emerald-400"
-                        )}
+                    <div className="flex items-center justify-center gap-2">
+                      <label
+                        htmlFor={`retired-${song.id}`}
+                        className="inline-flex items-center gap-1.5 cursor-pointer select-none"
                       >
-                        {song.retired ? "Retired" : "Active"}
-                      </span>
-                    </label>
+                        <input
+                          type="checkbox"
+                          id={`retired-${song.id}`}
+                          className="rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                          checked={song.retired || false}
+                          onChange={() => onToggleSongRetired(song)}
+                        />
+                        <span
+                          className={cn(
+                            "text-xs font-medium",
+                            song.retired ? "text-amber-300" : "text-emerald-400"
+                          )}
+                        >
+                          {song.retired ? "Retired (Hidden)" : "Active"}
+                        </span>
+                      </label>
+                    </div>
                   </td>
 
                   {/* 5. Actions */}
@@ -586,7 +649,26 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={song.retired ? "default" : "outline"}
+                          onClick={() => onToggleSongRetired(song)}
+                          className={cn(
+                            "h-7 px-2 text-[11px]",
+                            song.retired
+                              ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                              : "border-slate-700 text-slate-300 hover:text-white"
+                          )}
+                          title={
+                            song.retired
+                              ? "Unretire song so it appears across the application again"
+                              : "Retire song to hide it from all views, charts, logs, and selectors"
+                          }
+                        >
+                          {song.retired ? "Unretire" : "Retire"}
+                        </Button>
                         {onUpdateSong && (
                           <button
                             type="button"

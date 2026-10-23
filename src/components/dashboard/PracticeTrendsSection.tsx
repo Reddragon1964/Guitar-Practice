@@ -211,6 +211,15 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
   const [songFilter, setSongFilter] = useState<string>("");
   const [hoursMode, setHoursMode] = useState<HoursDisplayMode>("weekly");
 
+  React.useEffect(() => {
+    if (
+      songFilter &&
+      !activeSongs.some((s) => s.title.trim().toLowerCase() === songFilter.trim().toLowerCase())
+    ) {
+      setSongFilter("");
+    }
+  }, [activeSongs, songFilter]);
+
   const isHiddenForPrint = printMode && printMode !== "trends" && printMode !== "all";
 
   const weeklyData = useMemo(() => {

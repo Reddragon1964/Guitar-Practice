@@ -49,6 +49,15 @@ export const RecentSessionsTrendChart: React.FC<RecentSessionsTrendChartProps> =
   const [selectedSong, setSelectedSong] = useState<string>("all");
   const [curveType, setCurveType] = useState<"monotone" | "linear">("monotone");
 
+  React.useEffect(() => {
+    if (
+      selectedSong !== "all" &&
+      !activeSongs.some((s) => s.title.trim().toLowerCase() === selectedSong.trim().toLowerCase())
+    ) {
+      setSelectedSong("all");
+    }
+  }, [activeSongs, selectedSong]);
+
   // Filter and chronologically sort the last 7 sessions
   const chartData = useMemo(() => {
     if (!practices || practices.length === 0) return [];
