@@ -464,7 +464,7 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                 <Select
                   value={songFilter}
                   onChange={(e) => setSongFilter(e.target.value)}
-                  className="h-8 text-xs w-36 sm:w-44 bg-indigo-950/80 border-indigo-700"
+                  className="h-8 text-xs py-1 w-36 sm:w-44 bg-indigo-950/80 border-indigo-700"
                 >
                   <option value="">All Songs</option>
                   {activeSongs.map((s) => (
@@ -476,13 +476,14 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
               </div>
 
               {/* Time Range Selector */}
-              <div className="inline-flex rounded-md p-0.5 bg-indigo-950 border border-indigo-800">
+              <div className="inline-flex items-center h-8 rounded-lg p-0.5 bg-indigo-950 border border-indigo-800 gap-0.5">
                 {(["14d", "30d", "90d", "all"] as TimeRangeOption[]).map((range) => (
                   <button
                     key={range}
+                    type="button"
                     onClick={() => setTimeRange(range)}
                     className={cn(
-                      "px-2.5 py-1 text-xs font-medium rounded transition-colors",
+                      "h-6 px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center justify-center whitespace-nowrap",
                       timeRange === range
                         ? "bg-indigo-600 text-white shadow-sm"
                         : "text-indigo-300 hover:text-indigo-100"
@@ -500,11 +501,12 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
               </div>
 
               {/* Granularity View Mode */}
-              <div className="inline-flex rounded-md p-0.5 bg-indigo-950 border border-indigo-800">
+              <div className="inline-flex items-center h-8 rounded-lg p-0.5 bg-indigo-950 border border-indigo-800 gap-0.5">
                 <button
+                  type="button"
                   onClick={() => setViewMode("sessions")}
                   className={cn(
-                    "px-2.5 py-1 text-xs font-medium rounded transition-colors",
+                    "h-6 px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center justify-center whitespace-nowrap",
                     viewMode === "sessions"
                       ? "bg-indigo-600 text-white"
                       : "text-indigo-300 hover:text-indigo-100"
@@ -514,9 +516,10 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                   Sessions
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode("daily")}
                   className={cn(
-                    "px-2.5 py-1 text-xs font-medium rounded transition-colors",
+                    "h-6 px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center justify-center whitespace-nowrap",
                     viewMode === "daily"
                       ? "bg-indigo-600 text-white"
                       : "text-indigo-300 hover:text-indigo-100"
@@ -528,11 +531,12 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
               </div>
 
               {/* Chart Type (Area vs Bar) */}
-              <div className="inline-flex rounded-md p-0.5 bg-indigo-950 border border-indigo-800">
+              <div className="inline-flex items-center h-8 rounded-lg p-0.5 bg-indigo-950 border border-indigo-800 gap-0.5">
                 <button
+                  type="button"
                   onClick={() => setChartType("area")}
                   className={cn(
-                    "p-1 rounded transition-colors",
+                    "h-6 w-7 rounded-md transition-colors inline-flex items-center justify-center",
                     chartType === "area"
                       ? "bg-indigo-600 text-white"
                       : "text-indigo-400 hover:text-indigo-200"
@@ -542,9 +546,10 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                   <TrendingUp className="w-3.5 h-3.5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setChartType("bar")}
                   className={cn(
-                    "p-1 rounded transition-colors",
+                    "h-6 w-7 rounded-md transition-colors inline-flex items-center justify-center",
                     chartType === "bar"
                       ? "bg-indigo-600 text-white"
                       : "text-indigo-400 hover:text-indigo-200"
@@ -561,7 +566,7 @@ export const DurationTrendsPage: React.FC<DurationTrendsPageProps> = ({
                 size="sm"
                 onClick={() => setShowAverageLine(!showAverageLine)}
                 className={cn(
-                  "h-8 text-xs border border-indigo-800 transition-colors",
+                  "h-8 text-xs border border-indigo-800 transition-colors whitespace-nowrap",
                   showAverageLine
                     ? "bg-emerald-950/40 text-emerald-300 border-emerald-700/50"
                     : "text-indigo-400 hover:text-indigo-200"

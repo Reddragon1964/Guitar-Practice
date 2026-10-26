@@ -18,6 +18,7 @@ import {
   Check,
   FileSpreadsheet,
   Calendar,
+  Mic,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -33,6 +34,7 @@ import {
 } from "../../utils/durationFormat";
 import { downloadPracticesCsv } from "../../utils/csvExport";
 import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
+import { OnDemandSongRecorder } from "./OnDemandSongRecorder";
 import {
   useResizableColumns,
   AdjustableTableToolbar,
@@ -120,6 +122,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
   // Quick inline record form state
   const [showQuickForm, setShowQuickForm] = useState(false);
+  const [showQuickRecorder, setShowQuickRecorder] = useState(false);
   const [quickDate, setQuickDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [quickDuration, setQuickDuration] = useState("3:00");
   const [quickSongTitle, setQuickSongTitle] = useState("");
@@ -468,11 +471,25 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             className="mb-5 p-4 rounded-xl bg-slate-950/90 border border-slate-800/80 space-y-3 print:hidden animate-in fade-in duration-150"
           >
             <div className="flex flex-wrap items-center justify-between border-b border-slate-800/80 pb-2 gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Music className="w-4 h-4 text-indigo-400" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
                   Quick Record Guitar Practice Session
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickRecorder((prev) => !prev)}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
+                    showQuickRecorder
+                      ? "bg-rose-950/90 border-rose-500 text-rose-200"
+                      : "bg-indigo-950/80 hover:bg-indigo-900 border-indigo-700 text-indigo-200"
+                  )}
+                  title="Record a live guitar song take on demand and auto-fill duration"
+                >
+                  <Mic className="w-3 h-3 text-rose-400" />
+                  <span>{showQuickRecorder ? "Hide Song Recorder" : "Record Song on Demand"}</span>
+                </button>
               </div>
               <div className="flex items-center gap-3">
                 <WindowsVolumeSlider variant="compact" />
@@ -482,13 +499,28 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            {showQuickRecorder && (
+              <OnDemandSongRecorder
+                compact
+                songTitle={quickSongTitle}
+                speed={quickSpeed}
+                difficulty={quickDifficulty}
+                onApplyDuration={(formatted) => setQuickDuration(formatted)}
+                onAppendNote={(snippet) =>
+                  setQuickNote((prev) => (prev.trim() ? `${prev.trim()}\n${snippet}` : snippet))
+                }
+              />
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
               {/* Date */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-emerald-400" />
-                  Date
-                </label>
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-indigo-300 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-emerald-400" />
+                    Date
+                  </label>
+                </div>
                 <Input
                   type="date"
                   required
@@ -500,9 +532,11 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
               {/* Duration */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 block">
-                  Duration (m:ss)
-                </label>
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-indigo-300 block">
+                    Duration (m:ss)
+                  </label>
+                </div>
                 <NumericKeypadInput
                   compact
                   allowColon
@@ -522,7 +556,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
               {/* Song Title */}
               <div className="space-y-1 sm:col-span-2">
-                <div className="flex items-center justify-between">
+                <div className="h-5 flex items-center justify-between">
                   <label className="text-[11px] font-medium text-indigo-300">Song Title</label>
                   {activeSongs.length > 0 && (
                     <button
@@ -595,9 +629,11 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
               {/* Difficulty */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-indigo-300 block">
-                  Difficulty (1-12)
-                </label>
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-[11px] font-medium text-indigo-300 block">
+                    Difficulty (1-12)
+                  </label>
+                </div>
                 <NumericKeypadInput
                   compact
                   label="Difficulty"
@@ -622,9 +658,9 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
               {/* Speed with Green Flash Software Match Reminder */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <label className="text-[11px] font-medium text-indigo-300 block">
+                <div className="h-5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <label className="text-[11px] font-medium text-indigo-300 truncate">
                       Speed (%)
                     </label>
                     {previousQuickSession && (
@@ -634,7 +670,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                           setQuickSpeed(String(previousQuickSession.speed));
                           triggerQuickSpeedFlash();
                         }}
-                        className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                        className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer shrink-0"
                         title={`Click to fill previous speed: ${previousQuickSession.speed}%`}
                       >
                         (Prev: {previousQuickSession.speed}%)
@@ -642,8 +678,8 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     )}
                   </div>
                   {isQuickSpeedFlashing && (
-                    <span className="text-[9px] font-mono font-black text-emerald-950 bg-emerald-400 px-1.5 py-0.5 rounded shadow-[0_0_12px_rgba(16,185,129,0.9)] animate-pulse">
-                      ⚡ SET SOFTWARE: {quickSpeed}%
+                    <span className="text-[9px] font-mono font-black text-emerald-950 bg-emerald-400 px-1.5 py-0.5 rounded shadow-[0_0_12px_rgba(16,185,129,0.9)] animate-pulse shrink-0">
+                      ⚡ {quickSpeed}%
                     </span>
                   )}
                 </div>
@@ -680,7 +716,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end pt-1">
               {/* Correct Notes */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="h-5 flex items-center justify-between">
                   <label className="text-[11px] font-medium text-indigo-300 block">
                     Correct Notes
                   </label>
@@ -707,7 +743,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
               {/* Total Notes */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="h-5 flex items-center justify-between">
                   <label className="text-[11px] font-medium text-indigo-300 block">
                     Total Notes
                   </label>
@@ -739,6 +775,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className="h-9"
                   onClick={() => setShowQuickForm(false)}
                 >
                   Cancel
@@ -747,7 +784,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   type="submit"
                   size="sm"
                   disabled={isSavingQuick || !quickSongTitle.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                  className="h-9 bg-emerald-600 hover:bg-emerald-500 text-white"
                 >
                   {isSavingQuick ? "Saving..." : "Save Session"}
                 </Button>
@@ -762,7 +799,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             : "Active Filters: None"}
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3 print:hidden">
+        <div className="mb-4 flex flex-wrap items-center gap-2.5 print:hidden">
           {/* Search Bar */}
           <div className="relative flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm">
             <Search className="w-4 h-4 text-blue-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
@@ -772,7 +809,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               placeholder="Search songs or notes..."
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
-              className="pl-9 pr-8 w-full bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
+              className="h-9 pl-9 pr-8 w-full text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
             />
             {searchQuery && (
               <button
@@ -789,7 +826,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
           <Select
             value={filterName}
             onChange={(e) => onFilterNameChange(e.target.value)}
-            className="w-44"
+            className="h-9 text-xs py-1 w-44"
           >
             <option value="">All Songs</option>
             {activeSongs.map((s) => (
@@ -806,6 +843,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             value={filterSpeed}
             onChange={(val) => onFilterSpeedChange(val)}
             containerClassName="w-24"
+            inputClassName="h-9 text-xs"
             min={1}
             max={200}
             step={5}
@@ -824,6 +862,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             value={filterLevel}
             onChange={(val) => onFilterLevelChange(val)}
             containerClassName="w-24"
+            inputClassName="h-9 text-xs"
             min={1}
             max={12}
             quickPresets={[
@@ -837,7 +876,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
           />
 
           {/* Date Range: From Date & To Date tables/pickers */}
-          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2 py-1">
+          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
             <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">From:</span>
             <Input
@@ -852,11 +891,11 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   onFilterDateChange(e.target.value);
                 }
               }}
-              className="w-32 sm:w-34 h-8 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
+              className="w-32 sm:w-34 h-7 py-0 px-2 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2 py-1">
+          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
             <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">To:</span>
             <Input
@@ -865,12 +904,12 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               title="Filter End Date (To)"
               value={effectiveEndDate}
               onChange={(e) => onFilterEndDateChange?.(e.target.value)}
-              className="w-32 sm:w-34 h-8 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
+              className="w-32 sm:w-34 h-7 py-0 px-2 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
             />
           </div>
 
           {hasActiveFiltersOrSort && (
-            <Button variant="ghost" onClick={onClearFilters}>
+            <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={onClearFilters}>
               Clear Filters
             </Button>
           )}

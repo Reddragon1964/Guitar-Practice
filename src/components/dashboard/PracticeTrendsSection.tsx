@@ -308,7 +308,7 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
             <Select
               value={songFilter}
               onChange={(e) => setSongFilter(e.target.value)}
-              className="h-8 text-xs w-36 bg-indigo-950/80 border-indigo-700/80"
+              className="h-8 text-xs py-1 w-36 bg-indigo-950/80 border-indigo-700/80"
             >
               <option value="">All Songs</option>
               {activeSongs.map((s) => (
@@ -318,7 +318,7 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
               ))}
             </Select>
 
-            <div className="inline-flex rounded-lg bg-indigo-950/80 p-0.5 border border-indigo-800/80">
+            <div className="inline-flex items-center h-8 rounded-lg bg-indigo-950/80 p-0.5 border border-indigo-800/80 gap-0.5">
               {(
                 [
                   { id: "4w", label: "4W" },
@@ -333,7 +333,7 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
                   type="button"
                   onClick={() => setWeeksRange(opt.id)}
                   className={cn(
-                    "px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                    "h-6 px-2 text-xs font-medium rounded-md transition-colors inline-flex items-center justify-center whitespace-nowrap",
                     weeksRange === opt.id
                       ? "bg-indigo-600 text-white shadow-sm"
                       : "text-indigo-300 hover:text-white"
@@ -344,12 +344,12 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
               ))}
             </div>
 
-            <div className="inline-flex rounded-lg bg-indigo-950/80 p-0.5 border border-indigo-800/80">
+            <div className="inline-flex items-center h-8 rounded-lg bg-indigo-950/80 p-0.5 border border-indigo-800/80 gap-0.5">
               <button
                 type="button"
                 onClick={() => setHoursMode("weekly")}
                 className={cn(
-                  "px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                  "h-6 px-2 text-xs font-medium rounded-md transition-colors inline-flex items-center justify-center whitespace-nowrap",
                   hoursMode === "weekly"
                     ? "bg-sky-600 text-white shadow-sm"
                     : "text-indigo-300 hover:text-white"
@@ -362,7 +362,7 @@ export const PracticeTrendsSection: React.FC<PracticeTrendsSectionProps> = ({
                 type="button"
                 onClick={() => setHoursMode("cumulative")}
                 className={cn(
-                  "px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                  "h-6 px-2 text-xs font-medium rounded-md transition-colors inline-flex items-center justify-center whitespace-nowrap",
                   hoursMode === "cumulative"
                     ? "bg-sky-600 text-white shadow-sm"
                     : "text-indigo-300 hover:text-white"

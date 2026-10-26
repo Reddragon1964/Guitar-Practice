@@ -192,13 +192,13 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap print:hidden">
+          <div className="flex items-center gap-2 flex-wrap print:hidden">
             {/* Horizontal Accuracy Subdivision Grid Control */}
             <div
-              className="inline-flex items-center gap-1 p-0.5 rounded-lg bg-indigo-950/70 border border-indigo-800/70 text-xs"
+              className="inline-flex items-center h-8 gap-1 p-0.5 rounded-lg bg-indigo-950/70 border border-indigo-800/70 text-xs"
               title="Configure finer horizontal accuracy subdivision grid lines"
             >
-              <span className="flex items-center gap-1 px-2 py-0.5 text-[11px] text-indigo-300 font-medium">
+              <span className="inline-flex items-center gap-1 px-2 h-6 text-[11px] text-indigo-300 font-medium whitespace-nowrap">
                 <Grid className="w-3 h-3 text-indigo-400" />
                 Grid:
               </span>
@@ -214,7 +214,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
                   type="button"
                   onClick={() => handleSubdivisionChange(opt.id)}
                   className={cn(
-                    "px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer",
+                    "h-6 px-2 rounded-md text-[11px] font-semibold transition-colors cursor-pointer inline-flex items-center justify-center whitespace-nowrap",
                     subdivisionMode === opt.id
                       ? "bg-indigo-600 text-white shadow-xs"
                       : "text-indigo-300 hover:text-white"
@@ -227,7 +227,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
 
             <label
               htmlFor="historical-connect-lines"
-              className="flex items-center gap-2 cursor-pointer select-none px-2.5 py-1 rounded-md bg-indigo-950/60 border border-indigo-800/60 hover:border-indigo-700/80 hover:bg-indigo-950/80 transition-colors group"
+              className="inline-flex items-center h-8 gap-2 cursor-pointer select-none px-2.5 rounded-lg bg-indigo-950/60 border border-indigo-800/60 hover:border-indigo-700/80 hover:bg-indigo-950/80 transition-colors group"
               title="Turn off or on the lines connecting the data points"
             >
               <input
@@ -244,7 +244,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             <Button
               variant="ghost"
               size="sm"
-              className="print:hidden h-8"
+              className="print:hidden h-8 px-2.5"
               onClick={() => onPrint("historical")}
               title="Print Historical Accuracy Chart"
             >
@@ -260,11 +260,11 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
           {!showLines && " • Connecting lines: Off"}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2.5 print:hidden">
           <Select
             value={songFilter}
             onChange={(e) => onSongFilterChange(e.target.value)}
-            className="h-8 text-xs py-1 w-36"
+            className="h-9 text-xs py-1 w-40"
           >
             <option value="">All Songs</option>
             {activeSongs.map((s) => (
@@ -278,7 +278,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             compact
             label="Filter Speed (%)"
             placeholder="Speed"
-            inputClassName="h-8 text-xs"
+            inputClassName="h-9 text-xs"
             containerClassName="w-24"
             value={speedFilter}
             onChange={(val) => onSpeedFilterChange(val)}
@@ -297,7 +297,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             compact
             label="Filter Level"
             placeholder="Level"
-            inputClassName="h-8 text-xs"
+            inputClassName="h-9 text-xs"
             containerClassName="w-24"
             value={levelFilter}
             onChange={(val) => onLevelFilterChange(val)}
@@ -313,23 +313,23 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
             ]}
           />
 
-          <div className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-md px-2 py-0.5">
+          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
             <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-xs text-indigo-300">From</span>
+            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">From:</span>
             <Input
               type="date"
-              className="h-8 text-xs w-32"
+              className="h-7 py-0 px-2 text-xs w-32"
               value={startDateFilter}
               onChange={(e) => onStartDateFilterChange(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-md px-2 py-0.5">
+          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
             <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-xs text-indigo-300">To</span>
+            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">To:</span>
             <Input
               type="date"
-              className="h-8 text-xs w-32"
+              className="h-7 py-0 px-2 text-xs w-32"
               value={endDateFilter}
               onChange={(e) => onEndDateFilterChange(e.target.value)}
             />
@@ -340,7 +340,7 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
               variant="ghost"
               size="sm"
               onClick={onClearFilters}
-              className="h-8 px-2 text-xs"
+              className="h-9 px-2.5 text-xs"
             >
               Clear
             </Button>

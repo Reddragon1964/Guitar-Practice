@@ -64,6 +64,67 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   transform: scale(1.15);
 }
 
+/* Windows Volume Slider Range Input Cross-Browser Track & Thumb Styling */
+input[type="range"].windows-volume-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent !important;
+  cursor: pointer;
+  touch-action: none;
+}
+
+input[type="range"].windows-volume-slider-input:focus {
+  outline: none;
+}
+
+input[type="range"].windows-volume-slider-input::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+input[type="range"].windows-volume-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #22d3ee;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(34, 211, 238, 0.75);
+  margin-top: -4px;
+  cursor: grab;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.15s ease;
+}
+
+input[type="range"].windows-volume-slider-input:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 12px rgba(34, 211, 238, 0.95);
+}
+
+input[type="range"].windows-volume-slider-input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.2);
+  background: #ecfeff;
+}
+
+input[type="range"].windows-volume-slider-input::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+input[type="range"].windows-volume-slider-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #22d3ee;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(34, 211, 238, 0.75);
+  cursor: grab;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.15s ease;
+}
+
 /* Global Raised 3D Button Styling for All Buttons */
 button,
 input[type="button"],

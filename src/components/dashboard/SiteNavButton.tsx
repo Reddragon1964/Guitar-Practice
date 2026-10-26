@@ -109,19 +109,15 @@ export const SiteNavButton: React.FC<SiteNavButtonProps> = ({
     setIsOpen(false);
   };
 
-  const isHeader = variant === "header";
-
   return (
     <div className={`relative inline-flex items-center ${className}`} ref={menuRef}>
-      <div className="inline-flex rounded-lg shadow-sm border border-indigo-700/80 bg-indigo-900/40 p-0.5">
+      <div className="inline-flex items-center h-9 rounded-lg shadow-sm border border-indigo-700/80 bg-indigo-900/40 p-0.5 gap-0.5">
         {/* Main action link button that directly opens the site */}
         <a
           href={activeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs sm:text-sm text-indigo-100 hover:text-white bg-indigo-600/70 hover:bg-indigo-600 transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-400 ${
-            isHeader ? "h-8" : "h-9"
-          }`}
+          className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md font-medium text-xs text-indigo-100 hover:text-white bg-indigo-600/70 hover:bg-indigo-600 transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-400"
           title={`Open site in new tab: ${activeUrl}`}
           id="open-site-top-button"
         >
@@ -133,9 +129,7 @@ export const SiteNavButton: React.FC<SiteNavButtonProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className={`px-1.5 text-indigo-300 hover:text-white hover:bg-indigo-800/60 rounded-md transition-colors focus:outline-none ${
-            isHeader ? "h-8" : "h-9"
-          }`}
+          className="inline-flex items-center justify-center px-1.5 h-7 text-indigo-300 hover:text-white hover:bg-indigo-800/60 rounded-md transition-colors focus:outline-none"
           title="Site options (Copy link, change destination URL)"
           aria-expanded={isOpen}
           aria-haspopup="true"

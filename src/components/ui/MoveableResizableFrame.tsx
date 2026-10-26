@@ -336,7 +336,8 @@ export const MoveableResizableFrame: React.FC<MoveableResizableFrameProps> = ({
       target.closest("input") ||
       target.closest("select") ||
       target.closest("textarea") ||
-      target.closest("a")
+      target.closest("a") ||
+      target.closest('[data-no-frame-drag="true"]')
     ) {
       return;
     }

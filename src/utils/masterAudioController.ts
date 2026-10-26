@@ -1,280 +1,427 @@
 /**
- * Global Master Audio Controller
- * Coordinates application-wide master audio volume output to Windows audio devices
- * for Live Voice Coach, metronome, synthesized chimes, and media elements.
+ * Master Audio Controller (Windows-style Volume & Mute Manager)
+ * Centralizes volume (0..100) and mute state across all Web Audio API contexts,
+ * HTML5 <audio>/<video> elements, Live Voice Coach streams, On-Demand Song Recorder
+ * playback, and UI sound feedback throughout the Guitar Practice Tracker application.
  */
 
-const STORAGE_KEY = "guitar_windows_volume";
-const MUTE_STORAGE_KEY = "guitar_windows_volume_muted";
-export const MASTER_AUDIO_EVENT = "guitar_windows_volume_change";
-
-interface AudioNodeRegistration {
-  ctx: AudioContext;
-  gainNode: GainNode;
+export interface MasterAudioState {
+  volume: number; // 0 to 100
+  isMuted: boolean;
+  effectiveVolume: number; // 0.0 to 1.0 (0 if muted)
 }
 
+type MasterAudioListener = (state: MasterAudioState) => void;
+
+const STORAGE_VOLUME_KEY = "guitar_tracker_master_volume";
+const STORAGE_MUTED_KEY = "guitar_tracker_master_muted";
+export const MASTER_AUDIO_EVENT = "guitar-tracker-master-audio-change";
+
 class MasterAudioController {
-  private volume: number = 75; // 0 - 100
-  private muted: boolean = false;
-  private registeredNodes: Set<AudioNodeRegistration> = new Set();
+  private volume: number = 80;
+  private isMuted: boolean = false;
+  private listeners: Set<MasterAudioListener> = new Set();
+  private registeredGains: Set<{ ctx: BaseAudioContext; gainNode: GainNode }> = new Set();
   private registeredMedia: Set<HTMLMediaElement> = new Set();
-  private listeners: Set<(state: { volume: number; isMuted: boolean }) => void> = new Set();
-  private lastChimeTime: number = 0;
+  private lastFeedbackTime: number = 0;
+  private feedbackCtx: AudioContext | null = null;
+  private isBroadcasting: boolean = false;
 
   constructor() {
-    this.loadPersistedState();
+    this.loadFromStorage();
     this.setupWindowListeners();
-    this.setupMediaSession();
+    this.setupGlobalMediaInterceptors();
   }
 
-  private loadPersistedState() {
+  private loadFromStorage() {
+    if (typeof window === "undefined") return;
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const savedVol = localStorage.getItem(STORAGE_KEY);
-        if (savedVol !== null) {
-          const parsed = parseInt(savedVol, 10);
-          if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
-            this.volume = parsed;
-          }
-        }
-        const savedMute = localStorage.getItem(MUTE_STORAGE_KEY);
-        if (savedMute !== null) {
-          this.muted = savedMute === "true";
+      const savedVol = localStorage.getItem(STORAGE_VOLUME_KEY);
+      if (savedVol !== null) {
+        const parsed = Number(savedVol);
+        if (!Number.isNaN(parsed)) {
+          this.volume = Math.max(0, Math.min(100, Math.round(parsed)));
         }
       }
-    } catch (e) {
-      console.warn("Could not load persisted audio state:", e);
+      const savedMuted = localStorage.getItem(STORAGE_MUTED_KEY);
+      if (savedMuted !== null) {
+        this.isMuted = savedMuted === "true";
+      }
+    } catch {
+      // Ignore storage access errors
     }
   }
 
-  private persistState() {
+  private saveToStorage() {
+    if (typeof window === "undefined") return;
     try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        localStorage.setItem(STORAGE_KEY, String(this.volume));
-        localStorage.setItem(MUTE_STORAGE_KEY, String(this.muted));
-      }
-    } catch {}
+      localStorage.setItem(STORAGE_VOLUME_KEY, String(this.volume));
+      localStorage.setItem(STORAGE_MUTED_KEY, String(this.isMuted));
+    } catch {
+      // Ignore storage errors
+    }
   }
 
   private setupWindowListeners() {
     if (typeof window === "undefined") return;
 
-    window.addEventListener(MASTER_AUDIO_EVENT as any, (e: CustomEvent) => {
-      if (e.detail && typeof e.detail.volume === "number") {
-        this.volume = Math.max(0, Math.min(100, Math.round(e.detail.volume)));
-        this.muted = Boolean(e.detail.isMuted);
+    // Sync across tabs if changed in another tab
+    window.addEventListener("storage", (e) => {
+      if (e.key === STORAGE_VOLUME_KEY || e.key === STORAGE_MUTED_KEY) {
+        this.loadFromStorage();
         this.applyToAllTargets();
         this.notifyListeners();
       }
     });
 
-    // Also sync if another tab changes localStorage
-    window.addEventListener("storage", (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY || e.key === MUTE_STORAGE_KEY) {
-        this.loadPersistedState();
-        this.applyToAllTargets();
-        this.notifyListeners();
+    // Listen for custom global audio events from external dispatches (avoid self-reentrant loop)
+    window.addEventListener(MASTER_AUDIO_EVENT, (e: Event) => {
+      if (this.isBroadcasting) return;
+      const customEvent = e as CustomEvent<Partial<MasterAudioState>>;
+      if (customEvent.detail) {
+        let changed = false;
+        if (
+          typeof customEvent.detail.volume === "number" &&
+          customEvent.detail.volume !== this.volume
+        ) {
+          this.volume = Math.max(0, Math.min(100, Math.round(customEvent.detail.volume)));
+          changed = true;
+        }
+        if (
+          typeof customEvent.detail.isMuted === "boolean" &&
+          customEvent.detail.isMuted !== this.isMuted
+        ) {
+          this.isMuted = customEvent.detail.isMuted;
+          changed = true;
+        }
+        if (changed) {
+          this.saveToStorage();
+          this.applyToAllTargets();
+          this.notifyListeners();
+        }
       }
     });
   }
 
-  private setupMediaSession() {
-    if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
-      try {
-        // Provide standard Windows media controls integration
-        (navigator as any).mediaSession.playbackState = "none";
-      } catch {}
+  /**
+   * Automatically intercepts any <audio> or <video> element in the document
+   * so all media playback respects the master volume slider even if not manually registered.
+   */
+  private setupGlobalMediaInterceptors() {
+    if (typeof document === "undefined") return;
+
+    const syncMediaTarget = (e: Event) => {
+      const target = e.target;
+      if (target instanceof HTMLMediaElement) {
+        this.registeredMedia.add(target);
+        this.applyToMediaElement(target);
+      }
+    };
+
+    document.addEventListener("play", syncMediaTarget, true);
+    document.addEventListener("playing", syncMediaTarget, true);
+    document.addEventListener("loadedmetadata", syncMediaTarget, true);
+  }
+
+  private applyToMediaElement(media: HTMLMediaElement) {
+    const effective = this.getEffectiveVolume();
+    try {
+      if (Math.abs(media.volume - effective) > 0.001) {
+        media.volume = effective;
+      }
+      if (media.muted !== this.isMuted) {
+        media.muted = this.isMuted;
+      }
+    } catch {
+      // Ignore read-only media errors
     }
   }
 
-  public getVolume(): number {
-    return this.volume;
-  }
-
-  public isMuted(): boolean {
-    return this.muted;
+  public getState(): MasterAudioState {
+    return {
+      volume: this.volume,
+      isMuted: this.isMuted,
+      effectiveVolume: this.getEffectiveVolume(),
+    };
   }
 
   public getEffectiveVolume(): number {
-    if (this.muted) return 0;
+    if (this.isMuted || this.volume <= 0) return 0;
     return Math.max(0, Math.min(1, this.volume / 100));
   }
 
-  public setVolume(newVolume: number, triggerFeedback: boolean = false) {
+  public setVolume(newVolume: number, playFeedback: boolean = false) {
     const clamped = Math.max(0, Math.min(100, Math.round(newVolume)));
-    this.volume = clamped;
-    if (this.muted && clamped > 0) {
-      this.muted = false;
-    }
-    this.persistState();
-    this.applyToAllTargets();
-    this.broadcastEvent();
-    this.notifyListeners();
+    const wasMuted = this.isMuted;
 
-    if (triggerFeedback) {
+    // Unmute automatically if user actively raises volume above 0 while muted
+    if (clamped > 0 && this.isMuted) {
+      this.isMuted = false;
+    }
+
+    const changed = clamped !== this.volume || wasMuted !== this.isMuted;
+    this.volume = clamped;
+
+    if (changed) {
+      this.saveToStorage();
+      this.applyToAllTargets();
+      this.notifyListeners();
+      this.broadcastEvent();
+    }
+
+    if (playFeedback && !this.isMuted && this.volume > 0) {
       this.playWindowsFeedbackChime();
     }
   }
 
-  public setMuted(isMuted: boolean) {
-    this.muted = isMuted;
-    this.persistState();
+  public setMuted(muted: boolean, playFeedback: boolean = false) {
+    if (this.isMuted === muted) return;
+    this.isMuted = muted;
+    this.saveToStorage();
     this.applyToAllTargets();
-    this.broadcastEvent();
     this.notifyListeners();
-  }
+    this.broadcastEvent();
 
-  public toggleMute(): boolean {
-    this.setMuted(!this.muted);
-    return this.muted;
-  }
-
-  private broadcastEvent() {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent(MASTER_AUDIO_EVENT, {
-          detail: { volume: this.volume, isMuted: this.muted },
-        })
-      );
+    if (playFeedback && !this.isMuted && this.volume > 0) {
+      this.playWindowsFeedbackChime(true);
     }
   }
 
-  private notifyListeners() {
-    const state = { volume: this.volume, isMuted: this.muted };
-    this.listeners.forEach((fn) => {
-      try {
-        fn(state);
-      } catch (err) {
-        console.error("MasterAudio listener error:", err);
-      }
-    });
+  public toggleMute(playFeedback: boolean = true): boolean {
+    const nextMuted = !this.isMuted;
+    // If unmuting when volume was 0, restore volume to a sensible audible level (50%)
+    if (!nextMuted && this.volume === 0) {
+      this.volume = 50;
+    }
+    this.setMuted(nextMuted, playFeedback);
+    return this.isMuted;
   }
 
-  public subscribe(callback: (state: { volume: number; isMuted: boolean }) => void): () => void {
-    this.listeners.add(callback);
-    callback({ volume: this.volume, isMuted: this.muted });
+  public subscribe(listener: MasterAudioListener): () => void {
+    this.listeners.add(listener);
+    listener(this.getState());
     return () => {
-      this.listeners.delete(callback);
+      this.listeners.delete(listener);
     };
   }
 
   /**
-   * Creates a GainNode tied to the Master Audio volume for the given AudioContext.
-   * As the master slider changes, this gain node will smoothly scale the audio volume.
+   * Creates and registers a master GainNode for a given Web Audio API AudioContext.
+   * Automatically updates its gain whenever the Windows volume slider changes.
    */
-  public createMasterGain(ctx: AudioContext): GainNode {
+  public createMasterGain(ctx: BaseAudioContext): GainNode {
     const gainNode = ctx.createGain();
-    const effectiveVol = this.getEffectiveVolume();
-
+    const effective = this.getEffectiveVolume();
+    gainNode.gain.value = effective;
     try {
-      gainNode.gain.setValueAtTime(effectiveVol, ctx.currentTime);
+      gainNode.gain.setValueAtTime(effective, ctx.currentTime);
     } catch {
-      gainNode.gain.value = effectiveVol;
+      // Ignore if context is not ready
     }
 
-    const reg: AudioNodeRegistration = { ctx, gainNode };
-    this.registeredNodes.add(reg);
-
-    // Clean up if context closes
-    const cleanup = () => {
-      this.registeredNodes.delete(reg);
-    };
-
-    if (ctx.state === "closed") {
-      cleanup();
-    } else {
-      ctx.addEventListener?.("statechange", () => {
-        if (ctx.state === "closed") {
-          cleanup();
-        }
-      });
-    }
+    const entry = { ctx, gainNode };
+    this.registeredGains.add(entry);
 
     return gainNode;
   }
 
   /**
-   * Registers an HTML <audio> or <video> element to obey master volume and mute.
+   * Registers an HTMLAudioElement or HTMLVideoElement so its volume & muted properties
+   * stay synchronized with the Windows Volume Slider.
    */
-  public registerMediaElement(el: HTMLMediaElement): () => void {
-    this.registeredMedia.add(el);
-    el.volume = this.getEffectiveVolume();
-    el.muted = this.muted;
-
+  public registerMediaElement(media: HTMLMediaElement | null): () => void {
+    if (!media) return () => {};
+    this.registeredMedia.add(media);
+    this.applyToMediaElement(media);
     return () => {
-      this.registeredMedia.delete(el);
+      this.registeredMedia.delete(media);
     };
   }
 
   private applyToAllTargets() {
-    const effectiveVol = this.getEffectiveVolume();
+    const effective = this.getEffectiveVolume();
 
-    // 1. Update all registered AudioContext GainNodes
-    this.registeredNodes.forEach((reg) => {
+    // Update all active Web Audio GainNodes
+    const staleGains: { ctx: BaseAudioContext; gainNode: GainNode }[] = [];
+    this.registeredGains.forEach((entry) => {
       try {
-        if (reg.ctx.state !== "closed") {
-          reg.gainNode.gain.setValueAtTime(effectiveVol, reg.ctx.currentTime);
+        if (entry.ctx.state === "closed") {
+          staleGains.push(entry);
+          return;
         }
+        const now = entry.ctx.currentTime || 0;
+        entry.gainNode.gain.cancelScheduledValues(now);
+        entry.gainNode.gain.value = effective;
+        entry.gainNode.gain.setValueAtTime(effective, now);
       } catch {
-        try {
-          reg.gainNode.gain.value = effectiveVol;
-        } catch {}
+        staleGains.push(entry);
       }
     });
+    staleGains.forEach((s) => this.registeredGains.delete(s));
 
-    // 2. Update HTMLMediaElements
-    this.registeredMedia.forEach((el) => {
+    // Also scan the DOM for any <audio> or <video> elements not yet in registeredMedia
+    if (typeof document !== "undefined") {
       try {
-        el.volume = effectiveVol;
-        el.muted = this.muted;
-      } catch {}
+        const domMedia = document.querySelectorAll("audio, video");
+        domMedia.forEach((el) => {
+          if (el instanceof HTMLMediaElement) {
+            this.registeredMedia.add(el);
+          }
+        });
+      } catch {
+        // Ignore DOM query issues
+      }
+    }
+
+    // Update all registered HTMLMediaElements
+    this.registeredMedia.forEach((media) => {
+      this.applyToMediaElement(media);
     });
   }
 
-  /**
-   * Plays an audible Windows-style confirmation chime scaled precisely by the current master volume.
-   * Throttled to avoid buzzing when dragging the slider continuously.
-   */
-  public playWindowsFeedbackChime(forced = false) {
-    if (this.muted || this.volume <= 0) return;
+  private notifyListeners() {
+    const state = this.getState();
+    this.listeners.forEach((listener) => {
+      try {
+        listener(state);
+      } catch (err) {
+        console.error("MasterAudioListener error:", err);
+      }
+    });
+  }
 
-    const now = Date.now();
-    if (!forced && now - this.lastChimeTime < 140) {
-      return;
+  private broadcastEvent() {
+    if (typeof window === "undefined") return;
+    this.isBroadcasting = true;
+    try {
+      window.dispatchEvent(
+        new CustomEvent(MASTER_AUDIO_EVENT, {
+          detail: this.getState(),
+        })
+      );
+    } finally {
+      this.isBroadcasting = false;
     }
-    this.lastChimeTime = now;
+  }
+
+  private getOrCreateFeedbackContext(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    try {
+      if (this.feedbackCtx && this.feedbackCtx.state !== "closed") {
+        if (this.feedbackCtx.state === "suspended") {
+          this.feedbackCtx.resume().catch(() => {});
+        }
+        return this.feedbackCtx;
+      }
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return null;
+      this.feedbackCtx = new AudioCtx();
+      if (this.feedbackCtx.state === "suspended") {
+        this.feedbackCtx.resume().catch(() => {});
+      }
+      return this.feedbackCtx;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Plays a crisp harmonic Windows volume feedback chime scaled to the current volume.
+   * Uses a single shared AudioContext to prevent browser AudioContext exhaustion.
+   */
+  public playWindowsFeedbackChime(forceImmediate: boolean = false) {
+    const nowMs = Date.now();
+    if (!forceImmediate && nowMs - this.lastFeedbackTime < 90) return;
+    this.lastFeedbackTime = nowMs;
+
+    const effective = this.getEffectiveVolume();
+    if (effective <= 0) return;
 
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      const ctx = this.getOrCreateFeedbackContext();
+      if (!ctx) return;
 
-      // Windows 11 high harmonic ding / guitar natural harmonic chime
+      const start = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      // Pleasant two-note harmonic bell chime (pitch scales gently with volume 0..100)
+      const baseFreq = 440 + (this.volume / 100) * 320;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(baseFreq, start);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, start + 0.09);
+
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(baseFreq * 1.5, start);
+
+      const peakGain = Math.max(0.015, effective * 0.25);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(peakGain, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+
+      osc.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(start);
+      osc2.start(start);
+      osc.stop(start + 0.15);
+      osc2.stop(start + 0.15);
+
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          osc2.disconnect();
+          gain.disconnect();
+        } catch {
+          // Ignore disconnect errors
+        }
+      };
+    } catch {
+      // Ignore if autoplay policy blocks audio before user gesture
+    }
+  }
+
+  /**
+   * Plays a short metronome/count-in click scaled by the master volume slider.
+   */
+  public playCountInClick(isDownbeat: boolean = false) {
+    const effective = this.getEffectiveVolume();
+    if (effective <= 0) return;
+
+    try {
+      const ctx = this.getOrCreateFeedbackContext();
+      if (!ctx) return;
+
+      const start = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      const effectiveGain = (this.volume / 100) * 0.18;
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(isDownbeat ? 1046.5 : 783.99, start);
 
-      gain.gain.setValueAtTime(effectiveGain, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // Concert A5 note chime
-      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
+      const peakGain = Math.max(0.02, effective * 0.3);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(peakGain, start + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
+      osc.start(start);
+      osc.stop(start + 0.09);
 
       osc.onended = () => {
         try {
-          ctx.close();
+          osc.disconnect();
+          gain.disconnect();
         } catch {}
       };
-    } catch (err) {
-      console.warn("Audio chime failed:", err);
+    } catch {
+      // Ignore audio errors
     }
   }
 }

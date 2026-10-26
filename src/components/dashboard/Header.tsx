@@ -2,6 +2,7 @@ import React from "react";
 import { Guitar, LogOut, Flame, HelpCircle, Settings, Sliders } from "lucide-react";
 import { Button } from "../ui/button";
 import { TextScaleControl } from "../ui/TextScaleControl";
+import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 import { SiteNavButton } from "./SiteNavButton";
 import { useColorScheme } from "../../context/ColorSchemeContext";
 
@@ -73,6 +74,9 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Site Navigation Button at the Top */}
           <SiteNavButton variant="header" />
+
+          {/* App-Wide Master Volume Control */}
+          <WindowsVolumeSlider variant="compact" />
 
           {/* App-Wide Text Scaling Control */}
           <TextScaleControl variant="header" />

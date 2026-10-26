@@ -23,6 +23,8 @@ import {
   Sliders,
   FileText,
   Layers,
+  Mic,
+  Radio,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -37,11 +39,13 @@ import {
   formatDurationLabel,
 } from "../../utils/durationFormat";
 import { PracticeSessionLiveCoach } from "./PracticeSessionLiveCoach";
+import { OnDemandSongRecorder } from "./OnDemandSongRecorder";
 import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 
 export type SessionFrameId =
   | "songInfo"
+  | "recorder"
   | "metrics"
   | "duration"
   | "coach"
@@ -59,8 +63,14 @@ const DEFAULT_SESSION_FRAMES: SessionFrameMeta[] = [
   {
     id: "songInfo",
     title: "Song & Practice Date",
-    subtitle: "Select song title or enter custom exercise, and choose date",
+    subtitle: "Select song title, add a new song on demand, and choose date",
     icon: Music,
+  },
+  {
+    id: "recorder",
+    title: "Record Song on Demand (Audio & Take Timer)",
+    subtitle: "Record live guitar song takes on demand, play back, download, and sync duration",
+    icon: Radio,
   },
   {
     id: "metrics",
@@ -94,8 +104,8 @@ const DEFAULT_SESSION_FRAMES: SessionFrameMeta[] = [
   },
 ];
 
-const FRAMES_ORDER_STORAGE_KEY = "guitar_record_session_frames_order_v2";
-const FRAMES_MINIMIZED_STORAGE_KEY = "guitar_record_session_frames_minimized_v2";
+const FRAMES_ORDER_STORAGE_KEY = "guitar_record_session_frames_order_v3";
+const FRAMES_MINIMIZED_STORAGE_KEY = "guitar_record_session_frames_minimized_v3";
 
 interface PracticeSessionModalProps {
   practices?: Practice[];
@@ -127,7 +137,7 @@ interface PracticeSessionModalProps {
   onNoteChange: (val: string) => void;
   isSaving?: boolean;
   saveError?: string | null;
-  onUpdateSongDefaults?: (title: string, durationSec?: number, diffLevel?: number) => void;
+  onUpdateSongDefaults?: (title: string, durationSec?: number, diffLevel?: number) => Promise<void> | void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
 }
@@ -169,8 +179,11 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   onCancel,
 }) => {
   const [isCustomSongMode, setIsCustomSongMode] = useState<boolean>(activeSongs.length === 0);
+  const [isAddingSongOnDemand, setIsAddingSongOnDemand] = useState<boolean>(false);
+  const [songAddedFeedback, setSongAddedFeedback] = useState<string | null>(null);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const dialogTopRef = useRef<HTMLDivElement>(null);
+  const recorderFrameRef = useRef<HTMLDivElement>(null);
 
   // Compute previous session specifically for this song (or fallback to latest session overall)
   const previousSessionForSong = useMemo(() => {
@@ -349,6 +362,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     }
     return {
       songInfo: false,
+      recorder: false,
       metrics: false,
       duration: false,
       coach: false,
@@ -394,6 +408,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     setFramesOrder(defaultOrder);
     const defaultMinimized: Record<SessionFrameId, boolean> = {
       songInfo: false,
+      recorder: false,
       metrics: false,
       duration: false,
       coach: false,
@@ -413,6 +428,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     const allMin = Object.values(minimizedFrames).every(Boolean);
     const next: Record<SessionFrameId, boolean> = {
       songInfo: !allMin,
+      recorder: !allMin,
       metrics: !allMin,
       duration: !allMin,
       coach: !allMin,
@@ -427,7 +443,49 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     }
   }, [minimizedFrames]);
 
+  const handleFocusOnDemandRecorder = useCallback(() => {
+    setMinimizedFrames((prev) => {
+      const next = { ...prev, recorder: false };
+      try {
+        localStorage.setItem(FRAMES_MINIMIZED_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    setTimeout(() => {
+      recorderFrameRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 60);
+  }, []);
+
+  const handleAddSongOnDemandNow = async () => {
+    const trimmed = songTitle.trim();
+    if (!trimmed || !onUpdateSongDefaults) return;
+    setIsAddingSongOnDemand(true);
+    try {
+      const parsedSec = duration ? parseDurationInputToSeconds(duration) : undefined;
+      await onUpdateSongDefaults(trimmed, parsedSec, difficulty);
+      setIsCustomSongMode(false);
+      setSongAddedFeedback(`"${trimmed}" added to Song Library`);
+      setTimeout(() => {
+        setSongAddedFeedback(null);
+      }, 3500);
+    } finally {
+      setIsAddingSongOnDemand(false);
+    }
+  };
+
   const handleDragStart = (id: SessionFrameId, e: React.DragEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.closest("input") ||
+        target.closest("button") ||
+        target.closest("select") ||
+        target.closest("textarea") ||
+        target.closest('[data-no-frame-drag="true"]'))
+    ) {
+      e.preventDefault();
+      return;
+    }
     setDraggedFrameId(id);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", id);
@@ -482,6 +540,13 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
           </span>
         ) : (
           <span className="text-[11px] text-slate-400 italic">No song chosen</span>
+        );
+      case "recorder":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-rose-950/80 border border-rose-500/40 text-rose-200">
+            <Mic className="w-3 h-3 text-rose-400 shrink-0" />
+            On-Demand Audio Recorder
+          </span>
         );
       case "metrics":
         return liveAccuracy !== null ? (
@@ -556,35 +621,46 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
             <div className="space-y-1.5 sm:col-span-2">
-              <div className="h-7 flex items-center justify-between gap-2">
+              <div className="h-7 flex items-center justify-between gap-2 flex-wrap">
                 <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
                   <Music className="w-3.5 h-3.5 text-indigo-400" />
                   Song / Exercise Title
                 </label>
-                {activeSongs.length > 0 && (
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsCustomSongMode((prev) => !prev);
-                      if (!isCustomSongMode) {
-                        onSongTitleChange("");
-                      }
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/50 hover:bg-indigo-800/70 px-2 py-0.5 rounded-md border border-indigo-700/60 transition-colors cursor-pointer"
+                    onClick={handleFocusOnDemandRecorder}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-200 hover:text-white bg-rose-950/70 hover:bg-rose-900/80 px-2 py-0.5 rounded-md border border-rose-600/60 transition-colors cursor-pointer"
+                    title="Open On-Demand Song Audio Recorder to record your live guitar take"
                   >
-                    {isCustomSongMode ? (
-                      <>
-                        <ListMusic className="w-3 h-3 text-indigo-400" />
-                        Choose from Library ({activeSongs.length})
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-3 h-3 text-emerald-400" />
-                        Enter New Song
-                      </>
-                    )}
+                    <Mic className="w-3 h-3 text-rose-400" />
+                    Record Song Take
                   </button>
-                )}
+                  {activeSongs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomSongMode((prev) => !prev);
+                        if (!isCustomSongMode) {
+                          onSongTitleChange("");
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/50 hover:bg-indigo-800/70 px-2 py-0.5 rounded-md border border-indigo-700/60 transition-colors cursor-pointer"
+                    >
+                      {isCustomSongMode ? (
+                        <>
+                          <ListMusic className="w-3 h-3 text-indigo-400" />
+                          Choose from Library ({activeSongs.length})
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-3 h-3 text-emerald-400" />
+                          + New Song on Demand
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {!isCustomSongMode && activeSongs.length > 0 ? (
@@ -609,15 +685,41 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                   ))}
                 </Select>
               ) : (
-                <Input
-                  type="text"
-                  required
-                  maxLength={200}
-                  value={songTitle}
-                  onChange={(e) => onSongTitleChange(e.target.value)}
-                  placeholder="e.g. Nothing Else Matters, Spider Walk Exercise..."
-                  className="w-full bg-indigo-950/70 border-indigo-700 text-white font-medium h-10"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    required
+                    maxLength={200}
+                    value={songTitle}
+                    onChange={(e) => onSongTitleChange(e.target.value)}
+                    placeholder="Enter new song or exercise on demand..."
+                    className="w-full bg-indigo-950/70 border-indigo-700 text-white font-medium h-10"
+                  />
+                  {onUpdateSongDefaults &&
+                    songTitle.trim() &&
+                    !activeSongs.some(
+                      (s) => s.title.trim().toLowerCase() === songTitle.trim().toLowerCase()
+                    ) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isAddingSongOnDemand}
+                        onClick={handleAddSongOnDemandNow}
+                        className="h-10 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shrink-0 gap-1 cursor-pointer"
+                        title="Immediately add this new song to your active Song Library with current duration & difficulty defaults"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isAddingSongOnDemand ? "Adding..." : "Add to Library"}</span>
+                      </Button>
+                    )}
+                </div>
+              )}
+
+              {songAddedFeedback && (
+                <div className="text-[11px] font-medium text-emerald-300 flex items-center gap-1 pt-0.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{songAddedFeedback}</span>
+                </div>
               )}
             </div>
 
@@ -659,7 +761,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-cyan-300 flex items-center gap-1">
                       <Music className="w-3.5 h-3.5 text-cyan-400" />
-                      Song Library Defaults:
+                      {matchingSong ? "Song Library Defaults:" : "New Song (On-Demand):"}
                     </span>
                     {matchingSong?.duration !== undefined && matchingSong.duration > 0 ? (
                       <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded text-[11px]">
@@ -713,13 +815,32 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                         title="Save current time and difficulty level as this song's default in the Songs Library"
                       >
                         <Sparkles className="w-3 h-3 text-cyan-400" />
-                        Save as Song Defaults
+                        {matchingSong ? "Save as Song Defaults" : "Add Song & Save Defaults"}
                       </button>
                     )}
                   </div>
                 </div>
               );
             })()}
+          </div>
+        );
+
+      case "recorder":
+        return (
+          <div ref={recorderFrameRef}>
+            <OnDemandSongRecorder
+              songTitle={songTitle}
+              speed={speed}
+              difficulty={difficulty}
+              onApplyDuration={(formatted) => {
+                setIsTimerRunning(false);
+                onDurationChange(formatted);
+              }}
+              onAppendNote={(snippet) => {
+                const updated = note.trim() ? `${note.trim()}\n${snippet}` : snippet;
+                onNoteChange(updated.slice(0, 500));
+              }}
+            />
           </div>
         );
 
@@ -1462,7 +1583,10 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
 
                   {/* Frame Body (when expanded) */}
                   {!isMinimized && (
-                    <div className="p-3.5 sm:p-4 bg-slate-950/40">
+                    <div
+                      data-no-frame-drag="true"
+                      className="p-3.5 sm:p-4 bg-slate-950/40"
+                    >
                       {renderFrameContent(frameId)}
                     </div>
                   )}

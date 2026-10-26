@@ -507,11 +507,11 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
       {/* Left: Row Density & Column Width Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-indigo-300 font-semibold uppercase tracking-wider text-[11px]">
+          <div className="flex items-center gap-1.5 text-indigo-300 font-semibold uppercase tracking-wider text-[11px] whitespace-nowrap">
             <Rows className="w-3.5 h-3.5 text-cyan-400" />
             <span>Rows:</span>
           </div>
-          <div className="inline-flex rounded-lg bg-indigo-950/70 p-0.5 border border-indigo-800/60">
+          <div className="inline-flex items-center h-8 rounded-lg bg-indigo-950/70 p-0.5 border border-indigo-800/60 gap-0.5">
             {(["compact", "default", "spacious"] as TableRowDensity[]).map((d) => {
               const isSelected = density === d;
               return (
@@ -523,7 +523,7 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
                     onDensityChange(d);
                   }}
                   className={cn(
-                    "px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-all capitalize cursor-pointer",
+                    "h-6 px-2.5 rounded-md text-[11px] font-medium transition-all capitalize cursor-pointer inline-flex items-center justify-center whitespace-nowrap",
                     isSelected
                       ? "bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-400/40 shadow-sm"
                       : "text-slate-400 hover:text-indigo-200"
@@ -538,19 +538,19 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
         </div>
 
         {onAdjustAllColumns && (
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 text-indigo-300 font-semibold uppercase tracking-wider text-[11px]">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-indigo-300 font-semibold uppercase tracking-wider text-[11px] whitespace-nowrap">
               <Columns className="w-3.5 h-3.5 text-cyan-400" />
               <span>Col Width:</span>
             </div>
-            <div className="inline-flex items-center rounded-lg bg-indigo-950/70 p-0.5 border border-indigo-800/60 gap-0.5">
+            <div className="inline-flex items-center h-8 rounded-lg bg-indigo-950/70 p-0.5 border border-indigo-800/60 gap-0.5">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAdjustAllColumns(-20);
                 }}
-                className="px-2 py-0.5 rounded-md text-[11px] font-medium text-indigo-200 hover:text-white hover:bg-indigo-800/60 transition-colors flex items-center gap-0.5 cursor-pointer"
+                className="h-6 px-2 rounded-md text-[11px] font-medium text-indigo-200 hover:text-white hover:bg-indigo-800/60 transition-colors inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
                 title="Narrow all columns (-20px)"
               >
                 <Minus className="w-3 h-3 text-cyan-400" />
@@ -562,7 +562,7 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
                   e.stopPropagation();
                   onAdjustAllColumns(20);
                 }}
-                className="px-2 py-0.5 rounded-md text-[11px] font-medium text-indigo-200 hover:text-white hover:bg-indigo-800/60 transition-colors flex items-center gap-0.5 cursor-pointer"
+                className="h-6 px-2 rounded-md text-[11px] font-medium text-indigo-200 hover:text-white hover:bg-indigo-800/60 transition-colors inline-flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
                 title="Widen all columns (+20px)"
               >
                 <Plus className="w-3 h-3 text-cyan-400" />
@@ -576,7 +576,7 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
       {/* Right: Columns & Reset actions */}
       <div className="flex items-center gap-2">
         {(rowCount !== undefined || columnCount !== undefined) && (
-          <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
+          <span className="hidden sm:inline text-[11px] text-slate-400 font-mono whitespace-nowrap">
             {rowCount !== undefined && `${rowCount} rows`}
             {rowCount !== undefined && columnCount !== undefined && " · "}
             {columnCount !== undefined && `${columnCount} cols`}
@@ -589,7 +589,7 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
             e.stopPropagation();
             onResetColumns();
           }}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-8 gap-1 px-2.5 rounded-lg text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 transition-colors cursor-pointer whitespace-nowrap"
           title="Reset column widths to standard size"
         >
           <RotateCcw className="w-3 h-3 text-cyan-400" />
@@ -603,7 +603,7 @@ export const AdjustableTableToolbar: React.FC<AdjustableTableToolbarProps> = ({
               e.stopPropagation();
               onToggleMaximizeHeight();
             }}
-            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-indigo-900/50 transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-slate-400 hover:text-white hover:bg-indigo-900/50 transition-colors cursor-pointer"
             title={isMaximizedHeight ? "Standard table height" : "Expand table viewport"}
           >
             {isMaximizedHeight ? (

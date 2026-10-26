@@ -241,7 +241,7 @@ export const RecentSessionsTrendChart: React.FC<RecentSessionsTrendChartProps> =
         <div className="flex items-center gap-2.5 flex-wrap">
           {activeSongs.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-slate-400 font-medium">Song:</span>
+              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">Song:</span>
               <Select
                 value={selectedSong}
                 onChange={(e) => setSelectedSong(e.target.value)}
@@ -257,12 +257,12 @@ export const RecentSessionsTrendChart: React.FC<RecentSessionsTrendChartProps> =
             </div>
           )}
 
-          <div className="flex items-center border border-slate-800 rounded-lg p-0.5 bg-slate-950 text-xs">
+          <div className="inline-flex items-center h-8 border border-slate-800 rounded-lg p-0.5 bg-slate-950 text-xs gap-0.5">
             <button
               type="button"
               onClick={() => setCurveType("monotone")}
               className={cn(
-                "px-2 py-1 rounded-md transition-colors cursor-pointer text-[11px] font-medium",
+                "h-6 px-2.5 rounded-md transition-colors cursor-pointer text-[11px] font-medium inline-flex items-center justify-center whitespace-nowrap",
                 curveType === "monotone"
                   ? "bg-indigo-600 text-white"
                   : "text-slate-400 hover:text-white"
@@ -275,7 +275,7 @@ export const RecentSessionsTrendChart: React.FC<RecentSessionsTrendChartProps> =
               type="button"
               onClick={() => setCurveType("linear")}
               className={cn(
-                "px-2 py-1 rounded-md transition-colors cursor-pointer text-[11px] font-medium",
+                "h-6 px-2.5 rounded-md transition-colors cursor-pointer text-[11px] font-medium inline-flex items-center justify-center whitespace-nowrap",
                 curveType === "linear"
                   ? "bg-indigo-600 text-white"
                   : "text-slate-400 hover:text-white"

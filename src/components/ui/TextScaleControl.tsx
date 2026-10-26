@@ -106,14 +106,14 @@ export const TextScaleControl: React.FC<TextScaleControlProps> = ({
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
-            "h-8 sm:h-9 flex items-center gap-1.5 px-2.5 sm:px-3 rounded-xl border border-indigo-700/80 bg-indigo-900/40 hover:bg-indigo-800 text-indigo-200 hover:text-white text-xs font-medium transition-all shadow-xs",
+            "h-9 inline-flex items-center gap-1.5 px-3 rounded-lg border border-indigo-700/80 bg-indigo-900/40 hover:bg-indigo-800 text-indigo-200 hover:text-white text-xs font-medium transition-all shadow-xs whitespace-nowrap",
             !isDefault && "border-indigo-400/80 bg-indigo-800/60 text-white ring-1 ring-indigo-400/30"
           )}
           title="Scale text app-wide (change font size)"
           aria-expanded={isOpen}
           aria-haspopup="true"
         >
-          <ALargeSmall className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-300" />
+          <ALargeSmall className="w-4 h-4 text-indigo-300" />
           <span className="font-mono font-semibold">{scale}%</span>
           <span className="hidden md:inline text-[11px] text-indigo-300/80">Text</span>
           <ChevronDown

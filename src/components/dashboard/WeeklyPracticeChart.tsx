@@ -261,14 +261,14 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
         {/* Top Control Bar: Range Tabs, Benchmark Toggle & Print */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-indigo-900/40">
           {/* Week Range Segmented Buttons (No static pills, clean button group) */}
-          <div className="flex items-center gap-1 p-1 bg-indigo-950/80 border border-indigo-800/60 rounded-lg">
+          <div className="inline-flex items-center h-8 gap-0.5 p-0.5 bg-indigo-950/80 border border-indigo-800/60 rounded-lg">
             <button
               type="button"
               onClick={() => {
                 setRangeMode("last7days");
                 setSelectedDateKey(null);
               }}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+              className={`h-6 px-2.5 text-xs font-medium rounded-md transition-all inline-flex items-center justify-center whitespace-nowrap ${
                 rangeMode === "last7days"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-indigo-300 hover:text-white hover:bg-indigo-900/60"
@@ -282,7 +282,7 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
                 setRangeMode("thisWeek");
                 setSelectedDateKey(null);
               }}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+              className={`h-6 px-2.5 text-xs font-medium rounded-md transition-all inline-flex items-center justify-center whitespace-nowrap ${
                 rangeMode === "thisWeek"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-indigo-300 hover:text-white hover:bg-indigo-900/60"
@@ -296,7 +296,7 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
                 setRangeMode("lastWeek");
                 setSelectedDateKey(null);
               }}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+              className={`h-6 px-2.5 text-xs font-medium rounded-md transition-all inline-flex items-center justify-center whitespace-nowrap ${
                 rangeMode === "lastWeek"
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "text-indigo-300 hover:text-white hover:bg-indigo-900/60"
@@ -308,15 +308,15 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
 
           {/* Goal Benchmark Selector & Print Button */}
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-md border border-indigo-900/50">
-              <Target className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Target:</span>
+            <div className="hidden sm:inline-flex items-center h-8 gap-1.5 text-xs text-indigo-300 bg-indigo-950/60 px-2.5 rounded-lg border border-indigo-900/50">
+              <Target className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="whitespace-nowrap">Target:</span>
               <button
                 type="button"
                 onClick={() => {
                   setShowGoalLine((prev) => !prev);
                 }}
-                className={`text-xs font-medium px-1.5 py-0.5 rounded transition-colors ${
+                className={`h-6 text-xs font-medium px-1.5 rounded transition-colors inline-flex items-center justify-center ${
                   showGoalLine ? "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40" : "text-indigo-400 hover:text-white"
                 }`}
               >
@@ -329,7 +329,7 @@ export const WeeklyPracticeChart: React.FC<WeeklyPracticeChartProps> = ({
                       key={mins}
                       type="button"
                       onClick={() => setActiveGoalMinutes(mins)}
-                      className={`px-1 text-[11px] font-mono rounded ${
+                      className={`h-6 px-1.5 text-[11px] font-mono rounded inline-flex items-center justify-center ${
                         activeGoalMinutes === mins
                           ? "bg-emerald-500 text-slate-950 font-bold"
                           : "text-indigo-300 hover:text-white"

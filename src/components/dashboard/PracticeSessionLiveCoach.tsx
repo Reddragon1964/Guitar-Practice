@@ -18,6 +18,7 @@ import { Select } from "../ui/select";
 import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
 import { masterAudio } from "../../utils/masterAudioController";
+import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 
 type VoiceName = "Zephyr" | "Puck" | "Kore" | "Fenrir" | "Charon";
 
@@ -502,7 +503,8 @@ Keep all your verbal responses natural, brief, conversational, and encouraging. 
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <WindowsVolumeSlider variant="compact" />
           {!isConnected ? (
             <Button
               type="button"

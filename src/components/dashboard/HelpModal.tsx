@@ -128,13 +128,16 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
             </p>
             <ul className="space-y-2.5 list-disc list-inside text-indigo-200">
               <li>
-                <strong className="text-white">Song / Exercise Title:</strong> Pick an existing song from your song library or enter a new song title directly. New songs are automatically added to your library.
+                <strong className="text-white">Song / Exercise Title &amp; + New Song on Demand:</strong> Pick an existing song from your song library or click <strong>+ New Song on Demand</strong> to enter a new song title and immediately add it to your active repertoire (with optional default duration and difficulty) without leaving the session dialog.
+              </li>
+              <li>
+                <strong className="text-rose-300">Record Song on Demand (Audio &amp; Take Timer):</strong> Click <strong>Record Song Now</strong> in the On-Demand Song Audio Recorder frame (or in Quick Entry) to capture your live guitar performance via microphone with a real-time frequency visualizer, optional 3-second count-in, multi-take playback, downloadable audio files, and automatic duration syncing to your session.
               </li>
               <li>
                 <strong className="text-white">Date:</strong> Defaults to today's date, or select any previous date to back-log practice sessions.
               </li>
               <li>
-                <strong className="text-white">Duration (m:ss):</strong> Enter in minutes:seconds format (e.g. <code>3:00</code> or <code>1:01</code>). You can also use quick presets (<code>0:30</code>, <code>1:00</code>, <code>3:00</code>, <code>5:00</code>), <code>±15s</code> / <code>+1m</code> steppers, or the built-in <strong>Live Stopwatch Timer</strong> (Start / Pause / Reset).
+                <strong className="text-white">Duration (m:ss):</strong> Enter in minutes:seconds format (e.g. <code>3:00</code> or <code>1:01</code>). You can also use quick presets (<code>0:30</code>, <code>1:00</code>, <code>3:00</code>, <code>5:00</code>), <code>±15s</code> / <code>+1m</code> steppers, the built-in <strong>Live Stopwatch Timer</strong>, or auto-fill from your recorded song take.
               </li>
               <li>
                 <strong className="text-white">Difficulty Level (1-12):</strong> Rates the technical complexity of the piece or exercise on a 1 to 12 scale.
@@ -155,10 +158,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
                 <strong className="text-white">Short version:</strong> Check this option if you practiced an abbreviated, short, or radio edit version of the song.
               </li>
               <li>
-                <strong className="text-white">Test Session & Score:</strong> Enable this if you performed a formal scoring or rhythm game test, allowing point-based test scores.
+                <strong className="text-white">Test Session &amp; Score:</strong> Enable this if you performed a formal scoring or rhythm game test, allowing point-based test scores.
               </li>
               <li>
-                <strong className="text-white">Session Notes:</strong> Note down specific guitar techniques, fretboard challenges, fingerings, or metronome settings.
+                <strong className="text-white">Session Notes:</strong> Note down specific guitar techniques, fretboard challenges, fingerings, or append recorded take details with one click.
               </li>
               <li>
                 <strong className="text-emerald-300">Practice with Live Coach (gemini-3.8-live):</strong> Directly inside the session dialog, tap <strong>"Start Live Coach"</strong> to talk hands-free with your AI coach while practicing, running the stopwatch timer, and logging your session.
@@ -166,10 +169,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
             </ul>
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-cyan-950/40 border border-cyan-700/50 text-xs text-cyan-200">
-                ✨ <strong>Rearrangeable Dialog Frames:</strong> The 6 sections inside the Record Practice Session dialog (Song & Date, Session Metrics, Duration & Stopwatch, Live Coach, Options & Score, Notes) are modular frames. Drag by their grip handles (⠿) or use the <strong>↑</strong> and <strong>↓</strong> buttons to customize your layout. You can also minimize frames you don't need or click <strong>Reset Order</strong> at any time. Your customized layout is automatically saved!
+                ✨ <strong>Rearrangeable Dialog Frames:</strong> The 7 sections inside the Record Practice Session dialog (Song &amp; Date, Record Song on Demand, Session Metrics, Duration &amp; Stopwatch, Live Coach, Options &amp; Score, Notes) are modular frames. Drag by their grip handles (⠿) or use the <strong>↑</strong> and <strong>↓</strong> buttons to customize your layout. You can also minimize frames you don't need or click <strong>Reset Order</strong> at any time. Your customized layout is automatically saved!
               </div>
               <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-700/50 text-xs text-emerald-200">
-                💡 <strong>Quick Entry:</strong> You can also use the collapsible <strong>Quick Entry</strong> form directly above the sessions table on the dashboard for rapid logging without opening the full dialog!
+                💡 <strong>Quick Entry:</strong> You can also use the collapsible <strong>Quick Entry</strong> form directly above the sessions table on the dashboard—including <strong>Record Song on Demand</strong>—for rapid logging without opening the full dialog!
               </div>
             </div>
           </div>

@@ -166,10 +166,12 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
               {/* 1. Song Title (Span 5) */}
               <div className="md:col-span-5 space-y-1">
-                <label className="text-xs font-medium text-indigo-200 flex items-center gap-1.5">
-                  <Music className="w-3.5 h-3.5 text-cyan-400" />
-                  Song or Exercise Title <span className="text-rose-400">*</span>
-                </label>
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-xs font-medium text-indigo-200 flex items-center gap-1.5">
+                    <Music className="w-3.5 h-3.5 text-cyan-400" />
+                    Song or Exercise Title <span className="text-rose-400">*</span>
+                  </label>
+                </div>
                 <Input
                   placeholder="e.g. Master of Puppets, Spider Walk..."
                   value={newSongInput}
@@ -182,7 +184,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
 
               {/* 2. Default Time / Duration (Span 3) */}
               <div className="md:col-span-3 space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="h-5 flex items-center justify-between">
                   <label className="text-xs font-medium text-indigo-200 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-emerald-400" />
                     Default Time (mm:ss)
@@ -200,7 +202,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
 
               {/* 3. Default Difficulty (Span 2) */}
               <div className="md:col-span-2 space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="h-5 flex items-center justify-between">
                   <label className="text-xs font-medium text-indigo-200 flex items-center gap-1.5">
                     <Gauge className="w-3.5 h-3.5 text-amber-400" />
                     Difficulty
@@ -280,7 +282,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setStatusFilter("retired")}
-            className="h-7 text-[11px] shrink-0 border-amber-600/70 text-amber-200 hover:bg-amber-950/60"
+            className="h-8 text-[11px] shrink-0 border-amber-600/70 text-amber-200 hover:bg-amber-950/60"
           >
             View {retiredCount} Retired {retiredCount === 1 ? "Song" : "Songs"}
           </Button>
@@ -297,7 +299,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
               placeholder="Search songs in library..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-7 h-8 text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
+              className="pl-8 pr-7 h-9 text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
             />
             {searchQuery && (
               <button
@@ -311,7 +313,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
           </div>
 
           {/* Status Filter Tabs */}
-          <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-slate-900 border border-slate-800">
+          <div className="inline-flex items-center h-9 gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800">
             <Button
               type="button"
               size="sm"

@@ -186,9 +186,11 @@ export const WeeklyGoalModal: React.FC<WeeklyGoalModalProps> = ({
                 Target Practice Time per Week
               </label>
 
-              <div className="flex items-center gap-3 sm:gap-4 bg-indigo-950/40 p-3.5 sm:p-4 rounded-xl border border-indigo-800/60">
-                <div className="flex-1 min-w-0">
-                  <label className="text-[11px] text-indigo-400 mb-1 block">Hours</label>
+              <div className="flex items-end gap-3 sm:gap-4 bg-indigo-950/40 p-3.5 sm:p-4 rounded-xl border border-indigo-800/60">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="h-5 flex items-center">
+                    <label className="text-[11px] text-indigo-400 block">Hours</label>
+                  </div>
                   <NumericKeypadInput
                     label="Weekly Hours"
                     min={0}
@@ -202,14 +204,18 @@ export const WeeklyGoalModal: React.FC<WeeklyGoalModalProps> = ({
                       { label: "5h", value: "5" },
                       { label: "10h", value: "10" },
                     ]}
-                    inputClassName="w-full bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
+                    inputClassName="w-full h-10 bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
                   />
                 </div>
 
-                <span className="text-2xl font-bold text-indigo-400 pt-5">:</span>
+                <div className="h-10 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-indigo-400 leading-none">:</span>
+                </div>
 
-                <div className="flex-1 min-w-0">
-                  <label className="text-[11px] text-indigo-400 mb-1 block">Minutes</label>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="h-5 flex items-center">
+                    <label className="text-[11px] text-indigo-400 block">Minutes</label>
+                  </div>
                   <NumericKeypadInput
                     label="Weekly Minutes"
                     min={0}
@@ -225,26 +231,26 @@ export const WeeklyGoalModal: React.FC<WeeklyGoalModalProps> = ({
                       { label: "30m", value: "30" },
                       { label: "45m", value: "45" },
                     ]}
-                    inputClassName="w-full bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
+                    inputClassName="w-full h-10 bg-indigo-950/80 border-indigo-700 text-center text-lg font-mono font-bold text-white"
                   />
                 </div>
 
-                <div className="flex flex-col gap-1.5 pt-5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => adjustMinutes(15)}
-                    className="px-2.5 py-1 text-xs font-medium rounded bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 transition-colors"
-                    title="Add 15 minutes"
-                  >
-                    +15m
-                  </button>
+                <div className="flex items-center gap-1.5 h-10 shrink-0">
                   <button
                     type="button"
                     onClick={() => adjustMinutes(-15)}
-                    className="px-2.5 py-1 text-xs font-medium rounded bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 transition-colors"
+                    className="h-10 px-2.5 text-xs font-medium rounded-lg bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 transition-colors inline-flex items-center justify-center"
                     title="Subtract 15 minutes"
                   >
                     -15m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustMinutes(15)}
+                    className="h-10 px-2.5 text-xs font-medium rounded-lg bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 transition-colors inline-flex items-center justify-center"
+                    title="Add 15 minutes"
+                  >
+                    +15m
                   </button>
                 </div>
               </div>

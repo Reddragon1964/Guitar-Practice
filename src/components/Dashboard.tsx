@@ -1644,14 +1644,14 @@ export function Dashboard() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* AI Coaching Suite */}
-                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/70 border border-indigo-800/80">
+                <div className="inline-flex items-center h-9 gap-1 p-0.5 rounded-lg bg-slate-950/70 border border-indigo-800/80">
                   <Button
                     onClick={() => setView("live-voice")}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-emerald-300 hover:text-white hover:bg-emerald-950/70"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-emerald-300 hover:text-white hover:bg-emerald-950/70 whitespace-nowrap"
                     title="Real-time voice conversation with gemini-3.8-live"
                   >
                     <Mic className="w-3.5 h-3.5 text-emerald-400" />
@@ -1661,7 +1661,7 @@ export function Dashboard() {
                     onClick={() => setView("chatbot")}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60 whitespace-nowrap"
                     title="Multi-turn Gemini guitar assistant"
                   >
                     <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
@@ -1671,7 +1671,7 @@ export function Dashboard() {
                     onClick={() => handleAnalyze()}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-amber-300 hover:text-white hover:bg-amber-950/50"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-amber-300 hover:text-white hover:bg-amber-950/50 whitespace-nowrap"
                     title="Instant AI progress assessment"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -1680,12 +1680,12 @@ export function Dashboard() {
                 </div>
 
                 {/* Analytics & Library Suite */}
-                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/70 border border-indigo-800/80">
+                <div className="inline-flex items-center h-9 gap-1 p-0.5 rounded-lg bg-slate-950/70 border border-indigo-800/80">
                   <Button
                     onClick={() => setView("trends")}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60 whitespace-nowrap"
                     title="Accuracy and practice hours trends"
                   >
                     <Activity className="w-3.5 h-3.5 text-indigo-400" />
@@ -1695,7 +1695,7 @@ export function Dashboard() {
                     onClick={() => setView("duration-trends")}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60 whitespace-nowrap"
                     title="Duration analysis over time"
                   >
                     <Clock className="w-3.5 h-3.5 text-emerald-400" />
@@ -1705,7 +1705,7 @@ export function Dashboard() {
                     onClick={() => setView("manage-songs")}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60 whitespace-nowrap"
                     title="Manage song library"
                   >
                     <Guitar className="w-3.5 h-3.5 text-indigo-400" />
@@ -1718,7 +1718,7 @@ export function Dashboard() {
                     }}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60 whitespace-nowrap"
                     title="Set weekly practice targets"
                   >
                     <Target className="w-3.5 h-3.5 text-indigo-400" />
@@ -1728,7 +1728,7 @@ export function Dashboard() {
                     onClick={() => setView("add-goal")}
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60"
+                    className="h-7 px-2.5 gap-1.5 text-xs text-indigo-200 hover:text-white hover:bg-indigo-900/60 whitespace-nowrap"
                     title="Add milestone goal"
                   >
                     <Plus className="w-3.5 h-3.5 text-indigo-400" />
