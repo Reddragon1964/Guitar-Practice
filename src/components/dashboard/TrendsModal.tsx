@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Practice, Song, PrintMode } from "../../types";
+import { Practice, Song, PrintMode, Goal, WeeklyGoal } from "../../types";
 import { PracticeTrendsSection } from "./PracticeTrendsSection";
 
 interface TrendsModalProps {
@@ -20,6 +20,8 @@ interface TrendsModalProps {
   practices: Practice[];
   activeSongs: Song[];
   usageLogs?: { date: string; minutes: number }[];
+  goals?: Goal[];
+  weeklyGoals?: WeeklyGoal[];
   printMode: PrintMode;
   onPrint: (mode: "trends") => void;
   onBack: () => void;
@@ -31,6 +33,8 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
   practices,
   activeSongs,
   usageLogs = [],
+  goals = [],
+  weeklyGoals = [],
   printMode,
   onPrint,
   onBack,
@@ -43,10 +47,10 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-indigo-50">
-            Practice Trends & Analytics
+            Advanced Progress Chart &amp; Practice Trends
           </h2>
           <p className="text-xs text-indigo-300/80 mt-0.5">
-            Weekly accuracy improvements, total practice hours over time, and 30-day session trends
+            Daily accuracy scores, practice speed trends, goal &amp; milestone markers across Weekly, Monthly, and Yearly timeframes
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
@@ -67,13 +71,16 @@ export const TrendsModal: React.FC<TrendsModalProps> = ({
         </div>
       </div>
 
-      {/* Weekly Accuracy Improvements & Total Practice Hours Over Time */}
+      {/* Advanced Progress Chart & Weekly Practice Trends */}
       <PracticeTrendsSection
         practices={practices}
         activeSongs={activeSongs}
         usageLogs={usageLogs}
+        goals={goals}
+        weeklyGoals={weeklyGoals}
         printMode={printMode}
         onPrint={onPrint}
+        gridStroke={gridStroke}
       />
 
       {/* 30-Day Daily Accuracy & Speed Improvements */}

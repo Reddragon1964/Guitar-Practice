@@ -37,8 +37,8 @@ export const Header: React.FC<HeaderProps> = ({
         borderColor: currentScheme.borderColor,
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-indigo-300">
+      <div className="max-w-7xl mx-auto px-4 min-h-16 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex items-center gap-3 text-indigo-300 shrink-0">
           <button
             type="button"
             onClick={onNavigateHome}
@@ -46,12 +46,14 @@ export const Header: React.FC<HeaderProps> = ({
             title="Return to Dashboard Home"
           >
             <Guitar className="w-6 h-6 group-hover:scale-105 transition-transform text-indigo-400 group-hover:text-indigo-300" />
-            <h1 className="font-bold text-lg tracking-tight group-hover:text-white">Practice Tracker</h1>
+            <h1 className="font-bold text-lg tracking-tight group-hover:text-white whitespace-nowrap">
+              Practice Tracker
+            </h1>
           </button>
 
           {/* Streak Pill in Header */}
           <div
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all shrink-0 ${
               currentStreak > 0
                 ? "bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
                 : "bg-indigo-900/30 border-indigo-700/40 text-indigo-400"
@@ -71,7 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Site Navigation Button at the Top */}
           <SiteNavButton variant="header" />
 
@@ -120,9 +122,11 @@ export const Header: React.FC<HeaderProps> = ({
             </Button>
           )}
 
-          <span className="text-sm text-indigo-400 hidden md:inline-block">{userEmail}</span>
+          <span className="text-xs text-indigo-300 hidden xl:inline-block truncate max-w-[180px]" title={userEmail || undefined}>
+            {userEmail}
+          </span>
           <Button variant="ghost" size="sm" onClick={onSignOut}>
-            <LogOut className="w-4 h-4 sm:mr-2" />
+            <LogOut className="w-4 h-4 sm:mr-1.5" />
             <span className="hidden sm:inline-block">Sign Out</span>
           </Button>
         </div>

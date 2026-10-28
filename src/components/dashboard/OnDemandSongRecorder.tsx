@@ -14,12 +14,67 @@ import {
   AlertCircle,
   Radio,
   RotateCcw,
+  RefreshCw,
+  Sliders,
+  Headphones,
+  Guitar,
 } from "lucide-react";
 import { Button } from "../ui/button";
+import { Select } from "../ui/select";
 import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 import { cn } from "../../lib/utils";
 import { formatDurationColon } from "../../utils/durationFormat";
 import { masterAudio } from "../../utils/masterAudioController";
+
+export type RecordingSoundSourceMode =
+  | "guitar-interface"
+  | "microphone-acoustic"
+  | "system-audio"
+  | "mixed-input";
+
+export interface AudioInputDeviceOption {
+  deviceId: string;
+  label: string;
+  groupId?: string;
+}
+
+export const SOUND_SOURCE_MODE_OPTIONS: {
+  id: RecordingSoundSourceMode;
+  label: string;
+  shortLabel: string;
+  description: string;
+}[] = [
+  {
+    id: "guitar-interface",
+    label: "Guitar Interface / Line-In (Raw Studio Audio)",
+    shortLabel: "Guitar / Line-In (Raw)",
+    description:
+      "Unprocessed high-dynamic audio (echo cancellation & noise gate OFF) ideal for USB guitar interfaces, pedals, and direct amps.",
+  },
+  {
+    id: "microphone-acoustic",
+    label: "Microphone / Acoustic & Amp Mic (Filtered)",
+    shortLabel: "Microphone (Filtered)",
+    description:
+      "Standard microphone input with room noise suppression and automatic gain control enabled.",
+  },
+  {
+    id: "system-audio",
+    label: "System / Browser Tab Audio (Backing Track / Amp Sim)",
+    shortLabel: "System / Tab Audio",
+    description:
+      "Captures audio playing from a browser tab or desktop application (requires selecting 'Share Audio' in browser prompt).",
+  },
+  {
+    id: "mixed-input",
+    label: "Guitar Input + System Backing Track (Mixed)",
+    shortLabel: "Mic/Guitar + System Mix",
+    description:
+      "Blends your selected microphone/guitar input with system/tab backing track audio into a single recorded take.",
+  },
+];
+
+const SOUND_SOURCE_STORAGE_KEY = "guitar_recorder_sound_source_v1";
 
 export interface RecordedSongTake {
   id: string;
@@ -30,6 +85,7 @@ export interface RecordedSongTake {
   url: string;
   mimeType: string;
   peakLevel: number;
+  soundSourceLabel?: string;
 }
 
 interface OnDemandSongRecorderProps {
@@ -39,6 +95,10 @@ interface OnDemandSongRecorderProps {
   onApplyDuration: (formattedColonDuration: string) => void;
   onAppendNote?: (noteSnippet: string) => void;
   compact?: boolean;
+  selectedDeviceId?: string;
+  onSelectedDeviceIdChange?: (deviceId: string) => void;
+  soundSourceMode?: RecordingSoundSourceMode;
+  onSoundSourceModeChange?: (mode: RecordingSoundSourceMode) => void;
 }
 
 export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
@@ -48,7 +108,105 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
   onApplyDuration,
   onAppendNote,
   compact = false,
+  selectedDeviceId: externalDeviceId,
+  onSelectedDeviceIdChange,
+  soundSourceMode: externalSourceMode,
+  onSoundSourceModeChange,
 }) => {
+  // Persisted or controlled Sound Source settings
+  const [internalDeviceId, setInternalDeviceId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(SOUND_SOURCE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.deviceId === "string") return parsed.deviceId;
+      }
+    } catch {}
+    return "default";
+  });
+
+  const [internalSourceMode, setInternalSourceMode] = useState<RecordingSoundSourceMode>(() => {
+    try {
+      const saved = localStorage.getItem(SOUND_SOURCE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          parsed.mode === "guitar-interface" ||
+          parsed.mode === "microphone-acoustic" ||
+          parsed.mode === "system-audio" ||
+          parsed.mode === "mixed-input"
+        ) {
+          return parsed.mode;
+        }
+      }
+    } catch {}
+    return "guitar-interface";
+  });
+
+  const [inputGainPct, setInputGainPct] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(SOUND_SOURCE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.inputGainPct === "number") return parsed.inputGainPct;
+      }
+    } catch {}
+    return 100;
+  });
+
+  const selectedDeviceId = externalDeviceId !== undefined ? externalDeviceId : internalDeviceId;
+  const soundSourceMode = externalSourceMode !== undefined ? externalSourceMode : internalSourceMode;
+
+  const handleDeviceChange = useCallback(
+    (newDeviceId: string) => {
+      setInternalDeviceId(newDeviceId);
+      onSelectedDeviceIdChange?.(newDeviceId);
+      try {
+        const prev = JSON.parse(localStorage.getItem(SOUND_SOURCE_STORAGE_KEY) || "{}");
+        localStorage.setItem(
+          SOUND_SOURCE_STORAGE_KEY,
+          JSON.stringify({ ...prev, deviceId: newDeviceId })
+        );
+      } catch {}
+    },
+    [onSelectedDeviceIdChange]
+  );
+
+  const handleSourceModeChange = useCallback(
+    (newMode: RecordingSoundSourceMode) => {
+      setInternalSourceMode(newMode);
+      onSoundSourceModeChange?.(newMode);
+      try {
+        const prev = JSON.parse(localStorage.getItem(SOUND_SOURCE_STORAGE_KEY) || "{}");
+        localStorage.setItem(
+          SOUND_SOURCE_STORAGE_KEY,
+          JSON.stringify({ ...prev, mode: newMode })
+        );
+      } catch {}
+    },
+    [onSoundSourceModeChange]
+  );
+
+  const handleGainChange = useCallback((newGain: number) => {
+    setInputGainPct(newGain);
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = newGain / 100;
+    }
+    try {
+      const prev = JSON.parse(localStorage.getItem(SOUND_SOURCE_STORAGE_KEY) || "{}");
+      localStorage.setItem(
+        SOUND_SOURCE_STORAGE_KEY,
+        JSON.stringify({ ...prev, inputGainPct: newGain })
+      );
+    } catch {}
+  }, []);
+
+  const [audioInputDevices, setAudioInputDevices] = useState<AudioInputDeviceOption[]>([
+    { deviceId: "default", label: "System Default Microphone / Guitar Input" },
+  ]);
+  const [isScanningDevices, setIsScanningDevices] = useState(false);
+  const [isTestingSource, setIsTestingSource] = useState(false);
+
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -65,8 +223,10 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const auxStreamsRef = useRef<MediaStream[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -75,6 +235,83 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
   const peakRef = useRef<number>(0);
   const takeCounterRef = useRef<number>(0);
   const audioElementsRef = useRef<Record<string, HTMLAudioElement | null>>({});
+
+  // Enumerate connected audio input devices
+  const refreshAudioInputDevices = useCallback(
+    async (requestPermissionPrompt = false) => {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
+        return;
+      }
+      setIsScanningDevices(true);
+      try {
+        if (requestPermissionPrompt && navigator.mediaDevices.getUserMedia) {
+          try {
+            const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            tempStream.getTracks().forEach((t) => t.stop());
+            setMicError(null);
+          } catch (permErr) {
+            const msg =
+              permErr instanceof Error ? permErr.message : "Microphone permission denied.";
+            setMicError(`Could not unlock audio device names (${msg}).`);
+          }
+        }
+
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = allDevices.filter((d) => d.kind === "audioinput");
+
+        const options: AudioInputDeviceOption[] = [];
+        const seenIds = new Set<string>();
+
+        audioInputs.forEach((dev, idx) => {
+          const id = dev.deviceId || `input-${idx}`;
+          if (seenIds.has(id)) return;
+          seenIds.add(id);
+          const cleanLabel =
+            dev.label && dev.label.trim().length > 0
+              ? dev.label.trim()
+              : id === "default"
+              ? "System Default Microphone / Guitar Input"
+              : `Audio Input Device #${idx + 1} (Click 'Detect Inputs' to show hardware name)`;
+          options.push({
+            deviceId: id,
+            label: cleanLabel,
+            groupId: dev.groupId,
+          });
+        });
+
+        if (options.length === 0) {
+          options.push({
+            deviceId: "default",
+            label: "System Default Microphone / Guitar Input",
+          });
+        } else if (!options.some((o) => o.deviceId === "default")) {
+          options.unshift({
+            deviceId: "default",
+            label: "System Default Audio Input",
+          });
+        }
+
+        setAudioInputDevices(options);
+      } catch {
+        // ignore enumeration errors
+      } finally {
+        setIsScanningDevices(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    refreshAudioInputDevices(false);
+    const mediaDevices = navigator?.mediaDevices;
+    if (mediaDevices && typeof mediaDevices.addEventListener === "function") {
+      const handleDeviceChange = () => refreshAudioInputDevices(false);
+      mediaDevices.addEventListener("devicechange", handleDeviceChange);
+      return () => {
+        mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+      };
+    }
+  }, [refreshAudioInputDevices]);
 
   const stopAudioAnalysis = useCallback(() => {
     if (rafRef.current) {
@@ -86,6 +323,7 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
       audioContextRef.current = null;
     }
     analyserRef.current = null;
+    gainNodeRef.current = null;
     setAudioLevel(0);
     setFrequencyBars(new Array(24).fill(4));
   }, []);
@@ -95,6 +333,11 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (auxStreamsRef.current.length > 0) {
+      auxStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()));
+      auxStreamsRef.current = [];
+    }
+    setIsTestingSource(false);
   }, []);
 
   // Cleanup on unmount
@@ -141,28 +384,199 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
     rafRef.current = requestAnimationFrame(updateVisualizer);
   }, []);
 
-  const beginMediaRecording = useCallback(async () => {
-    setMicError(null);
+  /**
+   * Acquires and routes the audio stream based on the chosen soundSourceMode and selectedDeviceId.
+   */
+  const acquireConfiguredAudioStream = useCallback(async (): Promise<{
+    recordingStream: MediaStream;
+    sourceLabel: string;
+  }> => {
+    const isRawGuitar = soundSourceMode === "guitar-interface";
+    const deviceConstraint =
+      selectedDeviceId && selectedDeviceId !== "default"
+        ? { exact: selectedDeviceId }
+        : undefined;
+
+    const micAudioConstraints: MediaTrackConstraints = {
+      ...(deviceConstraint ? { deviceId: deviceConstraint } : {}),
+      echoCancellation: !isRawGuitar,
+      noiseSuppression: !isRawGuitar,
+      autoGainControl: !isRawGuitar,
+    };
+
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    audioContextRef.current = audioCtx;
+
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 128;
+    analyser.smoothingTimeConstant = 0.75;
+    analyserRef.current = analyser;
+
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = inputGainPct / 100;
+    gainNodeRef.current = gainNode;
+
+    const destination = audioCtx.createMediaStreamDestination();
+    auxStreamsRef.current = [];
+
+    const selectedDeviceObj = audioInputDevices.find((d) => d.deviceId === selectedDeviceId);
+    const hwLabel = selectedDeviceObj
+      ? selectedDeviceObj.label.replace(/\s*\(Click 'Detect Inputs'.*\)$/i, "")
+      : "Default Audio Input";
+
+    if (soundSourceMode === "system-audio") {
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        throw new Error("System/Tab audio capture is not supported in this browser.");
+      }
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+      auxStreamsRef.current.push(displayStream);
+
+      const audioTracks = displayStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        displayStream.getTracks().forEach((t) => t.stop());
+        throw new Error(
+          "No system audio track was shared. Please check 'Share tab/system audio' in the prompt, or switch Sound Source to Guitar Interface / Microphone."
+        );
+      }
+      // Stop video tracks immediately since we only need audio
+      displayStream.getVideoTracks().forEach((vt) => vt.stop());
+
+      const audioOnlyStream = new MediaStream(audioTracks);
+      const sysSource = audioCtx.createMediaStreamSource(audioOnlyStream);
+      sysSource.connect(gainNode);
+      gainNode.connect(analyser);
+      gainNode.connect(destination);
+
+      return {
+        recordingStream: destination.stream,
+        sourceLabel: "System / Tab Audio",
+      };
+    }
+
+    if (soundSourceMode === "mixed-input") {
+      let micStream: MediaStream;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: micAudioConstraints,
+        });
+      } catch {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      auxStreamsRef.current.push(micStream);
+      const micSource = audioCtx.createMediaStreamSource(micStream);
+      micSource.connect(gainNode);
+
+      let hasSystem = false;
+      if (navigator.mediaDevices?.getDisplayMedia) {
+        try {
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: true,
+          });
+          auxStreamsRef.current.push(displayStream);
+          displayStream.getVideoTracks().forEach((vt) => vt.stop());
+          if (displayStream.getAudioTracks().length > 0) {
+            const sysSource = audioCtx.createMediaStreamSource(
+              new MediaStream(displayStream.getAudioTracks())
+            );
+            sysSource.connect(gainNode);
+            hasSystem = true;
+          }
+        } catch {
+          // User skipped system audio share; continue with mic/guitar input
+        }
+      }
+
+      gainNode.connect(analyser);
+      gainNode.connect(destination);
+
+      await refreshAudioInputDevices(false);
+      return {
+        recordingStream: destination.stream,
+        sourceLabel: hasSystem ? `${hwLabel} + System Audio Mix` : `${hwLabel} (Raw/Mic)`,
+      };
+    }
+
+    // Standard hardware input ("guitar-interface" or "microphone-acoustic")
+    let micStream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: micAudioConstraints,
+      });
+    } catch {
+      // Fallback if exact deviceId was disconnected
+      micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          echoCancellation: !isRawGuitar,
+          noiseSuppression: !isRawGuitar,
+          autoGainControl: !isRawGuitar,
         },
       });
-      streamRef.current = stream;
+    }
+    auxStreamsRef.current.push(micStream);
 
-      // Setup Web Audio API visualizer
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const audioCtx = new AudioCtx();
-      audioContextRef.current = audioCtx;
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 128;
-      analyser.smoothingTimeConstant = 0.75;
-      source.connect(analyser);
-      analyserRef.current = analyser;
+    const source = audioCtx.createMediaStreamSource(micStream);
+    source.connect(gainNode);
+    gainNode.connect(analyser);
+    gainNode.connect(destination);
+
+    // Refresh device labels now that permission is granted
+    await refreshAudioInputDevices(false);
+
+    const modeBadge = isRawGuitar ? "Guitar/Line-In Raw" : "Mic Filtered";
+    return {
+      recordingStream: destination.stream,
+      sourceLabel: `${hwLabel} (${modeBadge})`,
+    };
+  }, [
+    audioInputDevices,
+    inputGainPct,
+    refreshAudioInputDevices,
+    selectedDeviceId,
+    soundSourceMode,
+  ]);
+
+  const handleToggleTestSoundSource = async () => {
+    if (isRecording) return;
+    if (isTestingSource) {
+      stopAudioAnalysis();
+      stopStream();
+      return;
+    }
+    setMicError(null);
+    try {
+      peakRef.current = 0;
+      setPeakLevel(0);
+      const { recordingStream } = await acquireConfiguredAudioStream();
+      streamRef.current = recordingStream;
+      setIsTestingSource(true);
+      rafRef.current = requestAnimationFrame(updateVisualizer);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Unable to access the selected sound source.";
+      setMicError(message);
+      stopAudioAnalysis();
+      stopStream();
+    }
+  };
+
+  const beginMediaRecording = useCallback(async () => {
+    setMicError(null);
+    if (isTestingSource) {
+      stopAudioAnalysis();
+      stopStream();
+    }
+    try {
+      const { recordingStream, sourceLabel } = await acquireConfiguredAudioStream();
+      streamRef.current = recordingStream;
 
       // Pick supported mimeType
       const preferredMimeTypes = [
@@ -180,8 +594,8 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
       }
 
       const recorder = selectedMimeType
-        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
-        : new MediaRecorder(stream);
+        ? new MediaRecorder(recordingStream, { mimeType: selectedMimeType })
+        : new MediaRecorder(recordingStream);
 
       chunksRef.current = [];
       elapsedRef.current = 0;
@@ -211,6 +625,7 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
           url,
           mimeType: finalMime,
           peakLevel: peakRef.current,
+          soundSourceLabel: sourceLabel,
         };
 
         setTakes((prev) => [newTake, ...prev]);
@@ -245,12 +660,23 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
           ? err.message
           : "Microphone access was denied or no audio input device was found.";
       setMicError(
-        `Unable to access microphone (${message}). Check browser microphone permissions and try again.`
+        `Unable to access selected sound source (${message}). Check browser audio permissions or choose another input device.`
       );
       setIsRecording(false);
       setCountdown(null);
+      stopAudioAnalysis();
+      stopStream();
     }
-  }, [autoSyncDuration, onApplyDuration, songTitle, stopAudioAnalysis, stopStream, updateVisualizer]);
+  }, [
+    acquireConfiguredAudioStream,
+    autoSyncDuration,
+    isTestingSource,
+    onApplyDuration,
+    songTitle,
+    stopAudioAnalysis,
+    stopStream,
+    updateVisualizer,
+  ]);
 
   const handleStartRecording = () => {
     setMicError(null);
@@ -391,11 +817,16 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
       hour: "2-digit",
       minute: "2-digit",
     });
+    const sourceInfo = take.soundSourceLabel ? ` [${take.soundSourceLabel}]` : "";
     const snippet = `[Recorded Take #${take.takeNumber} (${timeStr}): "${take.songTitle}" — Duration ${formatDurationColon(
       take.durationSeconds
-    )} @ ${speed || "100"}% speed, Diff ${difficulty}]`;
+    )} @ ${speed || "100"}% speed, Diff ${difficulty}${sourceInfo}]`;
     onAppendNote(snippet);
   };
+
+  const activeModeMeta =
+    SOUND_SOURCE_MODE_OPTIONS.find((m) => m.id === soundSourceMode) ||
+    SOUND_SOURCE_MODE_OPTIONS[0];
 
   return (
     <div
@@ -415,7 +846,9 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
                 : "bg-indigo-950 border-indigo-700/70 text-cyan-300"
             )}
           >
-            <Radio className={cn("w-4 h-4", isRecording && !isPaused && "animate-pulse text-rose-400")} />
+            <Radio
+              className={cn("w-4 h-4", isRecording && !isPaused && "animate-pulse text-rose-400")}
+            />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -428,7 +861,7 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
             </div>
             {!compact && (
               <p className="text-[11px] text-indigo-300/80">
-                Record your guitar performance on demand, listen back immediately, download audio, and auto-fill session duration
+                Choose your recording sound source (guitar interface, microphone, or system audio), record takes, and sync duration
               </p>
             )}
           </div>
@@ -458,6 +891,133 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
             />
             <span>Auto-Fill Session Duration</span>
           </label>
+        </div>
+      </div>
+
+      {/* Sound Source Selection Panel */}
+      <div className="p-3 rounded-xl bg-indigo-950/50 border border-indigo-800/80 space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-200">
+              Recording Sound Source & Input Device
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isRecording || isScanningDevices}
+              onClick={() => refreshAudioInputDevices(true)}
+              className="h-7 px-2.5 text-[11px] border-indigo-700 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 gap-1 cursor-pointer"
+              title="Scan connected microphones, USB guitar interfaces, and audio inputs"
+            >
+              <RefreshCw className={cn("w-3 h-3 text-cyan-400", isScanningDevices && "animate-spin")} />
+              <span>{isScanningDevices ? "Scanning..." : "Detect Audio Inputs"}</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isRecording || countdown !== null}
+              onClick={handleToggleTestSoundSource}
+              className={cn(
+                "h-7 px-2.5 text-[11px] gap-1 cursor-pointer",
+                isTestingSource
+                  ? "border-emerald-400 bg-emerald-950/90 text-emerald-200"
+                  : "border-indigo-700 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200"
+              )}
+              title="Test the selected sound source and monitor input levels before recording"
+            >
+              <Headphones className="w-3 h-3 text-emerald-400" />
+              <span>{isTestingSource ? "Stop Input Test" : "Test Sound Source"}</span>
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          {/* 1. Sound Source Mode Selector */}
+          <div className="md:col-span-5 flex flex-col justify-end space-y-1">
+            <div className="min-h-[20px] flex items-center">
+              <label className="text-[11px] font-semibold text-indigo-200 flex items-center gap-1 truncate">
+                <Guitar className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="truncate">Sound Source Type:</span>
+              </label>
+            </div>
+            <Select
+              value={soundSourceMode}
+              disabled={isRecording || countdown !== null}
+              onChange={(e) => handleSourceModeChange(e.target.value as RecordingSoundSourceMode)}
+              className="w-full h-9 text-xs font-medium"
+            >
+              {SOUND_SOURCE_MODE_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {/* 2. Hardware Audio Input Device Selector */}
+          <div className="md:col-span-5 flex flex-col justify-end space-y-1">
+            <div className="min-h-[20px] flex items-center">
+              <label className="text-[11px] font-semibold text-indigo-200 flex items-center gap-1 truncate">
+                <Mic className="w-3 h-3 text-rose-400 shrink-0" />
+                <span className="truncate">Audio Input Device (Mic / USB Interface):</span>
+              </label>
+            </div>
+            <Select
+              value={selectedDeviceId}
+              disabled={
+                isRecording ||
+                countdown !== null ||
+                soundSourceMode === "system-audio"
+              }
+              onChange={(e) => handleDeviceChange(e.target.value)}
+              className="w-full h-9 text-xs font-medium"
+            >
+              {audioInputDevices.map((dev) => (
+                <option key={dev.deviceId} value={dev.deviceId}>
+                  {dev.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {/* 3. Input Gain / Boost Selector */}
+          <div className="md:col-span-2 flex flex-col justify-end space-y-1">
+            <div className="min-h-[20px] flex items-center justify-between gap-1">
+              <label className="text-[11px] font-semibold text-indigo-200 truncate">
+                Input Gain:
+              </label>
+              <span className="text-[11px] font-mono text-cyan-300 tabular-nums shrink-0">
+                {inputGainPct}%
+              </span>
+            </div>
+            <Select
+              value={String(inputGainPct)}
+              onChange={(e) => handleGainChange(Number(e.target.value) || 100)}
+              className="w-full h-9 text-xs font-mono font-bold"
+            >
+              <option value="75">75% (-Pad)</option>
+              <option value="100">100% (Unity)</option>
+              <option value="125">125% (+Boost)</option>
+              <option value="150">150% (+High)</option>
+              <option value="200">200% (+Max)</option>
+            </Select>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-indigo-300/85 flex items-center justify-between flex-wrap gap-2 pt-0.5">
+          <span>{activeModeMeta.description}</span>
+          {isTestingSource && (
+            <span className="text-emerald-300 font-mono font-semibold animate-pulse">
+              ● Live Sound Source Monitor Active — Play a chord to check input level
+            </span>
+          )}
         </div>
       </div>
 
@@ -555,7 +1115,7 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
                 key={idx}
                 className={cn(
                   "flex-1 rounded-t transition-all duration-75",
-                  !isRecording || isPaused
+                  (!isRecording || isPaused) && !isTestingSource
                     ? "bg-indigo-900/50"
                     : heightPct > 80
                     ? "bg-rose-400"
@@ -564,7 +1124,9 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
                     : "bg-emerald-400"
                 )}
                 style={{
-                  height: `${isRecording && !isPaused ? Math.max(12, heightPct) : 14}%`,
+                  height: `${
+                    (isRecording && !isPaused) || isTestingSource ? Math.max(12, heightPct) : 14
+                  }%`,
                 }}
               />
             ))}
@@ -573,7 +1135,7 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
           <div className="w-20 text-right font-mono tabular-nums shrink-0">
             <div className="text-[10px] text-indigo-300 uppercase">Input Lvl</div>
             <div className="text-xs font-bold text-emerald-300 tabular-nums">
-              {isRecording ? `${audioLevel}%` : `Peak ${peakLevel}%`}
+              {isRecording || isTestingSource ? `${audioLevel}%` : `Peak ${peakLevel}%`}
             </div>
           </div>
         </div>
@@ -664,6 +1226,11 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
                           <Clock className="w-3 h-3 text-emerald-400" />
                           {formatDurationColon(take.durationSeconds)}
                         </span>
+                        {take.soundSourceLabel && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-950/90 border border-indigo-700/60 text-indigo-300 truncate max-w-[190px]">
+                            {take.soundSourceLabel}
+                          </span>
+                        )}
                         {take.peakLevel > 0 && (
                           <span className="text-[10px] font-mono tabular-nums text-slate-400">
                             Peak {take.peakLevel}%
@@ -750,3 +1317,4 @@ export const OnDemandSongRecorder: React.FC<OnDemandSongRecorderProps> = ({
     </div>
   );
 };
+

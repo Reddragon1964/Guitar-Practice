@@ -39,7 +39,11 @@ import {
   formatDurationLabel,
 } from "../../utils/durationFormat";
 import { PracticeSessionLiveCoach } from "./PracticeSessionLiveCoach";
-import { OnDemandSongRecorder } from "./OnDemandSongRecorder";
+import {
+  OnDemandSongRecorder,
+  RecordingSoundSourceMode,
+  SOUND_SOURCE_MODE_OPTIONS,
+} from "./OnDemandSongRecorder";
 import { MoveableResizableFrame } from "../ui/MoveableResizableFrame";
 import { WindowsVolumeSlider } from "../ui/WindowsVolumeSlider";
 
@@ -86,8 +90,8 @@ const DEFAULT_SESSION_FRAMES: SessionFrameMeta[] = [
   },
   {
     id: "coach",
-    title: "Live Voice Coach",
-    subtitle: "Real-time speech coaching and encouragement during practice",
+    title: "AI Screen Vision & Live Practice Coach",
+    subtitle: "Auto-initializes screen viewing on open and prompts you with real-time advice while you play",
     icon: Bot,
   },
   {
@@ -182,6 +186,33 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   const [isAddingSongOnDemand, setIsAddingSongOnDemand] = useState<boolean>(false);
   const [songAddedFeedback, setSongAddedFeedback] = useState<string | null>(null);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+  const [soundSourceMode, setSoundSourceMode] = useState<RecordingSoundSourceMode>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_recorder_sound_source_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          parsed.mode === "guitar-interface" ||
+          parsed.mode === "microphone-acoustic" ||
+          parsed.mode === "system-audio" ||
+          parsed.mode === "mixed-input"
+        ) {
+          return parsed.mode;
+        }
+      }
+    } catch {}
+    return "guitar-interface";
+  });
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_recorder_sound_source_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.deviceId === "string") return parsed.deviceId;
+      }
+    } catch {}
+    return "default";
+  });
   const dialogTopRef = useRef<HTMLDivElement>(null);
   const recorderFrameRef = useRef<HTMLDivElement>(null);
 
@@ -220,6 +251,23 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   const prevSpeed = prevSession?.speed;
   const prevTotalNotes = prevSession?.totalNotes;
   const prevDifficulty = prevSession?.difficulty;
+  const prevAccuracy = prevSession?.accuracy ?? null;
+
+  // Live AI Screen Coach Top HUD Banner State
+  const [liveCoachAdvice, setLiveCoachAdvice] = useState<string>(
+    "AI Screen Vision initialized — viewing your practice session screen and preparing live playing advice..."
+  );
+  const [isCoachSpeaking, setIsCoachSpeaking] = useState<boolean>(false);
+  const [liveScreenPreviewUrl, setLiveScreenPreviewUrl] = useState<string>("");
+
+  const handleAdviceUpdate = useCallback(
+    (advice: string, isSpeaking: boolean, screenFrameDataUrl?: string) => {
+      if (advice) setLiveCoachAdvice(advice);
+      setIsCoachSpeaking(isSpeaking);
+      if (screenFrameDataUrl) setLiveScreenPreviewUrl(screenFrameDataUrl);
+    },
+    []
+  );
 
   // Green flash for speed textbox to remind user to set external practice software to the same speed
   const [isSpeedFlashing, setIsSpeedFlashing] = useState<boolean>(false);
@@ -355,7 +403,8 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     try {
       const saved = localStorage.getItem(FRAMES_MINIMIZED_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return { ...parsed, coach: false };
       }
     } catch (e) {
       console.warn("Failed to load minimized frames state", e);
@@ -541,13 +590,17 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
         ) : (
           <span className="text-[11px] text-slate-400 italic">No song chosen</span>
         );
-      case "recorder":
+      case "recorder": {
+        const activeSourceMeta =
+          SOUND_SOURCE_MODE_OPTIONS.find((m) => m.id === soundSourceMode) ||
+          SOUND_SOURCE_MODE_OPTIONS[0];
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-rose-950/80 border border-rose-500/40 text-rose-200">
             <Mic className="w-3 h-3 text-rose-400 shrink-0" />
-            On-Demand Audio Recorder
+            <span>Source: {activeSourceMeta.shortLabel}</span>
           </span>
         );
+      }
       case "metrics":
         return liveAccuracy !== null ? (
           <span
@@ -619,18 +672,18 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     switch (id) {
       case "songInfo":
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-            <div className="space-y-1.5 sm:col-span-2">
-              <div className="h-7 flex items-center justify-between gap-2 flex-wrap">
-                <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+            <div className="space-y-1.5 md:col-span-8">
+              <div className="min-h-[30px] flex items-center justify-between gap-2 flex-wrap">
+                <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5 shrink-0">
                   <Music className="w-3.5 h-3.5 text-indigo-400" />
                   Song / Exercise Title
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={handleFocusOnDemandRecorder}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-200 hover:text-white bg-rose-950/70 hover:bg-rose-900/80 px-2 py-0.5 rounded-md border border-rose-600/60 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-200 hover:text-white bg-rose-950/70 hover:bg-rose-900/80 px-2 py-0.5 rounded-md border border-rose-600/60 transition-colors cursor-pointer h-6"
                     title="Open On-Demand Song Audio Recorder to record your live guitar take"
                   >
                     <Mic className="w-3 h-3 text-rose-400" />
@@ -645,7 +698,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                           onSongTitleChange("");
                         }
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/50 hover:bg-indigo-800/70 px-2 py-0.5 rounded-md border border-indigo-700/60 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/50 hover:bg-indigo-800/70 px-2 py-0.5 rounded-md border border-indigo-700/60 transition-colors cursor-pointer h-6"
                     >
                       {isCustomSongMode ? (
                         <>
@@ -673,7 +726,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                       triggerSpeedFlash();
                     }
                   }}
-                  className="w-full bg-indigo-950/70 border-indigo-700 text-white font-medium h-10"
+                  className="w-full h-10 font-medium"
                 >
                   <option value="" disabled>
                     Select a song...
@@ -693,7 +746,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     value={songTitle}
                     onChange={(e) => onSongTitleChange(e.target.value)}
                     placeholder="Enter new song or exercise on demand..."
-                    className="w-full bg-indigo-950/70 border-indigo-700 text-white font-medium h-10"
+                    className="w-full h-10 font-medium"
                   />
                   {onUpdateSongDefaults &&
                     songTitle.trim() &&
@@ -723,8 +776,8 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="h-7 flex items-center justify-between gap-2">
+            <div className="space-y-1.5 md:col-span-4">
+              <div className="min-h-[30px] flex items-center justify-between gap-2">
                 <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                   Date
@@ -732,7 +785,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onPracticeDateChange(new Date().toISOString().split("T")[0])}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/50 hover:bg-indigo-800/70 px-2 py-0.5 rounded-md border border-indigo-700/60 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-300 hover:text-white bg-indigo-900/50 hover:bg-indigo-800/70 px-2 py-0.5 rounded-md border border-indigo-700/60 transition-colors cursor-pointer h-6"
                   title="Set to today's date"
                 >
                   Today
@@ -743,7 +796,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 required
                 value={practiceDate}
                 onChange={(e) => onPracticeDateChange(e.target.value)}
-                className="w-full bg-indigo-950/70 border-indigo-700 text-white h-10 font-mono"
+                className="w-full h-10 font-mono"
               />
             </div>
 
@@ -832,6 +885,10 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               songTitle={songTitle}
               speed={speed}
               difficulty={difficulty}
+              soundSourceMode={soundSourceMode}
+              onSoundSourceModeChange={setSoundSourceMode}
+              selectedDeviceId={selectedAudioDeviceId}
+              onSelectedDeviceIdChange={setSelectedAudioDeviceId}
               onApplyDuration={(formatted) => {
                 setIsTimerRunning(false);
                 onDurationChange(formatted);
@@ -1298,66 +1355,102 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               difficulty={difficulty}
               speed={speed}
               duration={duration}
+              correctNotes={correctNotes}
+              totalNotes={totalNotes}
+              accuracy={liveAccuracy}
               isTimerRunning={isTimerRunning}
+              isPartial={isPartial}
+              isShortVersion={isShortVersion}
+              isTestSession={isTestSession}
+              score={score}
+              note={note}
+              prevAccuracy={prevAccuracy}
+              prevSpeed={prevSpeed ?? null}
+              autoStart={true}
+              onAdviceUpdate={handleAdviceUpdate}
             />
           </div>
         );
 
       case "options":
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
-            <label className="flex items-center gap-2.5 p-2 rounded-lg bg-indigo-950/40 border border-indigo-800/40 cursor-pointer select-none hover:bg-indigo-900/30 transition-colors h-10">
-              <input
-                type="checkbox"
-                id="isPartial"
-                className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                checked={isPartial}
-                onChange={(e) => onIsPartialChange(e.target.checked)}
-              />
-              <span className="text-xs font-medium text-indigo-200">
-                Partial Song Practice
-              </span>
-            </label>
-
-            <label className="flex items-center gap-2.5 p-2 rounded-lg bg-indigo-950/40 border border-indigo-800/40 cursor-pointer select-none hover:bg-indigo-900/30 transition-colors h-10">
-              <input
-                type="checkbox"
-                id="isShortVersion"
-                className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                checked={Boolean(isShortVersion)}
-                onChange={(e) => onIsShortVersionChange?.(e.target.checked)}
-              />
-              <span className="text-xs font-medium text-indigo-200">
-                Short version
-              </span>
-            </label>
-
-            <label className="flex items-center gap-2.5 p-2 rounded-lg bg-indigo-950/40 border border-indigo-800/40 cursor-pointer select-none hover:bg-indigo-900/30 transition-colors h-10">
-              <input
-                type="checkbox"
-                id="isTestSession"
-                className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                checked={isTestSession}
-                onChange={(e) => onIsTestSessionChange(e.target.checked)}
-              />
-              <span className="text-xs font-medium text-indigo-200">
-                Test Session Mode
-              </span>
-            </label>
-
-            {/* Score Input Lined Up Horizontally with Matching Height */}
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="score"
-                className={cn(
-                  "text-xs font-medium whitespace-nowrap transition-colors",
-                  isTestSession
-                    ? "text-indigo-200 cursor-pointer"
-                    : "text-indigo-400/40 cursor-not-allowed"
-                )}
-              >
-                Test Score:
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+            <div className="lg:col-span-3 space-y-1">
+              <div className="h-5 flex items-center">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+                  Scope
+                </span>
+              </div>
+              <label className="flex items-center gap-2.5 px-3 rounded-lg bg-indigo-950/40 border border-indigo-800/60 cursor-pointer select-none hover:bg-indigo-900/30 transition-colors h-10">
+                <input
+                  type="checkbox"
+                  id="isPartial"
+                  className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
+                  checked={isPartial}
+                  onChange={(e) => onIsPartialChange(e.target.checked)}
+                />
+                <span className="text-xs font-medium text-indigo-200 truncate">
+                  Partial Song Practice
+                </span>
               </label>
+            </div>
+
+            <div className="lg:col-span-3 space-y-1">
+              <div className="h-5 flex items-center">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+                  Arrangement
+                </span>
+              </div>
+              <label className="flex items-center gap-2.5 px-3 rounded-lg bg-indigo-950/40 border border-indigo-800/60 cursor-pointer select-none hover:bg-indigo-900/30 transition-colors h-10">
+                <input
+                  type="checkbox"
+                  id="isShortVersion"
+                  className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
+                  checked={Boolean(isShortVersion)}
+                  onChange={(e) => onIsShortVersionChange?.(e.target.checked)}
+                />
+                <span className="text-xs font-medium text-indigo-200 truncate">
+                  Short version
+                </span>
+              </label>
+            </div>
+
+            <div className="lg:col-span-3 space-y-1">
+              <div className="h-5 flex items-center">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+                  Evaluation
+                </span>
+              </div>
+              <label className="flex items-center gap-2.5 px-3 rounded-lg bg-indigo-950/40 border border-indigo-800/60 cursor-pointer select-none hover:bg-indigo-900/30 transition-colors h-10">
+                <input
+                  type="checkbox"
+                  id="isTestSession"
+                  className="rounded border-indigo-700 bg-indigo-900/50 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer shrink-0"
+                  checked={isTestSession}
+                  onChange={(e) => onIsTestSessionChange(e.target.checked)}
+                />
+                <span className="text-xs font-medium text-indigo-200 truncate">
+                  Test Session Mode
+                </span>
+              </label>
+            </div>
+
+            {/* Score Input Lined Up Horizontally & Vertically with Matching Height */}
+            <div className="lg:col-span-3 space-y-1">
+              <div className="h-5 flex items-center justify-between">
+                <label
+                  htmlFor="score"
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap transition-colors",
+                    isTestSession
+                      ? "text-indigo-200 cursor-pointer"
+                      : "text-indigo-400/50 cursor-not-allowed"
+                  )}
+                >
+                  Test Score
+                </label>
+                <span className="text-[10px] font-mono text-indigo-400">Points</span>
+              </div>
               <NumericKeypadInput
                 id="score"
                 label="Test Score"
@@ -1376,7 +1469,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 inputClassName={cn(
                   "h-10 w-full text-xs font-mono font-bold text-center transition-all",
                   !isTestSession &&
-                    "opacity-40 bg-indigo-950/20 border-indigo-900/40 cursor-not-allowed"
+                    "opacity-40 cursor-not-allowed"
                 )}
                 value={score}
                 onChange={(val) => {
@@ -1384,7 +1477,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     onScoreChange(val);
                   }
                 }}
-                placeholder={isTestSession ? "Points / Score" : "N/A"}
+                placeholder={isTestSession ? "Points / Score" : "Enable Test Mode"}
               />
             </div>
           </div>
@@ -1433,20 +1526,112 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
       headerActions={<WindowsVolumeSlider variant="compact" />}
     >
       <div ref={dialogTopRef} className="max-w-5xl mx-auto space-y-4">
-        {/* Top of Frame: Windows Volume Slider & Session Status Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-950/80 border border-indigo-800/70 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
-            <div>
-              <span className="text-xs font-bold text-white uppercase tracking-wider block">
-                Session Audio & Volume Control
+        {/* Top of Frame: Windows Volume Slider & Recording Sound Source Bar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center p-3 rounded-xl bg-slate-950/80 border border-indigo-800/70 shadow-sm">
+          <div className="lg:col-span-5 flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee] shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs font-bold text-white uppercase tracking-wider block truncate">
+                Session Audio, Sound Source & Volume Control
               </span>
-              <span className="text-[11px] text-indigo-300/80">
-                Adjust backing tracks, metronome, and Windows volume levels
+              <span className="text-[11px] text-indigo-300/80 block truncate">
+                Choose recording sound source (Guitar Interface, Mic, or System Audio) and master volume
               </span>
             </div>
           </div>
-          <WindowsVolumeSlider variant="toolbar" showLabel={true} />
+
+          <div className="lg:col-span-7 flex flex-wrap items-center justify-start lg:justify-end gap-2.5">
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+              <label className="text-[11px] font-semibold text-cyan-300 whitespace-nowrap flex items-center gap-1 shrink-0">
+                <Mic className="w-3.5 h-3.5 text-rose-400" />
+                <span>Sound Source:</span>
+              </label>
+              <Select
+                value={soundSourceMode}
+                onChange={(e) => {
+                  const nextMode = e.target.value as RecordingSoundSourceMode;
+                  setSoundSourceMode(nextMode);
+                  try {
+                    const prev = JSON.parse(
+                      localStorage.getItem("guitar_recorder_sound_source_v1") || "{}"
+                    );
+                    localStorage.setItem(
+                      "guitar_recorder_sound_source_v1",
+                      JSON.stringify({ ...prev, mode: nextMode })
+                    );
+                  } catch {}
+                }}
+                className="h-9 text-xs font-medium w-52 sm:w-56"
+                title="Choose the sound source for recording your practice session"
+              >
+                {SOUND_SOURCE_MODE_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.shortLabel}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleFocusOnDemandRecorder}
+                className="h-9 px-3 text-xs font-medium whitespace-nowrap shrink-0 border-indigo-700/80 bg-indigo-900/70 hover:bg-indigo-800 text-indigo-100"
+                title="Jump to Audio Input Device & Sound Source Recorder panel"
+              >
+                Input Devices
+              </Button>
+            </div>
+
+            <WindowsVolumeSlider variant="toolbar" showLabel={true} />
+          </div>
+        </div>
+
+        {/* Always-On Top AI Screen Vision & Proactive Advice HUD Bar */}
+        <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/85 via-cyan-950/75 to-indigo-950/85 border border-cyan-500/60 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+            <div
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 mt-0.5 transition-all",
+                isCoachSpeaking
+                  ? "bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-[0_0_14px_rgba(16,185,129,0.6)] animate-pulse"
+                  : "bg-cyan-500/20 border-cyan-400/70 text-cyan-300"
+              )}
+            >
+              <Bot className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-200 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  AI Screen Coach Active (Auto-Initialized)
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-950/80 border border-cyan-500/50 text-cyan-300">
+                  Viewing Screen • Hands-Free Advice
+                </span>
+                {isCoachSpeaking && (
+                  <span className="text-[10px] font-mono text-amber-300 font-semibold animate-pulse">
+                    🔊 Speaking Advice...
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm font-medium text-white leading-snug">
+                {liveCoachAdvice}
+              </p>
+            </div>
+          </div>
+
+          {liveScreenPreviewUrl && (
+            <div className="relative rounded-lg overflow-hidden border border-cyan-400/70 bg-slate-950 w-24 h-14 shrink-0 shadow-md hidden sm:block">
+              <img
+                src={liveScreenPreviewUrl}
+                alt="Live Screen View"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 px-1 py-0.2 text-[8px] font-mono text-cyan-300 text-center">
+                LIVE SCREEN
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Rearrangeable Section Frames Toolbar */}
@@ -1581,11 +1766,11 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Frame Body (when expanded) */}
-                  {!isMinimized && (
+                  {/* Frame Body (keep coach mounted even if minimized so auto screen vision never stops) */}
+                  {(!isMinimized || frameId === "coach") && (
                     <div
                       data-no-frame-drag="true"
-                      className="p-3.5 sm:p-4 bg-slate-950/40"
+                      className={cn("p-3.5 sm:p-4 bg-slate-950/40", isMinimized && "hidden")}
                     >
                       {renderFrameContent(frameId)}
                     </div>

@@ -327,6 +327,171 @@ Keep it structured with bullet points. Don't be too verbose. Limit to about 200-
     }
   });
 
+  // 2.5. Proactive AI Screen Coach Endpoint (Multimodal Vision + Optional TTS Voice)
+  app.post("/api/screen-coach", async (req, res) => {
+    try {
+      const {
+        imageBase64,
+        sessionState = {},
+        previousAdvice = [],
+        generateVoice = true,
+        voiceName = "Zephyr",
+      } = req.body || {};
+
+      const songTitle = String(sessionState.songTitle || "Freestyle Practice / Warmup").trim();
+      const difficulty = Number(sessionState.difficulty) || 1;
+      const speed = String(sessionState.speed || "100").trim();
+      const duration = String(sessionState.duration || "0:00").trim();
+      const correctNotes = String(sessionState.correctNotes || "").trim();
+      const totalNotes = String(sessionState.totalNotes || "").trim();
+      const accuracy =
+        sessionState.accuracy !== null && sessionState.accuracy !== undefined
+          ? `${sessionState.accuracy}%`
+          : "In progress";
+      const isTimerRunning = Boolean(sessionState.isTimerRunning);
+      const isTestSession = Boolean(sessionState.isTestSession);
+      const score = String(sessionState.score || "").trim();
+      const note = String(sessionState.note || "").trim();
+      const prevAccuracy =
+        sessionState.prevAccuracy !== undefined && sessionState.prevAccuracy !== null
+          ? `${sessionState.prevAccuracy}%`
+          : null;
+      const prevSpeed =
+        sessionState.prevSpeed !== undefined && sessionState.prevSpeed !== null
+          ? `${sessionState.prevSpeed}%`
+          : null;
+
+      const buildFallbackAdvice = () => {
+        const numericSpeed = Number(speed) || 100;
+        const numericAcc =
+          sessionState.accuracy !== null && sessionState.accuracy !== undefined
+            ? Number(sessionState.accuracy)
+            : null;
+        if (numericAcc !== null && numericAcc < 85) {
+          return `Looking at your screen for "${songTitle}" at ${speed}% speed (${numericAcc}% accuracy): drop tempo by 5–10% for two clean passes and relax your fretting thumb before building speed back up.`;
+        }
+        if (numericSpeed >= 100) {
+          return `Viewing "${songTitle}" at full ${speed}% tempo (Level ${difficulty}/12): keep your picking hand motion minimal and lock your accent notes to the downbeat.`;
+        }
+        if (isTimerRunning) {
+          return `You're ${duration} into "${songTitle}" at ${speed}% speed—keep your shoulders relaxed, breathe steadily through position shifts, and let each note ring cleanly.`;
+        }
+        return `Screen Coach ready for "${songTitle}" (Level ${difficulty}/12 at ${speed}% speed)${prevAccuracy ? ` — your last benchmark was ${prevAccuracy} at ${prevSpeed}` : ""}. Lock in your posture and focus on clean string muting as you play!`;
+      };
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.json({
+          advice: buildFallbackAdvice(),
+          audioBase64: null,
+        });
+      }
+
+      const ai = createGenAIClient(apiKey);
+
+      const recentTipsText =
+        Array.isArray(previousAdvice) && previousAdvice.length > 0
+          ? `Do NOT repeat these recent tips you already gave: ${JSON.stringify(previousAdvice.slice(-3))}`
+          : "";
+
+      const promptText = `You are a proactive, real-time AI Guitar Coach viewing the guitarist's Record Practice Session screen while they play.
+Give 1 to 2 short, direct, encouraging sentences of actionable guitar playing advice based on what you see on their screen right now.
+Speak directly to the guitarist in the second person ("You're working on...", "Keep your...").
+CRITICAL: Write strictly in English. Maximum 38 words so it can be read at a glance or spoken quickly while they play.
+
+Current Screen State:
+- Song / Exercise: "${songTitle}"
+- Difficulty Level: ${difficulty}/12
+- Practice Speed: ${speed}%
+- Session Timer: ${duration} (${isTimerRunning ? "Timer actively running while playing" : "Ready / Paused"})
+- Note Accuracy: ${accuracy}${correctNotes && totalNotes ? ` (${correctNotes}/${totalNotes} notes)` : ""}
+${prevAccuracy ? `- Previous Benchmark on this song: ${prevAccuracy} accuracy at ${prevSpeed} speed` : ""}
+${isTestSession ? `- Mode: Test Session${score ? ` (Score: ${score})` : ""}` : ""}
+${note ? `- Player Note on Screen: "${note}"` : ""}
+${recentTipsText}`;
+
+      const parts: any[] = [];
+      if (typeof imageBase64 === "string" && imageBase64.length > 50) {
+        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: cleanBase64,
+          },
+        });
+      }
+      parts.push({ text: promptText });
+
+      let adviceText = "";
+      const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+      for (const modelName of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: { parts },
+          });
+          if (response?.text && response.text.trim()) {
+            adviceText = response.text.trim();
+            break;
+          }
+        } catch (err) {
+          console.warn(`Screen coach generateContent with ${modelName} failed:`, err);
+        }
+      }
+
+      if (!adviceText) {
+        adviceText = buildFallbackAdvice();
+      }
+
+      let audioBase64: string | null = null;
+      if (generateVoice && adviceText) {
+        try {
+          const validVoices = ["Puck", "Charon", "Kore", "Fenrir", "Zephyr"];
+          const selectedVoice = validVoices.includes(voiceName) ? voiceName : "Zephyr";
+          const ttsResponse = await ai.models.generateContent({
+            model: "gemini-3.8-flash-lite-tts",
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: adviceText,
+                  },
+                ],
+              },
+            ],
+            config: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: selectedVoice },
+                },
+              },
+            },
+          });
+          const wavData =
+            ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          if (wavData) {
+            audioBase64 = wavData;
+          }
+        } catch (ttsErr) {
+          console.warn("TTS generation in /api/screen-coach skipped:", ttsErr);
+        }
+      }
+
+      res.json({
+        advice: adviceText,
+        audioBase64,
+      });
+    } catch (error: any) {
+      console.error("Error in /api/screen-coach:", error);
+      res.json({
+        advice: "Stay relaxed in your fretting hand and keep your picking rhythm steady with the pulse.",
+        audioBase64: null,
+      });
+    }
+  });
+
   // 3. Live API WebSocket Server (/live) using gemini-3.8-live
   const wss = new WebSocketServer({ noServer: true });
 
@@ -357,7 +522,7 @@ Keep it structured with bullet points. Don't be too verbose. Limit to about 200-
     const voiceName = validVoices.includes(voiceParam) ? voiceParam : "Zephyr";
     const rawInstruction =
       url.searchParams.get("instruction") ||
-      "You are a warm, encouraging real-time guitar practice voice coach. Keep your spoken responses natural, concise, and conversational. Help the guitarist with tempo, rhythm, fretboard technique, chord transitions, and practice motivation.";
+      "You are a warm, encouraging real-time guitar practice voice and screen coach. You can see the user's practice session screen and hear them play. Proactively offer brief, actionable advice while they practice.";
     const customInstruction = `${rawInstruction}\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST speak, respond, and transcribe ONLY in English at all times. Never switch to any other language, even if background guitar audio, string buzz, or musical sounds resemble foreign speech.`;
 
     const ai = createGenAIClient(apiKey);
@@ -453,6 +618,14 @@ Keep it structured with bullet points. Don't be too verbose. Limit to about 200-
             if (msg.audio) {
               session.sendRealtimeInput({
                 audio: { data: msg.audio, mimeType: "audio/pcm;rate=16000" },
+              });
+            } else if (msg.video) {
+              const cleanBase64 = String(msg.video).replace(/^data:image\/\w+;base64,/, "");
+              session.sendRealtimeInput({
+                video: {
+                  data: cleanBase64,
+                  mimeType: msg.mimeType || "image/jpeg",
+                },
               });
             } else if (msg.text) {
               session.sendRealtimeInput({

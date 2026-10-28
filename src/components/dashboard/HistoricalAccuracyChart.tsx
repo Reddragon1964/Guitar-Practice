@@ -260,91 +260,125 @@ export const HistoricalAccuracyChart: React.FC<HistoricalAccuracyChartProps> = (
           {!showLines && " • Connecting lines: Off"}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 print:hidden">
-          <Select
-            value={songFilter}
-            onChange={(e) => onSongFilterChange(e.target.value)}
-            className="h-9 text-xs py-1 w-40"
-          >
-            <option value="">All Songs</option>
-            {activeSongs.map((s) => (
-              <option key={s.id} value={s.title}>
-                {s.title}
-              </option>
-            ))}
-          </Select>
+        <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800/80 print:hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 items-end">
+            {/* 1. Song Filter Listbox (Span 4) */}
+            <div className="flex flex-col gap-1 min-w-0 sm:col-span-2 lg:col-span-4">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate whitespace-nowrap">
+                  Song Filter
+                </label>
+              </div>
+              <Select
+                value={songFilter}
+                onChange={(e) => onSongFilterChange(e.target.value)}
+                className="h-9 py-1 px-2.5 text-xs w-full leading-none"
+              >
+                <option value="">All Songs</option>
+                {activeSongs.map((s) => (
+                  <option key={s.id} value={s.title}>
+                    {s.title}
+                  </option>
+                ))}
+              </Select>
+            </div>
 
-          <NumericKeypadInput
-            compact
-            label="Filter Speed (%)"
-            placeholder="Speed"
-            inputClassName="h-9 text-xs"
-            containerClassName="w-24"
-            value={speedFilter}
-            onChange={(val) => onSpeedFilterChange(val)}
-            min={1}
-            max={100}
-            step={5}
-            quickPresets={[
-              { label: "50%", value: "50" },
-              { label: "75%", value: "75" },
-              { label: "90%", value: "90" },
-              { label: "100%", value: "100" },
-            ]}
-          />
+            {/* 2. Speed Filter Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate whitespace-nowrap">
+                  Speed (%)
+                </label>
+              </div>
+              <NumericKeypadInput
+                compact
+                label="Filter Speed (%)"
+                placeholder="Any"
+                inputClassName="h-9 py-1 text-xs text-center font-mono leading-none"
+                containerClassName="w-full h-9"
+                value={speedFilter}
+                onChange={(val) => onSpeedFilterChange(val)}
+                min={1}
+                max={100}
+                step={5}
+                quickPresets={[
+                  { label: "50%", value: "50" },
+                  { label: "75%", value: "75" },
+                  { label: "90%", value: "90" },
+                  { label: "100%", value: "100" },
+                ]}
+              />
+            </div>
 
-          <NumericKeypadInput
-            compact
-            label="Filter Level"
-            placeholder="Level"
-            inputClassName="h-9 text-xs"
-            containerClassName="w-24"
-            value={levelFilter}
-            onChange={(val) => onLevelFilterChange(val)}
-            min={1}
-            max={12}
-            quickPresets={[
-              { label: "1", value: "1" },
-              { label: "3", value: "3" },
-              { label: "5", value: "5" },
-              { label: "8", value: "8" },
-              { label: "10", value: "10" },
-              { label: "12", value: "12" },
-            ]}
-          />
+            {/* 3. Level Filter Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate whitespace-nowrap">
+                  Level
+                </label>
+              </div>
+              <NumericKeypadInput
+                compact
+                label="Filter Level"
+                placeholder="Any"
+                inputClassName="h-9 py-1 text-xs text-center font-mono leading-none"
+                containerClassName="w-full h-9"
+                value={levelFilter}
+                onChange={(val) => onLevelFilterChange(val)}
+                min={1}
+                max={12}
+                quickPresets={[
+                  { label: "1", value: "1" },
+                  { label: "3", value: "3" },
+                  { label: "5", value: "5" },
+                  { label: "8", value: "8" },
+                  { label: "10", value: "10" },
+                  { label: "12", value: "12" },
+                ]}
+              />
+            </div>
 
-          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">From:</span>
-            <Input
-              type="date"
-              className="h-7 py-0 px-2 text-xs w-32"
-              value={startDateFilter}
-              onChange={(e) => onStartDateFilterChange(e.target.value)}
-            />
+            {/* 4. From Date Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1 truncate whitespace-nowrap">
+                  <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                  From Date
+                </label>
+              </div>
+              <Input
+                type="date"
+                className="h-9 py-1 px-2 text-xs font-mono w-full leading-none"
+                value={startDateFilter}
+                onChange={(e) => onStartDateFilterChange(e.target.value)}
+              />
+            </div>
+
+            {/* 5. To Date Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center justify-between gap-1 shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1 truncate whitespace-nowrap">
+                  <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                  To Date
+                </label>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    className="text-[10px] font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer shrink-0"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <Input
+                type="date"
+                className="h-9 py-1 px-2 text-xs font-mono w-full leading-none"
+                value={endDateFilter}
+                onChange={(e) => onEndDateFilterChange(e.target.value)}
+              />
+            </div>
           </div>
-
-          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">To:</span>
-            <Input
-              type="date"
-              className="h-7 py-0 px-2 text-xs w-32"
-              value={endDateFilter}
-              onChange={(e) => onEndDateFilterChange(e.target.value)}
-            />
-          </div>
-
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClearFilters}
-              className="h-9 px-2.5 text-xs"
-            >
-              Clear
-            </Button>
-          )}
         </div>
       </CardHeader>
 

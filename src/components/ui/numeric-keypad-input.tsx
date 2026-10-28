@@ -279,7 +279,7 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
   const decLabel = stepLabel ? `-${stepLabel}` : `-${step}`;
 
   return (
-    <div ref={containerRef} className={cn("relative", containerClassName)}>
+    <div ref={containerRef} className={cn("relative w-full flex items-center", containerClassName)}>
       <input
         ref={inputRef}
         id={id}
@@ -301,9 +301,10 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
           }
         }}
         className={cn(
-          "flex h-10 w-full rounded-md border border-blue-400 !bg-white bg-white !text-blue-700 text-blue-700 font-medium px-3 py-2 pr-7 text-sm placeholder:!text-blue-400 placeholder:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield]",
+          "flex h-10 w-full rounded-md border border-blue-400 !bg-white bg-white !text-blue-700 text-blue-700 font-medium py-1 text-sm placeholder:!text-blue-400 placeholder:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield]",
           isOpen && "ring-2 ring-blue-500 border-blue-600",
-          inputClassName
+          inputClassName,
+          compact ? "pl-2 pr-6" : "pl-3 pr-8"
         )}
         {...rest}
       />
@@ -325,16 +326,16 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
         title={disabled ? undefined : `Open keypad for ${label}`}
         aria-label={`Open keypad for ${label}`}
         className={cn(
-          "absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors",
+          "!absolute right-1.5 top-1 bottom-1 my-auto h-7 w-7 flex items-center justify-center rounded-md transition-colors z-10",
           disabled
             ? "text-blue-400/40 cursor-not-allowed"
             : isOpen
             ? "text-blue-800 bg-blue-100"
             : "text-blue-600 hover:text-blue-800 hover:bg-blue-100",
-          compact && "right-1 p-0.5"
+          compact && "right-1 h-6 w-6 p-0.5"
         )}
       >
-        <Calculator className={cn("w-3.5 h-3.5", compact && "w-3 h-3")} />
+        <Calculator className={cn("w-3.5 h-3.5 shrink-0", compact && "w-3 h-3")} />
       </button>
 
       {/* Pop-out Keypad Portal */}

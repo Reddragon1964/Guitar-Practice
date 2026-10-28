@@ -512,52 +512,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               />
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
-              {/* Date */}
-              <div className="space-y-1">
-                <div className="h-5 flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-emerald-400" />
-                    Date
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+              {/* Song Title (Span 4) */}
+              <div className="space-y-1 sm:col-span-2 lg:col-span-4">
+                <div className="h-5 flex items-center justify-between gap-2">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+                    Song Title
                   </label>
-                </div>
-                <Input
-                  type="date"
-                  required
-                  value={quickDate}
-                  onChange={(e) => setQuickDate(e.target.value)}
-                  className="h-9 text-xs"
-                />
-              </div>
-
-              {/* Duration */}
-              <div className="space-y-1">
-                <div className="h-5 flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300 block">
-                    Duration (m:ss)
-                  </label>
-                </div>
-                <NumericKeypadInput
-                  compact
-                  allowColon
-                  label="Duration (m:ss)"
-                  value={quickDuration}
-                  onChange={setQuickDuration}
-                  placeholder="3:00"
-                  inputClassName="h-9 text-xs font-mono text-center"
-                  quickPresets={[
-                    { label: "1:00", value: "1:00" },
-                    { label: "2:00", value: "2:00" },
-                    { label: "3:00", value: "3:00" },
-                    { label: "5:00", value: "5:00" },
-                  ]}
-                />
-              </div>
-
-              {/* Song Title */}
-              <div className="space-y-1 sm:col-span-2">
-                <div className="h-5 flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300">Song Title</label>
                   {activeSongs.length > 0 && (
                     <button
                       type="button"
@@ -565,7 +526,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                         setQuickCustomSong((prev) => !prev);
                         setQuickSongTitle("");
                       }}
-                      className="text-[10px] text-indigo-400 hover:text-indigo-200 underline"
+                      className="text-[10px] text-indigo-400 hover:text-indigo-200 underline cursor-pointer"
                     >
                       {quickCustomSong ? "Select existing" : "+ New song"}
                     </button>
@@ -603,7 +564,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                         triggerQuickSpeedFlash();
                       }
                     }}
-                    className="h-9 text-xs"
+                    className="h-9 w-full text-xs"
                   >
                     <option value="" disabled>
                       Select song...
@@ -622,15 +583,56 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     placeholder="Enter song title..."
                     value={quickSongTitle}
                     onChange={(e) => setQuickSongTitle(e.target.value)}
-                    className="h-9 text-xs"
+                    className="h-9 w-full text-xs"
                   />
                 )}
               </div>
 
-              {/* Difficulty */}
-              <div className="space-y-1">
+              {/* Date (Span 2) */}
+              <div className="space-y-1 lg:col-span-2">
                 <div className="h-5 flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300 block">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-emerald-400" />
+                    Date
+                  </label>
+                </div>
+                <Input
+                  type="date"
+                  required
+                  value={quickDate}
+                  onChange={(e) => setQuickDate(e.target.value)}
+                  className="h-9 w-full text-xs font-mono"
+                />
+              </div>
+
+              {/* Duration (Span 2) */}
+              <div className="space-y-1 lg:col-span-2">
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 block">
+                    Duration (m:ss)
+                  </label>
+                </div>
+                <NumericKeypadInput
+                  compact
+                  allowColon
+                  label="Duration (m:ss)"
+                  value={quickDuration}
+                  onChange={setQuickDuration}
+                  placeholder="3:00"
+                  inputClassName="h-9 w-full text-xs font-mono text-center"
+                  quickPresets={[
+                    { label: "1:00", value: "1:00" },
+                    { label: "2:00", value: "2:00" },
+                    { label: "3:00", value: "3:00" },
+                    { label: "5:00", value: "5:00" },
+                  ]}
+                />
+              </div>
+
+              {/* Difficulty (Span 2) */}
+              <div className="space-y-1 lg:col-span-2">
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 block">
                     Difficulty (1-12)
                   </label>
                 </div>
@@ -645,7 +647,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                       val === "" ? 1 : Math.min(12, Math.max(1, parseInt(val, 10) || 1))
                     )
                   }
-                  inputClassName="h-9 text-xs font-mono text-center"
+                  inputClassName="h-9 w-full text-xs font-mono text-center"
                   quickPresets={[
                     { label: "1", value: "1" },
                     { label: "3", value: "3" },
@@ -656,11 +658,11 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                 />
               </div>
 
-              {/* Speed with Green Flash Software Match Reminder */}
-              <div className="space-y-1">
-                <div className="h-5 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <label className="text-[11px] font-medium text-indigo-300 truncate">
+              {/* Speed with Green Flash Software Match Reminder (Span 2) */}
+              <div className="space-y-1 lg:col-span-2">
+                <div className="h-5 flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate">
                       Speed (%)
                     </label>
                     {previousQuickSession && (
@@ -670,15 +672,15 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                           setQuickSpeed(String(previousQuickSession.speed));
                           triggerQuickSpeedFlash();
                         }}
-                        className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer shrink-0"
+                        className="text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer shrink-0"
                         title={`Click to fill previous speed: ${previousQuickSession.speed}%`}
                       >
-                        (Prev: {previousQuickSession.speed}%)
+                        ({previousQuickSession.speed}%)
                       </button>
                     )}
                   </div>
                   {isQuickSpeedFlashing && (
-                    <span className="text-[9px] font-mono font-black text-emerald-950 bg-emerald-400 px-1.5 py-0.5 rounded shadow-[0_0_12px_rgba(16,185,129,0.9)] animate-pulse shrink-0">
+                    <span className="text-[9px] font-mono font-black text-emerald-950 bg-emerald-400 px-1 py-0.5 rounded shadow-[0_0_12px_rgba(16,185,129,0.9)] animate-pulse shrink-0">
                       ⚡ {quickSpeed}%
                     </span>
                   )}
@@ -695,14 +697,12 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     triggerQuickSpeedFlash();
                   }}
                   containerClassName={cn(
-                    "transition-all duration-300 rounded-md",
+                    "transition-all duration-300 rounded-md w-full",
                     isQuickSpeedFlashing && "ring-4 ring-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.95),0_0_55px_rgba(34,197,94,0.6)] scale-[1.01]"
                   )}
                   inputClassName={cn(
-                    "h-9 text-xs font-mono text-center transition-all duration-300",
-                    isQuickSpeedFlashing
-                      ? "animate-speed-flash-green !text-white font-bold"
-                      : "text-white"
+                    "h-9 w-full text-xs font-mono text-center transition-all duration-300",
+                    isQuickSpeedFlashing && "animate-speed-flash-green !text-white font-bold"
                   )}
                   quickPresets={[
                     { label: "75%", value: "75" },
@@ -713,21 +713,21 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end pt-1">
-              {/* Correct Notes */}
-              <div className="space-y-1">
-                <div className="h-5 flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300 block">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end pt-1">
+              {/* Correct Notes (Span 2) */}
+              <div className="space-y-1 lg:col-span-2">
+                <div className="h-5 flex items-center justify-between gap-1">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 block truncate">
                     Correct Notes
                   </label>
                   {previousQuickSession && (
                     <button
                       type="button"
                       onClick={() => setQuickCorrectNotes(String(previousQuickSession.correctNotes))}
-                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                      className="text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer shrink-0"
                       title={`Click to fill previous correct notes: ${previousQuickSession.correctNotes}`}
                     >
-                      (Prev: {previousQuickSession.correctNotes})
+                      ({previousQuickSession.correctNotes})
                     </button>
                   )}
                 </div>
@@ -737,24 +737,24 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   min={0}
                   value={quickCorrectNotes}
                   onChange={setQuickCorrectNotes}
-                  inputClassName="h-9 text-xs font-mono text-center"
+                  inputClassName="h-9 w-full text-xs font-mono text-center"
                 />
               </div>
 
-              {/* Total Notes */}
-              <div className="space-y-1">
-                <div className="h-5 flex items-center justify-between">
-                  <label className="text-[11px] font-medium text-indigo-300 block">
+              {/* Total Notes (Span 2) */}
+              <div className="space-y-1 lg:col-span-2">
+                <div className="h-5 flex items-center justify-between gap-1">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 block truncate">
                     Total Notes
                   </label>
                   {previousQuickSession && (
                     <button
                       type="button"
                       onClick={() => setQuickTotalNotes(String(previousQuickSession.totalNotes))}
-                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                      className="text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer shrink-0"
                       title={`Click to fill previous total notes: ${previousQuickSession.totalNotes}`}
                     >
-                      (Prev: {previousQuickSession.totalNotes})
+                      ({previousQuickSession.totalNotes})
                     </button>
                   )}
                 </div>
@@ -765,17 +765,34 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   step={10}
                   value={quickTotalNotes}
                   onChange={setQuickTotalNotes}
-                  inputClassName="h-9 text-xs font-mono text-center"
+                  inputClassName="h-9 w-full text-xs font-mono text-center"
                 />
               </div>
 
-              {/* Submit */}
-              <div className="flex items-center justify-end gap-2">
+              {/* Session Note / Reflection (Span 5) */}
+              <div className="space-y-1 sm:col-span-2 lg:col-span-5">
+                <div className="h-5 flex items-center justify-between">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 block">
+                    Session Note (Optional)
+                  </label>
+                </div>
+                <Input
+                  type="text"
+                  maxLength={300}
+                  placeholder="Optional reflection or take note..."
+                  value={quickNote}
+                  onChange={(e) => setQuickNote(e.target.value)}
+                  className="h-9 w-full text-xs"
+                />
+              </div>
+
+              {/* Submit Actions (Span 3) */}
+              <div className="flex items-center justify-end gap-2 sm:col-span-2 lg:col-span-3">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-9"
+                  className="h-9 px-3"
                   onClick={() => setShowQuickForm(false)}
                 >
                   Cancel
@@ -784,7 +801,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   type="submit"
                   size="sm"
                   disabled={isSavingQuick || !quickSongTitle.trim()}
-                  className="h-9 bg-emerald-600 hover:bg-emerald-500 text-white"
+                  className="h-9 px-4 bg-emerald-600 hover:bg-emerald-500 text-white"
                 >
                   {isSavingQuick ? "Saving..." : "Save Session"}
                 </Button>
@@ -799,120 +816,170 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             : "Active Filters: None"}
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2.5 print:hidden">
-          {/* Search Bar */}
-          <div className="relative flex-1 min-w-[200px] sm:min-w-[240px] max-w-sm">
-            <Search className="w-4 h-4 text-blue-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
-            <Input
-              id="practice-sessions-search"
-              type="text"
-              placeholder="Search songs or notes..."
-              value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
-              className="h-9 pl-9 pr-8 w-full text-xs bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => onSearchQueryChange("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors z-10"
-                title="Clear search"
+        {/* Aligned Filter Grid: All Textboxes & Listboxes lined up Vertically and Horizontally */}
+        <div className="mb-4 p-3 rounded-xl bg-slate-900/50 border border-slate-800/80 print:hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-2.5 items-end">
+            {/* 1. Search Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center justify-between shrink-0">
+                <label
+                  htmlFor="practice-sessions-search"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1 truncate whitespace-nowrap"
+                >
+                  <Search className="w-3 h-3 text-cyan-400 shrink-0" />
+                  Search
+                </label>
+              </div>
+              <div className="relative w-full h-9 flex items-center">
+                <Search className="w-3.5 h-3.5 text-blue-600 !absolute left-2.5 top-1 bottom-1 my-auto pointer-events-none z-10" />
+                <Input
+                  id="practice-sessions-search"
+                  type="text"
+                  placeholder="Search songs or notes..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchQueryChange(e.target.value)}
+                  className="h-9 py-1 pl-8 pr-7 w-full text-xs leading-none"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchQueryChange("")}
+                    className="!absolute right-1.5 top-1 bottom-1 my-auto h-6 w-6 flex items-center justify-center p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors z-10"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5 shrink-0" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Song Listbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center justify-between shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate whitespace-nowrap">
+                  Song Filter
+                </label>
+              </div>
+              <Select
+                value={filterName}
+                onChange={(e) => onFilterNameChange(e.target.value)}
+                className="h-9 py-1 px-2.5 text-xs w-full leading-none"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+                <option value="">All Songs</option>
+                {activeSongs.map((s) => (
+                  <option key={s.id} value={s.title}>
+                    {s.title}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {/* 3. Speed Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate whitespace-nowrap">
+                  Speed
+                </label>
+              </div>
+              <NumericKeypadInput
+                compact
+                label="Filter Speed (%)"
+                placeholder="Any"
+                value={filterSpeed}
+                onChange={(val) => onFilterSpeedChange(val)}
+                containerClassName="w-full h-9"
+                inputClassName="h-9 py-1 text-xs text-center font-mono leading-none"
+                min={1}
+                max={200}
+                step={5}
+                quickPresets={[
+                  { label: "50%", value: "50" },
+                  { label: "75%", value: "75" },
+                  { label: "90%", value: "90" },
+                  { label: "100%", value: "100" },
+                ]}
+              />
+            </div>
+
+            {/* 4. Level Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 truncate whitespace-nowrap">
+                  Level
+                </label>
+              </div>
+              <NumericKeypadInput
+                compact
+                label="Filter Level"
+                placeholder="Any"
+                value={filterLevel}
+                onChange={(val) => onFilterLevelChange(val)}
+                containerClassName="w-full h-9"
+                inputClassName="h-9 py-1 text-xs text-center font-mono leading-none"
+                min={1}
+                max={12}
+                quickPresets={[
+                  { label: "1", value: "1" },
+                  { label: "3", value: "3" },
+                  { label: "5", value: "5" },
+                  { label: "8", value: "8" },
+                  { label: "10", value: "10" },
+                  { label: "12", value: "12" },
+                ]}
+              />
+            </div>
+
+            {/* 5. From Date Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1 truncate whitespace-nowrap">
+                  <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                  From Date
+                </label>
+              </div>
+              <Input
+                type="date"
+                aria-label="Filter Start Date (From)"
+                title="Filter Start Date (From)"
+                value={effectiveStartDate}
+                onChange={(e) => {
+                  if (onFilterStartDateChange) {
+                    onFilterStartDateChange(e.target.value);
+                  } else if (onFilterDateChange) {
+                    onFilterDateChange(e.target.value);
+                  }
+                }}
+                className="w-full h-9 py-1 px-2 text-xs font-mono leading-none"
+              />
+            </div>
+
+            {/* 6. To Date Textbox (Span 2) */}
+            <div className="flex flex-col gap-1 min-w-0 lg:col-span-2">
+              <div className="h-5 flex items-center justify-between gap-1 shrink-0">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1 truncate whitespace-nowrap">
+                  <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                  To Date
+                </label>
+                {hasActiveFiltersOrSort && (
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    className="text-[10px] font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer shrink-0"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <Input
+                type="date"
+                aria-label="Filter End Date (To)"
+                title="Filter End Date (To)"
+                value={effectiveEndDate}
+                onChange={(e) => onFilterEndDateChange?.(e.target.value)}
+                className="w-full h-9 py-1 px-2 text-xs font-mono leading-none"
+              />
+            </div>
           </div>
-
-          <Select
-            value={filterName}
-            onChange={(e) => onFilterNameChange(e.target.value)}
-            className="h-9 text-xs py-1 w-44"
-          >
-            <option value="">All Songs</option>
-            {activeSongs.map((s) => (
-              <option key={s.id} value={s.title}>
-                {s.title}
-              </option>
-            ))}
-          </Select>
-
-          <NumericKeypadInput
-            compact
-            label="Filter Speed (%)"
-            placeholder="Speed"
-            value={filterSpeed}
-            onChange={(val) => onFilterSpeedChange(val)}
-            containerClassName="w-24"
-            inputClassName="h-9 text-xs"
-            min={1}
-            max={200}
-            step={5}
-            quickPresets={[
-              { label: "50%", value: "50" },
-              { label: "75%", value: "75" },
-              { label: "90%", value: "90" },
-              { label: "100%", value: "100" },
-            ]}
-          />
-
-          <NumericKeypadInput
-            compact
-            label="Filter Level"
-            placeholder="Level"
-            value={filterLevel}
-            onChange={(val) => onFilterLevelChange(val)}
-            containerClassName="w-24"
-            inputClassName="h-9 text-xs"
-            min={1}
-            max={12}
-            quickPresets={[
-              { label: "1", value: "1" },
-              { label: "3", value: "3" },
-              { label: "5", value: "5" },
-              { label: "8", value: "8" },
-              { label: "10", value: "10" },
-              { label: "12", value: "12" },
-            ]}
-          />
-
-          {/* Date Range: From Date & To Date tables/pickers */}
-          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">From:</span>
-            <Input
-              type="date"
-              aria-label="Filter Start Date (From)"
-              title="Filter Start Date (From)"
-              value={effectiveStartDate}
-              onChange={(e) => {
-                if (onFilterStartDateChange) {
-                  onFilterStartDateChange(e.target.value);
-                } else if (onFilterDateChange) {
-                  onFilterDateChange(e.target.value);
-                }
-              }}
-              className="w-32 sm:w-34 h-7 py-0 px-2 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
-            />
-          </div>
-
-          <div className="inline-flex items-center h-9 gap-1.5 bg-slate-900/80 border border-slate-800 rounded-md px-2">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[11px] font-medium text-indigo-300 whitespace-nowrap">To:</span>
-            <Input
-              type="date"
-              aria-label="Filter End Date (To)"
-              title="Filter End Date (To)"
-              value={effectiveEndDate}
-              onChange={(e) => onFilterEndDateChange?.(e.target.value)}
-              className="w-32 sm:w-34 h-7 py-0 px-2 text-xs bg-white border-blue-400 text-blue-700 focus:border-blue-600"
-            />
-          </div>
-
-          {hasActiveFiltersOrSort && (
-            <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={onClearFilters}>
-              Clear Filters
-            </Button>
-          )}
         </div>
 
         <div className="flex items-center justify-between flex-wrap gap-2 mb-2 print:hidden">

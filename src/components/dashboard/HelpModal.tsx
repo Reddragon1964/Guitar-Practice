@@ -118,9 +118,9 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
       {
         id: "recording-sessions",
         category: "recording",
-        title: "Recording a Practice Session (All Fields Explained)",
-        summary: "Understand how to record session duration, song title, difficulty level, accuracy, and practice speed.",
-        tags: ["record", "session", "modal", "duration", "timer", "stopwatch", "song", "accuracy", "speed"],
+        title: "Recording a Practice Session & Choosing Sound Source (All Fields Explained)",
+        summary: "Understand how to choose your recording sound source, input device, session duration, song title, difficulty level, accuracy, and practice speed.",
+        tags: ["record", "session", "modal", "sound source", "microphone", "guitar interface", "system audio", "input device", "duration", "timer", "stopwatch", "song", "accuracy", "speed"],
         content: (
           <div className="space-y-4 text-sm text-indigo-100 leading-relaxed">
             <p>
@@ -131,7 +131,14 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
                 <strong className="text-white">Song / Exercise Title &amp; + New Song on Demand:</strong> Pick an existing song from your song library or click <strong>+ New Song on Demand</strong> to enter a new song title and immediately add it to your active repertoire (with optional default duration and difficulty) without leaving the session dialog.
               </li>
               <li>
-                <strong className="text-rose-300">Record Song on Demand (Audio &amp; Take Timer):</strong> Click <strong>Record Song Now</strong> in the On-Demand Song Audio Recorder frame (or in Quick Entry) to capture your live guitar performance via microphone with a real-time frequency visualizer, optional 3-second count-in, multi-take playback, downloadable audio files, and automatic duration syncing to your session.
+                <strong className="text-rose-300">Record Song on Demand &amp; Sound Source Selection:</strong> In the top audio bar of the dialog or inside the <strong>Record Song on Demand</strong> frame, choose your <strong>Recording Sound Source</strong> before recording:
+                <ul className="pl-6 mt-1.5 space-y-1 list-disc text-xs text-indigo-200/90">
+                  <li><strong>Guitar Interface / Line-In (Raw Studio Audio):</strong> Disables browser echo cancellation, noise suppression, and auto-gain so sustained guitar notes and harmonics are never clipped.</li>
+                  <li><strong>Microphone / Acoustic &amp; Amp Mic (Filtered):</strong> Enables noise suppression and auto-gain control for clear acoustic or room-mic recordings.</li>
+                  <li><strong>System / Browser Tab Audio:</strong> Captures backing tracks, metronomes, or web amp simulators directly from your system or browser tab.</li>
+                  <li><strong>Guitar Input + System Backing Track Mix:</strong> Blends your live guitar interface/microphone together with system backing track audio into a single recorded stereo track.</li>
+                  <li><strong>Audio Input Device, Input Gain &amp; Live Level Test:</strong> Select any connected USB audio interface or microphone from the <strong>Input Device</strong> listbox, click <strong>Detect Audio Inputs</strong> to refresh hardware names, adjust <strong>Input Gain</strong> (75%–200%), and click <strong>Test Sound Source</strong> to preview live input levels on the spectrum meter before hitting <strong>Record Song Now</strong>.</li>
+                </ul>
               </li>
               <li>
                 <strong className="text-white">Date:</strong> Defaults to today's date, or select any previous date to back-log practice sessions.
@@ -172,7 +179,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
                 ✨ <strong>Rearrangeable Dialog Frames:</strong> The 7 sections inside the Record Practice Session dialog (Song &amp; Date, Record Song on Demand, Session Metrics, Duration &amp; Stopwatch, Live Coach, Options &amp; Score, Notes) are modular frames. Drag by their grip handles (⠿) or use the <strong>↑</strong> and <strong>↓</strong> buttons to customize your layout. You can also minimize frames you don't need or click <strong>Reset Order</strong> at any time. Your customized layout is automatically saved!
               </div>
               <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-700/50 text-xs text-emerald-200">
-                💡 <strong>Quick Entry:</strong> You can also use the collapsible <strong>Quick Entry</strong> form directly above the sessions table on the dashboard—including <strong>Record Song on Demand</strong>—for rapid logging without opening the full dialog!
+                💡 <strong>Quick Entry:</strong> You can also use the collapsible <strong>Quick Entry</strong> form directly above the sessions table on the dashboard—including <strong>Record Song on Demand</strong> with Sound Source selection—for rapid logging without opening the full dialog!
               </div>
             </div>
           </div>
@@ -221,33 +228,36 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
       {
         id: "practice-trends",
         category: "trends",
-        title: "Practice Trends: Weekly Accuracy & Total Practice Hours",
-        summary: "Understand the dual-axis Recharts line graph, timeframes (4W to All), and hours mode toggle.",
-        tags: ["trends", "practice trends", "recharts", "weekly", "hours", "line graph", "chart", "cumulative"],
+        title: "Advanced Progress Chart & Practice Trends (Weekly, Monthly, Yearly)",
+        summary: "View daily accuracy scores, practice speed trends, and goal/milestone markers across Weekly (7d), Monthly (30d), and Yearly (365d) timeframes.",
+        tags: ["trends", "advanced progress chart", "practice trends", "recharts", "weekly", "monthly", "yearly", "accuracy", "speed", "milestones", "goals", "markers"],
         content: (
           <div className="space-y-4 text-sm text-indigo-100 leading-relaxed">
             <p>
-              The <strong>Practice Trends</strong> section at the top of your dashboard features an interactive Recharts dual-axis line graph:
+              The <strong>Advanced Progress Chart &amp; Practice Trends</strong> frame on your dashboard features two comprehensive visualization modes:
             </p>
-            <ul className="space-y-2 list-disc list-inside text-indigo-200">
+            <ul className="space-y-2.5 list-disc list-inside text-indigo-200">
               <li>
-                <strong className="text-emerald-400">Left Axis (Green Line):</strong> Displays your average <strong>Weekly Accuracy (%)</strong> over time, with week-over-week (WoW) improvement indicators.
+                <strong className="text-emerald-400">Daily Accuracy Scores (%) [Left Axis]:</strong> Plots your daily average note accuracy in emerald green, with an optional dashed <strong>Peak Accuracy (%)</strong> overlay.
               </li>
               <li>
-                <strong className="text-sky-400">Right Axis (Blue Line):</strong> Displays your <strong>Practice Hours</strong> over time.
+                <strong className="text-amber-400">Practice Speed Trends (%) [Right Axis]:</strong> Plots your daily average practice tempo percentage in amber, with an optional dashed <strong>Peak Speed (%)</strong> overlay.
               </li>
               <li>
-                <strong className="text-white">Hours Mode Toggle:</strong> Switch between <strong>Weekly Hrs</strong> (hours logged in each specific week) and <strong>Total Hrs</strong> (cumulative practice hours accumulated across your journey).
+                <strong className="text-yellow-300">Goal &amp; Milestone Met Markers (★):</strong> Dates when you completed custom repertoire goals, reached weekly practice minute targets, or achieved 90%+ / 95%+ / 100%+ accuracy and speed breakthroughs are highlighted with vertical reference lines and gold star markers on the chart, plus a <strong>Goals &amp; Practice Milestones Met</strong> summary strip below the graph.
               </li>
               <li>
-                <strong className="text-white">Timeframe Selector:</strong> Filter across <code>4W</code>, <code>8W</code>, <code>12W</code>, <code>24W</code>, or <code>All</code> weeks.
+                <strong className="text-white">Timeframe Selector (Weekly / Monthly / Yearly):</strong> Switch seamlessly between <strong>Weekly</strong> (past 7 days), <strong>Monthly</strong> (past 30 days), and <strong>Yearly</strong> (past 365 days) views.
               </li>
               <li>
-                <strong className="text-white">Song Filter:</strong> Narrow the graph to a single song or view your overall guitar repertoire.
+                <strong className="text-sky-300">Weekly Hours Mode Toggle:</strong> Switch between <strong>Accuracy &amp; Speed</strong> (Advanced Progress Chart) and <strong>Weekly Hours</strong> (weekly accuracy vs. weekly or cumulative practice hours across 4W–All).
+              </li>
+              <li>
+                <strong className="text-white">Song Filter:</strong> Filter the chart to any individual active song or view your entire active repertoire.
               </li>
             </ul>
             <div className="p-3 rounded-lg bg-indigo-950/50 border border-indigo-700/60 text-xs text-indigo-300">
-              Hover over any point along the line to inspect week date ranges, session count, accuracy gain/loss, and exact hour/minute breakdowns.
+              Hover over any data point or gold star marker on the chart to inspect exact daily accuracy, peak accuracy, average/peak speed, practice minutes, and the full list of goals and milestones achieved on that date.
             </div>
           </div>
         ),
@@ -255,22 +265,22 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
       {
         id: "weekly-goals-streaks",
         category: "metrics",
-        title: "Daily Streaks & Weekly Practice Time Targets",
-        summary: "How practice streaks are tracked and how to set custom weekly minute goals for overall practice or specific songs.",
-        tags: ["streak", "goals", "weekly targets", "minutes", "targets", "milestones"],
+        title: "Firestore Practice Streak Counter & Weekly Practice Time Targets",
+        summary: "How consecutive practice days are calculated from Firestore sessions and how to set custom weekly minute goals.",
+        tags: ["streak", "firestore", "consecutive days", "goals", "weekly targets", "minutes", "targets", "milestones"],
         content: (
           <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
             <p>
-              Consistency is key to mastering guitar. The tracker provides two motivational mechanics:
+              Consistency is key to mastering guitar. The tracker provides two motivational mechanics backed by your Firestore practice log:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-slate-900/80 border border-indigo-800 space-y-2">
                 <div className="flex items-center gap-2 font-semibold text-amber-300">
                   <Flame className="w-5 h-5 fill-amber-400" />
-                  Daily Practice Streak
+                  Firestore Practice Streak Counter
                 </div>
                 <p className="text-xs text-indigo-200/90 leading-relaxed">
-                  Automatically calculates consecutive days practiced. The flame icon in the top header and streak card highlights active streaks and indicates whether you have logged practice today.
+                  Automatically calculates the number of consecutive days you have logged at least one guitar practice session in Firestore. Displays your current streak, today's logged session count, progress toward your next streak milestone (3, 7, 14, 21, 30, 60, 90, 180, 365 days), a 7-day activity timeline with per-day session count badges, Best Streak, Active Days, and Total Logged Sessions.
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-slate-900/80 border border-indigo-800 space-y-2">
@@ -488,6 +498,31 @@ export const HelpModal: React.FC<HelpModalProps> = ({ onBack, onNavigate }) => {
               </li>
               <li>
                 <strong className="text-white">From / To Date Range Filtering:</strong> Filter the Practice Sessions Log, Historical Accuracy Chart, and Milestones by <strong>From</strong> (start date) and <strong>To</strong> (end date), as well as song name, speed (%), and difficulty level (1–12).
+              </li>
+            </ul>
+          </div>
+        ),
+      },
+      {
+        id: "ai-screen-vision-coach",
+        category: "ai",
+        title: "Auto-Initialized AI Screen Vision & Hands-Free Advice in Record Session",
+        summary: "When you open Record Practice Session, the AI Coach automatically views your session screen and prompts you with real-time advice while you play.",
+        tags: ["screen", "vision", "auto", "initialize", "advice", "record practice session", "live coach", "hands-free"],
+        content: (
+          <div className="space-y-3.5 text-sm text-indigo-100 leading-relaxed">
+            <p>
+              Opening the <strong>Record Practice Session</strong> dialog automatically initializes <strong>AI Screen Vision & Live Practice Coach</strong> with zero clicks or prompts required:
+            </p>
+            <ul className="space-y-2 list-disc list-inside text-indigo-200">
+              <li>
+                <strong className="text-white">Automatic Initialization on Open:</strong> The moment you open the Record Practice Session dialog, the AI begins viewing your live practice session screen at 1 FPS (tracking your active song, speed %, difficulty level, accuracy, and timer) and connects to <code>gemini-3.8-live</code>.
+              </li>
+              <li>
+                <strong className="text-white">Proactive Advice While You Play:</strong> Without needing to type or click anything, the AI coach automatically prompts you with tailored guitar playing advice both visually (in the top HUD banner and coach feed) and spoken aloud over your speakers.
+              </li>
+              <li>
+                <strong className="text-white">Customizable Frequency & Screen Source:</strong> Adjust the automatic advice interval (every 15s, 25s, 45s, or 60s), click <strong>Advice Now</strong> for an instant screen check, or optionally share an external tab/window (such as Guitar Pro or backing tracks).
               </li>
             </ul>
           </div>

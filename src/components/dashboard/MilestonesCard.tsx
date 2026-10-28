@@ -88,56 +88,66 @@ export const MilestonesCard: React.FC<MilestonesCardProps> = ({
               : "Active Filters: None"}
           </div>
 
-          <div className="mb-6 flex flex-col gap-3 bg-indigo-950/40 p-3 rounded-md border border-indigo-900/50 print:hidden">
-            <Select
-              value={songFilter}
-              onChange={(e) => onSongFilterChange(e.target.value)}
-            >
-              <option value="">All Songs</option>
-              {activeSongs.map((s) => (
-                <option key={s.id} value={s.title}>
-                  {s.title}
-                </option>
-              ))}
-            </Select>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 pl-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-emerald-400" />
-                  From
+          <div className="mb-6 flex flex-col gap-3 bg-indigo-950/40 p-3 rounded-xl border border-indigo-900/50 print:hidden">
+            <div className="space-y-1">
+              <div className="h-5 flex items-center justify-between">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 flex items-center gap-1">
+                  Song Filter
                 </span>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    className="text-[10px] font-semibold text-rose-300 hover:text-rose-200 underline cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+              <Select
+                value={songFilter}
+                onChange={(e) => onSongFilterChange(e.target.value)}
+                className="h-9 text-xs w-full"
+              >
+                <option value="">All Songs</option>
+                {activeSongs.map((s) => (
+                  <option key={s.id} value={s.title}>
+                    {s.title}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-end">
+              <div className="space-y-1">
+                <div className="h-5 flex items-center">
+                  <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                    From Date
+                  </span>
+                </div>
                 <Input
                   type="date"
-                  className="h-9 text-xs w-full"
+                  className="h-9 text-xs font-mono w-full"
                   value={startDateFilter}
                   onChange={(e) => onStartDateFilterChange(e.target.value)}
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 pl-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-emerald-400" />
-                  To
-                </span>
+              <div className="space-y-1">
+                <div className="h-5 flex items-center">
+                  <span className="text-[10px] uppercase font-semibold tracking-wider text-indigo-300 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                    To Date
+                  </span>
+                </div>
                 <Input
                   type="date"
-                  className="h-9 text-xs w-full"
+                  className="h-9 text-xs font-mono w-full"
                   value={endDateFilter}
                   onChange={(e) => onEndDateFilterChange(e.target.value)}
                 />
               </div>
             </div>
-
-            {hasActiveFilters && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onClearFilters}
-                className="h-8 text-xs w-full mt-1 bg-indigo-900/40 hover:bg-indigo-900/60 text-indigo-200"
-              >
-                Clear Filters
-              </Button>
-            )}
           </div>
 
           <div className="space-y-6">

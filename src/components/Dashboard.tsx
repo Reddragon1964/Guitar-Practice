@@ -1938,8 +1938,8 @@ export function Dashboard() {
                     <DashboardFrame
                       key="trends"
                       id="trends"
-                      title="30-Day Practice Trends & Progression"
-                      subtitle="Interactive weekly accuracy trends, time metrics, and performance trajectory"
+                      title="Advanced Progress Chart & Practice Trends"
+                      subtitle="Daily accuracy scores, practice speed trends, and goal/milestone markers (Weekly, Monthly, Yearly)"
                       icon={<Activity className="w-4 h-4 text-emerald-400" />}
                       width={frame.width}
                       onWidthChange={(w) => updateFrameWidth("trends", w)}
@@ -1957,6 +1957,8 @@ export function Dashboard() {
                         practices={practices}
                         activeSongs={activeSongs}
                         usageLogs={usageLogs}
+                        goals={goals}
+                        weeklyGoals={effectiveWeeklyGoals}
                         printMode={printMode}
                         onPrint={handlePrint}
                         onOpenFullTrends={() => setView("trends")}
@@ -2253,14 +2255,14 @@ export function Dashboard() {
           <MoveableResizableFrame
             isOpen={true}
             onClose={() => setView("dashboard")}
-            title="Practice Trends & Analytics"
-            subtitle="Weekly accuracy improvements, total practice hours, and session trends"
+            title="Advanced Progress Chart & Practice Trends"
+            subtitle="Daily accuracy scores, practice speed trends, and goal/milestone markers across Weekly, Monthly & Yearly timeframes"
             icon={<Activity className="w-5 h-5 text-indigo-400" />}
             initialWidth={1040}
             initialHeight={780}
             minWidth={460}
             minHeight={360}
-            ariaLabel="Practice Trends & Analytics"
+            ariaLabel="Advanced Progress Chart & Practice Trends"
             headerActions={
               <Button
                 variant="outline"
@@ -2278,6 +2280,8 @@ export function Dashboard() {
               practices={practices}
               activeSongs={activeSongs}
               usageLogs={usageLogs}
+              goals={goals}
+              weeklyGoals={effectiveWeeklyGoals}
               printMode={printMode}
               onPrint={handlePrint}
               onBack={() => setView("dashboard")}

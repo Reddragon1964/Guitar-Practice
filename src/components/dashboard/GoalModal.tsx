@@ -42,43 +42,57 @@ export const GoalModal: React.FC<GoalModalProps> = ({
       minHeight={320}
       ariaLabel="Set New Milestone"
     >
-      <form onSubmit={onSubmit} className="space-y-5">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-indigo-200">
-            Target Song (Optional)
-          </label>
-          <Select
-            value={goalSongTitle}
-            onChange={(e) => onGoalSongTitleChange(e.target.value)}
-          >
-            <option value="">No specific song</option>
-            {activeSongs.map((s) => (
-              <option key={s.id} value={s.title}>
-                {s.title}
-              </option>
-            ))}
-          </Select>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div className="sm:col-span-7 space-y-1.5">
+            <div className="h-6 flex items-center">
+              <label className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
+                Target Song (Optional)
+              </label>
+            </div>
+            <Select
+              value={goalSongTitle}
+              onChange={(e) => onGoalSongTitleChange(e.target.value)}
+              className="w-full h-10 text-sm"
+            >
+              <option value="">No specific song</option>
+              {activeSongs.map((s) => (
+                <option key={s.id} value={s.title}>
+                  {s.title}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="sm:col-span-5 space-y-1.5">
+            <div className="h-6 flex items-center">
+              <label className="text-xs font-semibold uppercase tracking-wider text-indigo-200 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                Target Date
+              </label>
+            </div>
+            <Input
+              type="date"
+              required
+              value={goalDate}
+              onChange={(e) => onGoalDateChange(e.target.value)}
+              className="w-full h-10 text-sm font-mono"
+            />
+          </div>
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-indigo-200">Goal Description</label>
+
+        <div className="space-y-1.5">
+          <div className="h-6 flex items-center">
+            <label className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
+              Goal Description
+            </label>
+          </div>
           <Input
             required
             value={goalTitle}
             onChange={(e) => onGoalTitleChange(e.target.value)}
-            placeholder="e.g. Master the solo"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-indigo-200 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-            Target Date
-          </label>
-          <Input
-            type="date"
-            required
-            value={goalDate}
-            onChange={(e) => onGoalDateChange(e.target.value)}
+            placeholder="e.g. Master the solo at 100% speed"
+            className="w-full h-10 text-sm"
           />
         </div>
 

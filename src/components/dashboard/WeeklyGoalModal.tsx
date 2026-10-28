@@ -106,47 +106,52 @@ export const WeeklyGoalModal: React.FC<WeeklyGoalModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="flex flex-col space-y-5">
         <div className="space-y-5">
-            {/* Target Scope: Overall vs Specific Song */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-                <Music className="w-3.5 h-3.5 text-indigo-400" />
-                Target Scope
-              </label>
-              <Select
-                value={selectedSong}
-                onChange={(e) => {
-                  const song = e.target.value;
-                  setSelectedSong(song);
-                  if (song) {
-                    setCustomTitle(`${song} Weekly Goal`);
-                  } else {
-                    setCustomTitle("Overall Weekly Practice");
-                  }
-                }}
-                className="w-full bg-indigo-950/70 border-indigo-700 text-indigo-100 text-sm"
-              >
-                <option value="">Overall Weekly Practice (All Songs)</option>
-                {activeSongs.map((s) => (
-                  <option key={s.id} value={s.title}>
-                    Song Target: {s.title}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            {/* Target Scope & Goal Name Lined Up Horizontally and Vertically */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+              <div className="space-y-1.5">
+                <div className="h-6 flex items-center">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                    <Music className="w-3.5 h-3.5 text-indigo-400" />
+                    Target Scope
+                  </label>
+                </div>
+                <Select
+                  value={selectedSong}
+                  onChange={(e) => {
+                    const song = e.target.value;
+                    setSelectedSong(song);
+                    if (song) {
+                      setCustomTitle(`${song} Weekly Goal`);
+                    } else {
+                      setCustomTitle("Overall Weekly Practice");
+                    }
+                  }}
+                  className="w-full h-10 text-sm"
+                >
+                  <option value="">Overall Weekly Practice (All Songs)</option>
+                  {activeSongs.map((s) => (
+                    <option key={s.id} value={s.title}>
+                      Song Target: {s.title}
+                    </option>
+                  ))}
+                </Select>
+              </div>
 
-            {/* Target Goal Name */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
-                Goal Label / Name
-              </label>
-              <Input
-                type="text"
-                value={customTitle}
-                onChange={(e) => setCustomTitle(e.target.value)}
-                placeholder="e.g. Overall Weekly Practice"
-                className="w-full bg-indigo-950/70 border-indigo-700 text-indigo-100 text-sm"
-                required
-              />
+              <div className="space-y-1.5">
+                <div className="h-6 flex items-center">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300">
+                    Goal Label / Name
+                  </label>
+                </div>
+                <Input
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="e.g. Overall Weekly Practice"
+                  className="w-full h-10 text-sm"
+                  required
+                />
+              </div>
             </div>
 
             {/* Quick Preset Selector */}

@@ -178,7 +178,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                   onChange={(e) => onNewSongInputChange(e.target.value)}
                   required
                   maxLength={200}
-                  className="h-9 text-sm bg-white border-blue-400 text-blue-700 placeholder:text-blue-400 focus:border-blue-600"
+                  className="h-10 text-sm w-full"
                 />
               </div>
 
@@ -196,7 +196,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                   placeholder="3:00"
                   value={newDuration}
                   onChange={(e) => setNewDuration(e.target.value)}
-                  className="h-9 text-sm font-mono text-center bg-white border-blue-400 text-blue-700 focus:border-blue-600"
+                  className="h-10 text-sm font-mono text-center w-full"
                 />
               </div>
 
@@ -227,17 +227,18 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                     { label: "8", value: "8" },
                     { label: "10", value: "10" },
                   ]}
-                  inputClassName="h-9 text-sm font-mono text-center font-bold text-blue-700 bg-white border-blue-400 focus:border-blue-600"
+                  inputClassName="h-10 text-sm font-mono text-center font-bold w-full"
                   placeholder="3"
                 />
               </div>
 
               {/* 4. Add Button (Span 2) */}
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 space-y-1">
+                <div className="h-5 hidden md:block" aria-hidden="true" />
                 <Button
                   type="submit"
                   disabled={!newSongInput.trim()}
-                  className="w-full h-9 bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-950/40"
+                  className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-950/40"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Add Song
@@ -496,7 +497,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                       <Input
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="h-8 text-xs bg-slate-900 border-cyan-500 text-white font-medium"
+                        className="h-9 text-xs font-medium w-full"
                         placeholder="Song Title"
                         autoFocus
                       />
@@ -536,7 +537,7 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                         value={editDuration}
                         onChange={(e) => setEditDuration(e.target.value)}
                         placeholder="mm:ss"
-                        className="h-8 text-xs font-mono text-center bg-slate-900 border-emerald-500 text-emerald-300"
+                        className="h-9 text-xs font-mono text-center w-full"
                       />
                     ) : song.duration !== undefined && song.duration > 0 ? (
                       <span
@@ -573,7 +574,8 @@ export const ManageSongsModal: React.FC<ManageSongsModalProps> = ({
                               val === "" ? 1 : Math.min(12, Math.max(1, parseInt(val, 10) || 1))
                             )
                           }
-                          inputClassName="h-8 w-16 text-xs text-center font-bold text-amber-300 bg-slate-900 border-amber-500"
+                          containerClassName="w-24"
+                          inputClassName="h-9 w-full text-xs text-center font-bold"
                         />
                       </div>
                     ) : song.difficulty !== undefined && song.difficulty >= 1 ? (
