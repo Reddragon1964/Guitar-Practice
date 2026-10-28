@@ -6,7 +6,6 @@ import {
   PhoneOff,
   Volume2,
   VolumeX,
-  Radio,
   Sparkles,
   ChevronDown,
   ChevronUp,
@@ -16,6 +15,7 @@ import {
   MonitorUp,
   Eye,
   RefreshCw,
+  Power,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Select } from "../ui/select";
@@ -88,6 +88,10 @@ export interface PracticeSessionLiveCoachProps {
   prevAccuracy?: number | null;
   prevSpeed?: number | null;
   autoStart?: boolean;
+  isListeningEnabled?: boolean;
+  onListeningEnabledChange?: (enabled: boolean) => void;
+  isCoachEnabled?: boolean;
+  onCoachEnabledChange?: (enabled: boolean) => void;
   onAdviceUpdate?: (advice: string, isSpeaking: boolean, screenFrameDataUrl?: string) => void;
 }
 
@@ -108,13 +112,30 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   prevAccuracy = null,
   prevSpeed = null,
   autoStart = true,
+  isListeningEnabled: isListeningEnabledProp,
+  onListeningEnabledChange,
+  isCoachEnabled: isCoachEnabledProp,
+  onCoachEnabledChange,
   onAdviceUpdate,
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [isMicActive, setIsMicActive] = useState<boolean>(false);
-  const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
+  const [localListeningEnabled, setLocalListeningEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_record_session_ai_listening_v1");
+      if (saved !== null) return saved === "true";
+    } catch {}
+    return true;
+  });
+  const [localCoachEnabled, setLocalCoachEnabled] = useState<boolean>(true);
+
+  const isListeningEnabled =
+    isListeningEnabledProp !== undefined ? isListeningEnabledProp : localListeningEnabled;
+  const isCoachEnabled =
+    isCoachEnabledProp !== undefined ? isCoachEnabledProp : localCoachEnabled;
+
   const [isCoachVoiceMuted, setIsCoachVoiceMuted] = useState<boolean>(false);
   const [isModelSpeaking, setIsModelSpeaking] = useState<boolean>(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceName>("Zephyr");
@@ -138,7 +159,8 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   const [latestScreenPreviewUrl, setLatestScreenPreviewUrl] = useState<string>("");
 
   const wsRef = useRef<WebSocket | null>(null);
-  const isMicMutedRef = useRef<boolean>(false);
+  const isListeningEnabledRef = useRef<boolean>(isListeningEnabled);
+  const isCoachEnabledRef = useRef<boolean>(isCoachEnabled);
   const isCoachVoiceMutedRef = useRef<boolean>(false);
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
   const outputAudioCtxRef = useRef<AudioContext | null>(null);
@@ -151,7 +173,7 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   const nextStartTimeRef = useRef<number>(0);
   const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const activeHtmlAudioRef = useRef<HTMLAudioElement | null>(null);
-  const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const adviceHistoryRef = useRef<string[]>([]);
   const isFetchingAdviceRef = useRef<boolean>(false);
   const hasAutoStartedRef = useRef<boolean>(false);
@@ -214,9 +236,29 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
     micLevel,
   ]);
 
-  useEffect(() => {
-    isMicMutedRef.current = isMicMuted;
-  }, [isMicMuted]);
+  // Shut off and release hardware microphone tracks immediately
+  const shutOffMicrophoneHardware = useCallback(() => {
+    if (scriptProcessorRef.current) {
+      try {
+        scriptProcessorRef.current.disconnect();
+      } catch {}
+      scriptProcessorRef.current.onaudioprocess = null;
+      scriptProcessorRef.current = null;
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+
+    if (inputAudioCtxRef.current) {
+      inputAudioCtxRef.current.close().catch(() => {});
+      inputAudioCtxRef.current = null;
+    }
+
+    setIsMicActive(false);
+    setMicLevel(0);
+  }, []);
 
   useEffect(() => {
     isCoachVoiceMutedRef.current = isCoachVoiceMuted;
@@ -260,10 +302,12 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
   }, [loadAudioDevices]);
 
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
   }, [transcripts]);
 
-  // Render the live practice session screen onto the 640x360 canvas (either from external display stream or automatic built-in session screen mirror)
+  // Render the live practice session screen onto the 640x360 canvas
   const captureCurrentScreenFrameBase64 = useCallback((): string | null => {
     let canvas = screenCanvasRef.current;
     if (!canvas) {
@@ -279,7 +323,6 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
     const w = canvas.width;
     const h = canvas.height;
 
-    // If external display share video is active and has frames, draw it first
     const videoEl = displayVideoRef.current;
     if (
       displayStreamRef.current &&
@@ -291,7 +334,6 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(videoEl, 0, 0, w, h);
 
-      // Draw a compact HUD overlay bar at the bottom with current session metrics
       ctx.fillStyle = "rgba(15, 23, 42, 0.86)";
       ctx.fillRect(0, h - 48, w, 48);
       ctx.strokeStyle = "#22d3ee";
@@ -309,7 +351,6 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
         h - 20
       );
     } else {
-      // Automatic Built-In Session Screen Mirror (Zero-prompt, works immediately on dialog open)
       const grad = ctx.createLinearGradient(0, 0, w, h);
       grad.addColorStop(0, "#020617");
       grad.addColorStop(0.5, "#1e1b4b");
@@ -317,12 +358,10 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
-      // Outer neon frame border
       ctx.strokeStyle = "#22d3ee";
       ctx.lineWidth = 2;
       ctx.strokeRect(6, 6, w - 12, h - 12);
 
-      // Header bar
       ctx.fillStyle = "rgba(30, 41, 59, 0.9)";
       ctx.fillRect(14, 14, w - 28, 44);
       ctx.fillStyle = "#22d3ee";
@@ -342,7 +381,6 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
         40
       );
 
-      // Song Card Box
       ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
       ctx.strokeStyle = "#4f46e5";
       ctx.lineWidth = 1.5;
@@ -358,7 +396,6 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
       const displaySong = (st.songTitle || "Freestyle Warmup / Unselected Song").slice(0, 38);
       ctx.fillText(displaySong, 26, 118);
 
-      // 4 Metric Tiles (Speed, Difficulty, Accuracy, Timer)
       const metrics = [
         {
           label: "PRACTICE SPEED",
@@ -414,7 +451,6 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
         ctx.fillText(m.sub.slice(0, 18), x + 10, y + 80);
       });
 
-      // Bottom Live Audio / Notes Strip
       ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
       ctx.strokeStyle = "#334155";
       ctx.lineWidth = 1;
@@ -423,20 +459,27 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
 
       ctx.fillStyle = "#94a3b8";
       ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText("LIVE GUITAR INPUT SIGNAL & SESSION NOTES", 26, 282);
+      ctx.fillText(
+        isListeningEnabledRef.current
+          ? "LIVE GUITAR INPUT SIGNAL & SESSION NOTES (AI LISTENING ON)"
+          : "AI LISTENING SHUT OFF — SCREEN VISION ONLY",
+        26,
+        282
+      );
 
-      // Audio meter bar
       ctx.fillStyle = "#1e293b";
       ctx.fillRect(26, 292, 240, 14);
-      const meterWidth = Math.min(240, Math.max(12, Math.round((st.micLevel / 100) * 240)));
-      ctx.fillStyle = "#10b981";
+      const meterWidth = isListeningEnabledRef.current
+        ? Math.min(240, Math.max(12, Math.round((st.micLevel / 100) * 240)))
+        : 0;
+      ctx.fillStyle = isListeningEnabledRef.current ? "#10b981" : "#f43f5e";
       ctx.fillRect(26, 292, meterWidth, 14);
 
       ctx.fillStyle = "#e2e8f0";
       ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
       const notePreview = st.note
         ? `Note: "${st.note.slice(0, 62)}"`
-        : "AI Coach is actively monitoring your screen metrics, tempo, and playing progress.";
+        : "AI Coach is monitoring your screen metrics, tempo, and playing progress.";
       ctx.fillText(notePreview, 26, 328);
     }
 
@@ -456,7 +499,7 @@ export const PracticeSessionLiveCoach: React.FC<PracticeSessionLiveCoachProps> =
     const currentLvl = difficulty || 1;
     const currentDur = duration.trim() || "0:00";
 
-    return `You are a proactive, real-time Guitar Practice Screen & Voice Coach (gemini-3.8-live). You are viewing the guitarist's Record Practice Session screen in real time via 1 FPS video frames and listening to them practice.
+    return `You are a proactive, real-time Guitar Practice Screen & Voice Coach (gemini-3.8-live). You are viewing the guitarist's Record Practice Session screen in real time via 1 FPS video frames and coaching them while they practice.
 Current Screen Details:
 - Active Song / Exercise: "${currentSong}"
 - Difficulty Level: ${currentLvl}/12
@@ -518,7 +561,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
 
   const playAudioChunk = useCallback(
     (base64Audio: string) => {
-      if (isCoachVoiceMutedRef.current) return;
+      if (isCoachVoiceMutedRef.current || !isCoachEnabledRef.current) return;
       const outputCtx = ensureOutputAudioContext();
       if (!outputCtx) return;
 
@@ -556,8 +599,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
 
   // Play WAV base64 from /api/screen-coach TTS or fallback to Web Speech API
   const speakAdviceAudio = useCallback((wavBase64: string | null, textToSpeak: string) => {
-    if (isCoachVoiceMutedRef.current) return;
-    // Do not interrupt if Live API model stream is already actively speaking
+    if (isCoachVoiceMutedRef.current || !isCoachEnabledRef.current) return;
     if (activeSourcesRef.current.size > 0) return;
 
     if (wavBase64) {
@@ -584,7 +626,6 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
       } catch {}
     }
 
-    // Fallback to browser speechSynthesis if TTS WAV playback wasn't used
     if (typeof window !== "undefined" && "speechSynthesis" in window && textToSpeak) {
       try {
         window.speechSynthesis.cancel();
@@ -636,9 +677,10 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     []
   );
 
-  // Request proactive screen-based coaching advice automatically (no user prompt needed)
+  // Request proactive screen-based coaching advice automatically
   const requestProactiveAdvice = useCallback(
     async (triggerReason: "initial" | "interval" | "screen-change" | "manual" = "interval") => {
+      if (!isCoachEnabledRef.current && triggerReason !== "manual") return;
       if (isFetchingAdviceRef.current) return;
       isFetchingAdviceRef.current = true;
       setIsGeneratingAdvice(true);
@@ -647,7 +689,6 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         const frameBase64 = captureCurrentScreenFrameBase64();
         const currentSt = sessionStateRef.current;
 
-        // Also send the latest screen frame to the Live WebSocket if open
         if (frameBase64 && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(
             JSON.stringify({
@@ -665,7 +706,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
             imageBase64: frameBase64,
             sessionState: currentSt,
             previousAdvice: adviceHistoryRef.current.slice(-4),
-            generateVoice: !isCoachVoiceMutedRef.current,
+            generateVoice: !isCoachVoiceMutedRef.current && isCoachEnabledRef.current,
             voiceName: selectedVoice,
           }),
         });
@@ -698,11 +739,18 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     [appendTranscript, captureCurrentScreenFrameBase64, selectedVoice, speakAdviceAudio]
   );
 
-  // Attach microphone audio in the background (non-blocking: if denied or unavailable, screen coaching continues uninterrupted)
+  // Attach microphone audio in the background ONLY if AI Listening is enabled
   const attachMicrophoneInBackground = useCallback(
-    async (ws: WebSocket) => {
+    async (ws?: WebSocket | null) => {
+      if (!isListeningEnabledRef.current || !isCoachEnabledRef.current) {
+        shutOffMicrophoneHardware();
+        return;
+      }
+
       try {
         if (!navigator.mediaDevices?.getUserMedia) return;
+        shutOffMicrophoneHardware();
+
         const audioConstraints: MediaTrackConstraints = {
           channelCount: 1,
           sampleRate: 16000,
@@ -717,6 +765,13 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: audioConstraints,
         });
+
+        // Double-check if user shut off AI listening while getUserMedia was resolving
+        if (!isListeningEnabledRef.current || !isCoachEnabledRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
         mediaStreamRef.current = stream;
         setIsMicActive(true);
         loadAudioDevices();
@@ -733,7 +788,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         processor.connect(inputCtx.destination);
 
         processor.onaudioprocess = (e) => {
-          if (isMicMutedRef.current) {
+          if (!isListeningEnabledRef.current || !isCoachEnabledRef.current) {
             setMicLevel(0);
             return;
           }
@@ -746,19 +801,49 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
           const rms = Math.sqrt(sumSq / (channelData.length / 8));
           setMicLevel(Math.min(100, Math.round(rms * 350)));
 
-          if (ws.readyState === WebSocket.OPEN) {
+          const activeWs = ws || wsRef.current;
+          if (activeWs && activeWs.readyState === WebSocket.OPEN) {
             const base64Audio = float32ToPcm16Base64(channelData);
-            ws.send(JSON.stringify({ audio: base64Audio }));
+            activeWs.send(JSON.stringify({ audio: base64Audio }));
           }
         };
       } catch (micErr) {
-        // Non-fatal: AI Screen Coach continues viewing screen and prompting with advice even without mic!
         console.info("Microphone auto-attach skipped or not permitted; continuing with AI Screen Vision:", micErr);
         setIsMicActive(false);
       }
     },
-    [loadAudioDevices, selectedMicId]
+    [loadAudioDevices, selectedMicId, shutOffMicrophoneHardware]
   );
+
+  // Toggle AI Listening On/Off and persist setting
+  const handleSetListeningEnabled = useCallback(
+    (nextEnabled: boolean) => {
+      isListeningEnabledRef.current = nextEnabled;
+      setLocalListeningEnabled(nextEnabled);
+      onListeningEnabledChange?.(nextEnabled);
+      try {
+        localStorage.setItem("guitar_record_session_ai_listening_v1", String(nextEnabled));
+      } catch {}
+
+      if (!nextEnabled) {
+        shutOffMicrophoneHardware();
+      } else if (isCoachEnabledRef.current) {
+        attachMicrophoneInBackground(wsRef.current);
+      }
+    },
+    [attachMicrophoneInBackground, onListeningEnabledChange, shutOffMicrophoneHardware]
+  );
+
+  // Sync when controlled prop changes from parent modal (e.g., top HUD Shut Off AI Listening button)
+  useEffect(() => {
+    if (isListeningEnabledProp === undefined) return;
+    isListeningEnabledRef.current = isListeningEnabledProp;
+    if (!isListeningEnabledProp) {
+      shutOffMicrophoneHardware();
+    } else if (isCoachEnabledRef.current && !mediaStreamRef.current) {
+      attachMicrophoneInBackground(wsRef.current);
+    }
+  }, [isListeningEnabledProp, attachMicrophoneInBackground, shutOffMicrophoneHardware]);
 
   // Stop external display share if active
   const stopExternalDisplayShare = useCallback(() => {
@@ -772,7 +857,6 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     setIsExternalDisplayShared(false);
   }, []);
 
-  // Optional: Share full desktop / external tab window via getDisplayMedia
   const handleToggleExternalDisplayShare = async () => {
     if (isExternalDisplayShared) {
       stopExternalDisplayShare();
@@ -805,8 +889,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         };
       }
       requestProactiveAdvice("screen-change");
-    } catch (err) {
-      // Keep built-in session screen viewer active
+    } catch {
       setIsExternalDisplayShared(false);
     }
   };
@@ -814,26 +897,9 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
   const cleanupSession = useCallback(() => {
     stopAllPlayback();
     stopExternalDisplayShare();
+    shutOffMicrophoneHardware();
 
     masterGainNodeRef.current = null;
-
-    if (scriptProcessorRef.current) {
-      try {
-        scriptProcessorRef.current.disconnect();
-      } catch {}
-      scriptProcessorRef.current.onaudioprocess = null;
-      scriptProcessorRef.current = null;
-    }
-
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      mediaStreamRef.current = null;
-    }
-
-    if (inputAudioCtxRef.current) {
-      inputAudioCtxRef.current.close().catch(() => {});
-      inputAudioCtxRef.current = null;
-    }
 
     if (outputAudioCtxRef.current) {
       outputAudioCtxRef.current.close().catch(() => {});
@@ -849,14 +915,17 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
 
     setIsConnected(false);
     setIsConnecting(false);
-    setIsMicActive(false);
     setIsModelSpeaking(false);
-    setMicLevel(0);
-  }, [stopAllPlayback, stopExternalDisplayShare]);
+  }, [shutOffMicrophoneHardware, stopAllPlayback, stopExternalDisplayShare]);
 
-  // Connect to Live WebSocket + Start Screen Streaming immediately (no user interaction required)
+  // Connect to Live WebSocket + Start Screen Streaming immediately
   const startLiveCoach = useCallback(async () => {
-    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+    if (!isCoachEnabledRef.current) return;
+    if (
+      wsRef.current &&
+      (wsRef.current.readyState === WebSocket.OPEN ||
+        wsRef.current.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
     setErrorMessage(null);
@@ -878,7 +947,6 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         setIsConnected(true);
         setIsExpanded(true);
 
-        // Send initial screen frame immediately upon connection
         const initialFrame = captureCurrentScreenFrameBase64();
         if (initialFrame && ws.readyState === WebSocket.OPEN) {
           ws.send(
@@ -890,8 +958,9 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
           setFramesSentCount((c) => c + 1);
         }
 
-        // Attach microphone in parallel without blocking screen vision
-        attachMicrophoneInBackground(ws);
+        if (isListeningEnabledRef.current) {
+          attachMicrophoneInBackground(ws);
+        }
       };
 
       ws.onmessage = (event) => {
@@ -903,7 +972,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
           if (msg.interrupted) {
             stopAllPlayback();
           }
-          if (msg.inputTranscript) {
+          if (msg.inputTranscript && isListeningEnabledRef.current) {
             appendTranscript("user", msg.inputTranscript);
           }
           if (msg.outputTranscript) {
@@ -941,25 +1010,51 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     stopAllPlayback,
   ]);
 
-  // AUTO-INITIALIZE immediately when the Record Practice Session dialog opens!
+  // Handle shutting off or turning on the entire AI Coach
+  const handleSetCoachEnabled = useCallback(
+    (nextEnabled: boolean) => {
+      isCoachEnabledRef.current = nextEnabled;
+      setLocalCoachEnabled(nextEnabled);
+      onCoachEnabledChange?.(nextEnabled);
+
+      if (!nextEnabled) {
+        setIsScreenViewing(false);
+        setAutoAdviceEnabled(false);
+        cleanupSession();
+        setLatestAdvice("AI Coach & AI Listening are shut off for this session. Click 'Turn On AI Coach' or 'Turn On AI Listening' anytime to resume.");
+      } else {
+        setIsScreenViewing(true);
+        setAutoAdviceEnabled(true);
+        startLiveCoach();
+        requestProactiveAdvice("manual");
+      }
+    },
+    [cleanupSession, onCoachEnabledChange, requestProactiveAdvice, startLiveCoach]
+  );
+
+  // Sync when controlled isCoachEnabledProp changes from parent modal
+  useEffect(() => {
+    if (isCoachEnabledProp === undefined) return;
+    if (isCoachEnabledRef.current === isCoachEnabledProp) return;
+    handleSetCoachEnabled(isCoachEnabledProp);
+  }, [isCoachEnabledProp, handleSetCoachEnabled]);
+
+  // AUTO-INITIALIZE immediately when the Record Practice Session dialog opens
   useEffect(() => {
     if (!autoStart || hasAutoStartedRef.current) return;
     hasAutoStartedRef.current = true;
 
-    // 1. Capture initial screen preview right away
     captureCurrentScreenFrameBase64();
 
-    // 2. Connect Live Coach WebSocket & Screen Stream automatically
-    startLiveCoach();
-
-    // 3. Prompt the user with initial screen-based advice automatically (~1.2s after dialog opens)
-    const initTimer = window.setTimeout(() => {
-      requestProactiveAdvice("initial");
-    }, 1200);
-
-    return () => {
-      window.clearTimeout(initTimer);
-    };
+    if (isCoachEnabledRef.current) {
+      startLiveCoach();
+      const initTimer = window.setTimeout(() => {
+        requestProactiveAdvice("initial");
+      }, 1200);
+      return () => {
+        window.clearTimeout(initTimer);
+      };
+    }
   }, [autoStart, captureCurrentScreenFrameBase64, requestProactiveAdvice, startLiveCoach]);
 
   // Cleanup when Record Practice Session dialog closes
@@ -969,9 +1064,9 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     };
   }, [cleanupSession]);
 
-  // 1 FPS Screen Frame Streaming Loop while viewing screen (per Gemini Live API 1 FPS video rule)
+  // 1 FPS Screen Frame Streaming Loop while viewing screen
   useEffect(() => {
-    if (!isScreenViewing) return;
+    if (!isScreenViewing || !isCoachEnabled) return;
     const frameInterval = window.setInterval(() => {
       const base64Jpeg = captureCurrentScreenFrameBase64();
       if (base64Jpeg && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -988,11 +1083,11 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     return () => {
       window.clearInterval(frameInterval);
     };
-  }, [isScreenViewing, captureCurrentScreenFrameBase64]);
+  }, [isScreenViewing, isCoachEnabled, captureCurrentScreenFrameBase64]);
 
-  // Periodic Proactive Advice Timer while playing (prompts user automatically without interaction)
+  // Periodic Proactive Advice Timer while playing
   useEffect(() => {
-    if (!autoAdviceEnabled || !isScreenViewing) return;
+    if (!autoAdviceEnabled || !isScreenViewing || !isCoachEnabled) return;
     const intervalMs = Math.max(12, adviceIntervalSec) * 1000;
     const adviceTimer = window.setInterval(() => {
       requestProactiveAdvice("interval");
@@ -1001,9 +1096,9 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     return () => {
       window.clearInterval(adviceTimer);
     };
-  }, [autoAdviceEnabled, isScreenViewing, adviceIntervalSec, requestProactiveAdvice]);
+  }, [autoAdviceEnabled, isScreenViewing, isCoachEnabled, adviceIntervalSec, requestProactiveAdvice]);
 
-  // Also trigger proactive advice when key screen fields change (song, speed, difficulty, timer started, or accuracy updated)
+  // Trigger proactive advice when key screen fields change
   const prevScreenKeyRef = useRef<string>(
     `${songTitle}|${speed}|${difficulty}|${isTimerRunning}|${accuracy}`
   );
@@ -1012,7 +1107,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     if (prevScreenKeyRef.current === nextKey) return;
     prevScreenKeyRef.current = nextKey;
 
-    if (!autoAdviceEnabled || !isScreenViewing) return;
+    if (!autoAdviceEnabled || !isScreenViewing || !isCoachEnabled) return;
     const debounceTimer = window.setTimeout(() => {
       requestProactiveAdvice("screen-change");
     }, 3500);
@@ -1028,16 +1123,14 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
     accuracy,
     autoAdviceEnabled,
     isScreenViewing,
+    isCoachEnabled,
     requestProactiveAdvice,
   ]);
 
   const handleMicChange = async (newDeviceId: string) => {
     setSelectedMicId(newDeviceId);
-    if (isConnected && wsRef.current) {
+    if (isListeningEnabled && isCoachEnabled) {
       try {
-        if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        }
         await attachMicrophoneInBackground(wsRef.current);
       } catch (err: any) {
         console.error("Failed to switch microphone:", err);
@@ -1067,19 +1160,23 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
           <div
             className={cn(
               "w-9 h-9 rounded-lg flex items-center justify-center border transition-all shrink-0",
-              isScreenViewing
+              !isCoachEnabled
+                ? "bg-rose-950/70 border-rose-600/70 text-rose-400"
+                : isScreenViewing
                 ? isModelSpeaking || isGeneratingAdvice
                   ? "bg-emerald-500/30 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-pulse"
                   : "bg-cyan-500/20 border-cyan-400/60 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]"
                 : "bg-indigo-950/60 border-indigo-700/60 text-indigo-400"
             )}
           >
-            {isModelSpeaking ? (
+            {!isCoachEnabled ? (
+              <Power className="w-4 h-4 text-rose-400" />
+            ) : isModelSpeaking ? (
               <Volume2 className="w-4 h-4 text-emerald-300 animate-bounce" />
             ) : isScreenViewing ? (
               <Eye className="w-4 h-4 text-cyan-300" />
             ) : (
-              <Mic className="w-4 h-4 text-emerald-400" />
+              <MicOff className="w-4 h-4 text-rose-400" />
             )}
           </div>
 
@@ -1087,21 +1184,46 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
                 AI Screen Vision & Live Practice Coach
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-500/70 text-cyan-200 font-semibold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                  {isScreenViewing ? "VIEWING SCREEN (AUTO)" : "PAUSED"}
+                <span
+                  className={cn(
+                    "text-[10px] font-mono px-1.5 py-0.5 rounded border font-semibold flex items-center gap-1",
+                    isListeningEnabled && isCoachEnabled
+                      ? "bg-emerald-950 border-emerald-500/70 text-emerald-300"
+                      : "bg-rose-950/90 border-rose-500/80 text-rose-200"
+                  )}
+                >
+                  {isListeningEnabled && isCoachEnabled ? (
+                    <>
+                      <Mic className="w-3 h-3 text-emerald-400" />
+                      AI LISTENING: ON
+                    </>
+                  ) : (
+                    <>
+                      <MicOff className="w-3 h-3 text-rose-400" />
+                      AI LISTENING: SHUT OFF
+                    </>
+                  )}
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-600/70 text-emerald-300 font-normal">
-                  gemini-3.8-live
+                <span
+                  className={cn(
+                    "text-[10px] font-mono px-1.5 py-0.5 rounded border font-semibold flex items-center gap-1",
+                    isScreenViewing && isCoachEnabled
+                      ? "bg-cyan-950 border-cyan-500/70 text-cyan-200"
+                      : "bg-slate-900 border-slate-700 text-slate-400"
+                  )}
+                >
+                  {isScreenViewing && isCoachEnabled ? "SCREEN VIEW: ON" : "SCREEN VIEW: OFF"}
                 </span>
               </span>
             </div>
             <p className="text-[11px] text-indigo-200/90 truncate">
-              {isModelSpeaking
+              {!isCoachEnabled
+                ? "AI Coach and AI Listening are completely shut off."
+                : !isListeningEnabled
+                ? "AI microphone listening is shut off (microphone released). Screen viewing remains active."
+                : isModelSpeaking
                 ? "AI Coach is speaking advice while you play..."
-                : isGeneratingAdvice
-                ? "Analyzing your practice screen and generating live advice..."
-                : `Auto-initialized • Viewing "${songTitle || "your practice screen"}" (${framesSentCount} frames analyzed) & prompting advice automatically`}
+                : `Listening & viewing "${songTitle || "your practice screen"}" (${framesSentCount} frames analyzed)`}
             </p>
           </div>
         </div>
@@ -1109,91 +1231,103 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         <div className="flex items-center gap-2 flex-wrap">
           <WindowsVolumeSlider variant="compact" />
 
+          {/* Primary Shut Off / Turn On AI Listening Button */}
           <Button
             type="button"
-            variant="outline"
+            variant={isListeningEnabled && isCoachEnabled ? "destructive" : "outline"}
             size="sm"
-            onClick={() => requestProactiveAdvice("manual")}
-            disabled={isGeneratingAdvice}
-            className="h-8 text-xs gap-1.5 border-cyan-600/70 bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-100"
-            title="Have the AI coach inspect your screen and give immediate advice right now"
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5 text-cyan-300", isGeneratingAdvice && "animate-spin")} />
-            <span>Advice Now</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setAutoAdviceEnabled((prev) => !prev)}
+            onClick={() => handleSetListeningEnabled(!(isListeningEnabled && isCoachEnabled))}
             className={cn(
-              "h-8 text-xs gap-1 border",
-              autoAdviceEnabled
-                ? "bg-emerald-950/70 border-emerald-500/70 text-emerald-200 hover:bg-emerald-900/70"
-                : "bg-slate-900 border-slate-700 text-slate-300"
+              "h-8 text-xs font-semibold gap-1.5 px-3",
+              isListeningEnabled && isCoachEnabled
+                ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-400"
+                : "bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border-emerald-500/70"
             )}
-            title="Toggle automatic hands-free advice prompts while you play"
+            title={
+              isListeningEnabled && isCoachEnabled
+                ? "Shut off AI microphone listening and release microphone hardware immediately"
+                : "Turn on AI microphone listening"
+            }
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Auto-Advice: {autoAdviceEnabled ? "ON" : "OFF"}</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCoachVoiceMuted((prev) => !prev)}
-            className={cn(
-              "h-8 text-xs gap-1 border",
-              isCoachVoiceMuted
-                ? "bg-rose-950/60 border-rose-600 text-rose-200"
-                : "bg-indigo-950/80 border-indigo-700/70 text-indigo-200"
-            )}
-            title={isCoachVoiceMuted ? "Unmute AI Coach spoken voice" : "Mute AI Coach spoken voice"}
-          >
-            {isCoachVoiceMuted ? (
-              <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+            {isListeningEnabled && isCoachEnabled ? (
+              <>
+                <MicOff className="w-3.5 h-3.5" />
+                <span>Shut Off AI Listening</span>
+              </>
             ) : (
-              <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+              <>
+                <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Turn On AI Listening</span>
+              </>
             )}
-            <span className="hidden sm:inline">{isCoachVoiceMuted ? "Voice Muted" : "Voice On"}</span>
           </Button>
 
-          {!isConnected ? (
-            <Button
-              type="button"
-              size="sm"
-              disabled={isConnecting}
-              onClick={startLiveCoach}
-              className="h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-md shadow-emerald-950/50"
-            >
-              <PhoneCall className="w-3.5 h-3.5" />
-              <span>{isConnecting ? "Connecting..." : "Reconnect Live"}</span>
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsMicMuted((prev) => !prev)}
-              className={cn(
-                "h-8 text-xs gap-1 border-emerald-700/60",
-                isMicMuted || !isMicActive
-                  ? "bg-rose-950/60 border-rose-600 text-rose-200 hover:bg-rose-900/60"
-                  : "bg-indigo-950/80 text-indigo-200 hover:bg-indigo-900"
-              )}
-              title={isMicMuted ? "Unmute microphone" : "Mute microphone"}
-            >
-              {isMicMuted || !isMicActive ? (
-                <MicOff className="w-3.5 h-3.5 text-rose-400" />
-              ) : (
-                <Mic className="w-3.5 h-3.5 text-emerald-400" />
-              )}
-              <span className="hidden sm:inline">
-                {!isMicActive ? "Screen Only" : isMicMuted ? "Mic Muted" : "Mic Active"}
-              </span>
-            </Button>
+          {/* Shut Off / Turn On Entire AI Coach Button */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleSetCoachEnabled(!isCoachEnabled)}
+            className={cn(
+              "h-8 text-xs font-semibold gap-1.5",
+              isCoachEnabled
+                ? "bg-slate-900 hover:bg-rose-950/80 text-rose-200 border-rose-600/60"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400"
+            )}
+            title={
+              isCoachEnabled
+                ? "Shut off all AI Coach features (Listening, Screen Vision & Auto-Advice)"
+                : "Turn on AI Coach"
+            }
+          >
+            <Power className="w-3.5 h-3.5" />
+            <span>{isCoachEnabled ? "Shut Off All AI" : "Turn On AI Coach"}</span>
+          </Button>
+
+          {isCoachEnabled && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => requestProactiveAdvice("manual")}
+                disabled={isGeneratingAdvice}
+                className="h-8 text-xs gap-1.5 border-cyan-600/70 bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-100"
+                title="Have the AI coach inspect your screen and give immediate advice right now"
+              >
+                <RefreshCw
+                  className={cn("w-3.5 h-3.5 text-cyan-300", isGeneratingAdvice && "animate-spin")}
+                />
+                <span>Advice Now</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCoachVoiceMuted((prev) => !prev)}
+                className={cn(
+                  "h-8 text-xs gap-1 border",
+                  isCoachVoiceMuted
+                    ? "bg-rose-950/60 border-rose-600 text-rose-200"
+                    : "bg-indigo-950/80 border-indigo-700/70 text-indigo-200"
+                )}
+                title={
+                  isCoachVoiceMuted
+                    ? "Unmute AI Coach spoken voice"
+                    : "Mute AI Coach spoken voice"
+                }
+              >
+                {isCoachVoiceMuted ? (
+                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                )}
+                <span className="hidden sm:inline">
+                  {isCoachVoiceMuted ? "Voice Muted" : "Voice On"}
+                </span>
+              </Button>
+            </>
           )}
 
           <button
@@ -1211,7 +1345,9 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
       <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/90 border border-cyan-500/50 shadow-inner flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0 flex-1">
           <div className="p-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 shrink-0 mt-0.5">
-            <Sparkles className={cn("w-4 h-4", (isModelSpeaking || isGeneratingAdvice) && "animate-spin")} />
+            <Sparkles
+              className={cn("w-4 h-4", (isModelSpeaking || isGeneratingAdvice) && "animate-spin")}
+            />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -1219,7 +1355,11 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
                 Live Proactive Screen Advice
               </span>
               <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/90 border border-emerald-700/60 px-1.5 py-0.2 rounded">
-                {isExternalDisplayShared ? "External Screen + Session HUD" : "Auto Session Screen Mirror (1 FPS)"}
+                {!isCoachEnabled
+                  ? "AI Shut Off"
+                  : isExternalDisplayShared
+                  ? "External Screen + Session HUD"
+                  : "Auto Session Screen Mirror (1 FPS)"}
               </span>
               {isModelSpeaking && (
                 <span className="text-[10px] font-mono text-amber-300 animate-pulse">
@@ -1234,7 +1374,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
         </div>
 
         {/* Live 1 FPS Screen Feed Preview Thumbnail */}
-        {latestScreenPreviewUrl && (
+        {latestScreenPreviewUrl && isCoachEnabled && (
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
             <div className="relative rounded-lg overflow-hidden border border-cyan-400/70 bg-slate-950 w-28 h-16 shadow-md group">
               <img
@@ -1287,8 +1427,15 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
                 </label>
               </div>
               <Select
-                value={String(adviceIntervalSec)}
-                onChange={(e) => setAdviceIntervalSec(Number(e.target.value) || 25)}
+                value={autoAdviceEnabled ? String(adviceIntervalSec) : "off"}
+                onChange={(e) => {
+                  if (e.target.value === "off") {
+                    setAutoAdviceEnabled(false);
+                  } else {
+                    setAutoAdviceEnabled(true);
+                    setAdviceIntervalSec(Number(e.target.value) || 25);
+                  }
+                }}
                 className="h-9 py-1 text-xs w-full"
                 title="How often the AI prompts you with new advice while you play"
               >
@@ -1296,6 +1443,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
                 <option value="25">Every 25 seconds (Recommended)</option>
                 <option value="45">Every 45 seconds (Relaxed)</option>
                 <option value="60">Every 60 seconds (Minimal)</option>
+                <option value="off">Auto-Advice Prompts Off</option>
               </Select>
             </div>
 
@@ -1308,6 +1456,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
                 </label>
               </div>
               <Select
+                disabled={!isListeningEnabled || !isCoachEnabled}
                 value={selectedMicId}
                 onChange={(e) => handleMicChange(e.target.value)}
                 className="h-9 py-1 text-xs w-full truncate"
@@ -1337,6 +1486,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
                 type="button"
                 variant="outline"
                 size="sm"
+                disabled={!isCoachEnabled}
                 onClick={handleToggleExternalDisplayShare}
                 className={cn(
                   "h-9 w-full text-xs gap-1.5 justify-center font-medium",
@@ -1356,10 +1506,17 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
 
           {/* Real-time transcript & proactive advice feed */}
           <div className="space-y-2">
-            <div className="h-28 overflow-y-auto rounded-lg border border-indigo-800/80 bg-slate-950/90 p-2.5 space-y-1.5 dialog-scrollbar text-xs">
+            <div
+              ref={transcriptContainerRef}
+              className="h-28 overflow-y-auto rounded-lg border border-indigo-800/80 bg-slate-950/90 p-2.5 space-y-1.5 dialog-scrollbar text-xs"
+            >
               {transcripts.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center text-[11px] text-indigo-300/90">
-                  AI Screen Coach is initialized and viewing your practice screen automatically. Start playing — the coach will prompt you with live advice automatically!
+                  {!isCoachEnabled
+                    ? "AI Coach is currently shut off."
+                    : !isListeningEnabled
+                    ? "AI Microphone Listening is shut off. Screen Vision is active and prompting advice visually."
+                    : "AI Screen Coach is initialized and viewing your practice screen automatically. Start playing — the coach will prompt you with live advice automatically!"}
                 </div>
               ) : (
                 transcripts.map((entry) => (
@@ -1384,13 +1541,13 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
                   </div>
                 ))
               )}
-              <div ref={transcriptEndRef} />
             </div>
 
             {/* Optional quick text input into active session */}
             <form onSubmit={handleSendText} className="flex items-center gap-2">
               <Input
                 type="text"
+                disabled={!isCoachEnabled}
                 value={quickTextPrompt}
                 onChange={(e) => setQuickTextPrompt(e.target.value)}
                 placeholder="Hands-free auto-advice is active — or type a specific question if desired..."
@@ -1399,7 +1556,7 @@ Proactively offer brief, natural, encouraging guitar playing advice (1-2 sentenc
               <Button
                 type="submit"
                 size="sm"
-                disabled={!quickTextPrompt.trim()}
+                disabled={!isCoachEnabled || !quickTextPrompt.trim()}
                 className="h-9 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1 shrink-0"
               >
                 <Send className="w-3.5 h-3.5" />

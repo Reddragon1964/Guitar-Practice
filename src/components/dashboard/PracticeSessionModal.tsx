@@ -24,6 +24,8 @@ import {
   FileText,
   Layers,
   Mic,
+  MicOff,
+  Power,
   Radio,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -215,6 +217,11 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   });
   const dialogTopRef = useRef<HTMLDivElement>(null);
   const recorderFrameRef = useRef<HTMLDivElement>(null);
+  const songInfoFrameRef = useRef<HTMLDivElement>(null);
+  const songSelectRef = useRef<HTMLSelectElement>(null);
+  const songInputRef = useRef<HTMLInputElement>(null);
+  const practiceDateInputRef = useRef<HTMLInputElement>(null);
+  const [isSongDateFocusedOnOpen, setIsSongDateFocusedOnOpen] = useState<boolean>(true);
 
   // Compute previous session specifically for this song (or fallback to latest session overall)
   const previousSessionForSong = useMemo(() => {
@@ -253,12 +260,30 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
   const prevDifficulty = prevSession?.difficulty;
   const prevAccuracy = prevSession?.accuracy ?? null;
 
-  // Live AI Screen Coach Top HUD Banner State
+  // Live AI Screen Coach Top HUD Banner State & AI Listening Shut-Off Controls
+  const [isAiListeningEnabled, setIsAiListeningEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("guitar_record_session_ai_listening_v1");
+      if (saved !== null) return saved === "true";
+    } catch {}
+    return true;
+  });
+  const [isAiCoachEnabled, setIsAiCoachEnabled] = useState<boolean>(true);
   const [liveCoachAdvice, setLiveCoachAdvice] = useState<string>(
     "AI Screen Vision initialized — viewing your practice session screen and preparing live playing advice..."
   );
   const [isCoachSpeaking, setIsCoachSpeaking] = useState<boolean>(false);
   const [liveScreenPreviewUrl, setLiveScreenPreviewUrl] = useState<string>("");
+
+  const handleToggleAiListening = useCallback((nextVal?: boolean) => {
+    setIsAiListeningEnabled((prev) => {
+      const target = typeof nextVal === "boolean" ? nextVal : !prev;
+      try {
+        localStorage.setItem("guitar_record_session_ai_listening_v1", String(target));
+      } catch {}
+      return target;
+    });
+  }, []);
 
   const handleAdviceUpdate = useCallback(
     (advice: string, isSpeaking: boolean, screenFrameDataUrl?: string) => {
@@ -300,20 +325,46 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
     prevSongTitleRef.current = songTitle;
   }, [songTitle, triggerSpeedFlash]);
 
-  // Always scroll to the top of the Record Practice Session dialog when it opens
+  // Always keep dialog at the top and focus on the Song & Practice Date section when opened
   useLayoutEffect(() => {
-    const scrollToDialogTop = () => {
+    const scrollToDialogTopAndFocusSongDate = () => {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
       if (dialogTopRef.current) {
         dialogTopRef.current.scrollTop = 0;
+        if (dialogTopRef.current.parentElement) {
+          dialogTopRef.current.parentElement.scrollTop = 0;
+        }
+        const scrollableModalBody = dialogTopRef.current.closest(".overflow-y-auto") as HTMLElement | null;
+        if (scrollableModalBody) {
+          scrollableModalBody.scrollTop = 0;
+        }
+      }
+      // Focus the Song & Practice Date control without scrolling the dialog
+      const targetControl =
+        songSelectRef.current ||
+        songInputRef.current ||
+        practiceDateInputRef.current ||
+        songInfoFrameRef.current;
+      if (targetControl) {
+        try {
+          targetControl.focus({ preventScroll: true });
+        } catch {
+          targetControl.focus();
+        }
       }
     };
 
-    scrollToDialogTop();
-    const rafId = requestAnimationFrame(scrollToDialogTop);
-    return () => cancelAnimationFrame(rafId);
+    scrollToDialogTopAndFocusSongDate();
+    const rafId = requestAnimationFrame(scrollToDialogTopAndFocusSongDate);
+    const t1 = setTimeout(scrollToDialogTopAndFocusSongDate, 80);
+    const t2 = setTimeout(() => setIsSongDateFocusedOnOpen(false), 3000);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [editingPracticeId]);
 
   useEffect(() => {
@@ -389,7 +440,8 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
         if (Array.isArray(parsed) && parsed.length === DEFAULT_SESSION_FRAMES.length) {
           const allValid = DEFAULT_SESSION_FRAMES.every((f) => parsed.includes(f.id));
           if (allValid) {
-            return parsed as SessionFrameId[];
+            const withoutSongInfo = (parsed as SessionFrameId[]).filter((id) => id !== "songInfo");
+            return ["songInfo", ...withoutSongInfo];
           }
         }
       }
@@ -404,7 +456,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
       const saved = localStorage.getItem(FRAMES_MINIMIZED_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { ...parsed, coach: false };
+        return { ...parsed, songInfo: false, coach: false };
       }
     } catch (e) {
       console.warn("Failed to load minimized frames state", e);
@@ -718,6 +770,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
 
               {!isCustomSongMode && activeSongs.length > 0 ? (
                 <Select
+                  ref={songSelectRef}
                   required
                   value={songTitle}
                   onChange={(e) => {
@@ -740,6 +793,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               ) : (
                 <div className="flex items-center gap-2">
                   <Input
+                    ref={songInputRef}
                     type="text"
                     required
                     maxLength={200}
@@ -780,7 +834,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               <div className="min-h-[30px] flex items-center justify-between gap-2">
                 <label className="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                  Date
+                  Practice Date
                 </label>
                 <button
                   type="button"
@@ -792,6 +846,7 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                 </button>
               </div>
               <Input
+                ref={practiceDateInputRef}
                 type="date"
                 required
                 value={practiceDate}
@@ -1367,6 +1422,10 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               prevAccuracy={prevAccuracy}
               prevSpeed={prevSpeed ?? null}
               autoStart={true}
+              isListeningEnabled={isAiListeningEnabled}
+              onListeningEnabledChange={handleToggleAiListening}
+              isCoachEnabled={isAiCoachEnabled}
+              onCoachEnabledChange={setIsAiCoachEnabled}
               onAdviceUpdate={handleAdviceUpdate}
             />
           </div>
@@ -1586,13 +1645,22 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
           </div>
         </div>
 
-        {/* Always-On Top AI Screen Vision & Proactive Advice HUD Bar */}
-        <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/85 via-cyan-950/75 to-indigo-950/85 border border-cyan-500/60 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* Always-On Top AI Screen Vision & Proactive Advice HUD Bar with Shut Off AI Listening Button */}
+        <div
+          className={cn(
+            "p-3 rounded-xl border shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 transition-colors",
+            !isAiCoachEnabled
+              ? "bg-slate-950/90 border-slate-800"
+              : "bg-gradient-to-r from-emerald-950/85 via-cyan-950/75 to-indigo-950/85 border-cyan-500/60"
+          )}
+        >
           <div className="flex items-start gap-2.5 min-w-0 flex-1">
             <div
               className={cn(
                 "w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 mt-0.5 transition-all",
-                isCoachSpeaking
+                !isAiCoachEnabled
+                  ? "bg-rose-950/60 border-rose-600/60 text-rose-400"
+                  : isCoachSpeaking
                   ? "bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-[0_0_14px_rgba(16,185,129,0.6)] animate-pulse"
                   : "bg-cyan-500/20 border-cyan-400/70 text-cyan-300"
               )}
@@ -1602,13 +1670,39 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-200 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  AI Screen Coach Active (Auto-Initialized)
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full",
+                      !isAiCoachEnabled
+                        ? "bg-rose-500"
+                        : "bg-emerald-400 animate-ping"
+                    )}
+                  />
+                  {!isAiCoachEnabled
+                    ? "AI Coach & Listening Shut Off"
+                    : "AI Screen Coach Active"}
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-950/80 border border-cyan-500/50 text-cyan-300">
-                  Viewing Screen • Hands-Free Advice
+                <span
+                  className={cn(
+                    "text-[10px] font-mono px-1.5 py-0.5 rounded border font-semibold flex items-center gap-1",
+                    isAiListeningEnabled && isAiCoachEnabled
+                      ? "bg-emerald-950/90 border-emerald-500/70 text-emerald-300"
+                      : "bg-rose-950/90 border-rose-500/80 text-rose-200"
+                  )}
+                >
+                  {isAiListeningEnabled && isAiCoachEnabled ? (
+                    <>
+                      <Mic className="w-3 h-3 text-emerald-400" />
+                      AI LISTENING: ON
+                    </>
+                  ) : (
+                    <>
+                      <MicOff className="w-3 h-3 text-rose-400" />
+                      AI LISTENING: SHUT OFF
+                    </>
+                  )}
                 </span>
-                {isCoachSpeaking && (
+                {isCoachSpeaking && isAiCoachEnabled && (
                   <span className="text-[10px] font-mono text-amber-300 font-semibold animate-pulse">
                     🔊 Speaking Advice...
                   </span>
@@ -1620,18 +1714,80 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
             </div>
           </div>
 
-          {liveScreenPreviewUrl && (
-            <div className="relative rounded-lg overflow-hidden border border-cyan-400/70 bg-slate-950 w-24 h-14 shrink-0 shadow-md hidden sm:block">
-              <img
-                src={liveScreenPreviewUrl}
-                alt="Live Screen View"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 px-1 py-0.2 text-[8px] font-mono text-cyan-300 text-center">
-                LIVE SCREEN
+          <div className="flex items-center gap-2 flex-wrap shrink-0 self-end lg:self-center">
+            {/* Prominent Shut Off / Turn On AI Listening Button in Top HUD Bar */}
+            <Button
+              type="button"
+              variant={isAiListeningEnabled && isAiCoachEnabled ? "destructive" : "outline"}
+              size="sm"
+              onClick={() => {
+                if (!isAiCoachEnabled) {
+                  setIsAiCoachEnabled(true);
+                  handleToggleAiListening(true);
+                } else {
+                  handleToggleAiListening(!isAiListeningEnabled);
+                }
+              }}
+              className={cn(
+                "h-9 px-3 text-xs font-semibold gap-1.5",
+                isAiListeningEnabled && isAiCoachEnabled
+                  ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-400"
+                  : "bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 border-emerald-500/80"
+              )}
+              title={
+                isAiListeningEnabled && isAiCoachEnabled
+                  ? "Shut off AI microphone listening immediately and release microphone"
+                  : "Turn on AI microphone listening"
+              }
+            >
+              {isAiListeningEnabled && isAiCoachEnabled ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5" />
+                  <span>Shut Off AI Listening</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Turn On AI Listening</span>
+                </>
+              )}
+            </Button>
+
+            {/* Shut Off / Turn On All AI Coach Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAiCoachEnabled((prev) => !prev)}
+              className={cn(
+                "h-9 px-2.5 text-xs font-semibold gap-1.5",
+                isAiCoachEnabled
+                  ? "bg-slate-900/90 hover:bg-rose-950/80 text-rose-200 border-rose-600/60"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400"
+              )}
+              title={
+                isAiCoachEnabled
+                  ? "Shut off all AI Coach functions (Listening, Screen Vision & Auto-Advice)"
+                  : "Turn on AI Coach"
+              }
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>{isAiCoachEnabled ? "Shut Off All AI" : "Turn On AI Coach"}</span>
+            </Button>
+
+            {liveScreenPreviewUrl && isAiCoachEnabled && (
+              <div className="relative rounded-lg overflow-hidden border border-cyan-400/70 bg-slate-950 w-24 h-14 shrink-0 shadow-md hidden sm:block">
+                <img
+                  src={liveScreenPreviewUrl}
+                  alt="Live Screen View"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 px-1 py-0.2 text-[8px] font-mono text-cyan-300 text-center">
+                  LIVE SCREEN
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Rearrangeable Section Frames Toolbar */}
@@ -1679,6 +1835,8 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
               return (
                 <div
                   key={frameId}
+                  ref={frameId === "songInfo" ? songInfoFrameRef : undefined}
+                  tabIndex={frameId === "songInfo" ? -1 : undefined}
                   draggable
                   onDragStart={(e) => handleDragStart(frameId, e)}
                   onDragOver={(e) => handleDragOver(frameId, e)}
@@ -1688,11 +1846,13 @@ export const PracticeSessionModal: React.FC<PracticeSessionModalProps> = ({
                   onDrop={(e) => handleDrop(frameId, e)}
                   onDragEnd={handleDragEnd}
                   className={cn(
-                    "rounded-xl border transition-all duration-200 overflow-hidden bg-slate-900/80 backdrop-blur shadow-md",
+                    "rounded-xl border transition-all duration-200 overflow-hidden bg-slate-900/80 backdrop-blur shadow-md outline-none",
                     isDragging
                       ? "opacity-50 border-cyan-400 border-dashed ring-2 ring-cyan-400/40"
                       : isDragOver
                       ? "border-cyan-400 ring-2 ring-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.35)]"
+                      : frameId === "songInfo" && isSongDateFocusedOnOpen
+                      ? "border-emerald-400 ring-2 ring-emerald-400/60 shadow-[0_0_18px_rgba(16,185,129,0.28)]"
                       : "border-indigo-800/70 hover:border-indigo-600/80"
                   )}
                 >
